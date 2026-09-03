@@ -88,6 +88,39 @@ services:
     networks:
       - internal
 
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles:
+      - development
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+    expose:
+      - "1025"
+    networks:
+      - internal
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles:
+      - tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      nginx:
+        condition: service_started
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - internal
+
 volumes:
   postgres_data:
   laravel_cache:
