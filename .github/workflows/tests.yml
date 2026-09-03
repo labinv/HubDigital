@@ -20,6 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: Testing
     env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: hubdigital_test
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_SSLMODE: disable
       TEST_DB_HOST: 127.0.0.1
       TEST_DB_PORT: 5432
       TEST_DB_DATABASE: hubdigital_test
@@ -75,6 +82,7 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           php artisan config:clear --ansi
+          php artisan migrate:fresh --force
 
       - name: Run PHPUnit and Pest tests
         run: php artisan test
