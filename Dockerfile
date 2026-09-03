@@ -76,6 +76,7 @@ RUN apk add --no-cache \
         libzip \
         icu-libs \
         postgresql-dev \
+        poppler-utils \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
         libpng-dev \

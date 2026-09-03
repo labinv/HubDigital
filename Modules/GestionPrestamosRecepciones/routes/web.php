@@ -29,6 +29,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisDepositos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\PortalDepositos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistrarDevolucionPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitarProrroga;
@@ -42,6 +43,16 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocu
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfFirmado;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerActa;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerActaEmbed;
+
+Route::get('/depositos', PortalDepositos::class)->name('depositos.portal');
+
+Route::middleware(['auth', 'verified', 'role:depositante'])
+    ->prefix('depositos')
+    ->name('depositos.')
+    ->group(function () {
+        Route::get('/solicitud', RegistroSolicitudDeposito::class)->name('solicitud.crear');
+        Route::get('/mis-solicitudes', MisDepositos::class)->name('mis-solicitudes');
+    });
 
 Route::middleware(['auth', 'verified'])
     ->prefix('prestamos')

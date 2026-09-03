@@ -12,8 +12,14 @@
                 <img src="/images/logo-DB.jpg" alt="Departamento de Biología EPN" class="h-10 w-auto object-contain" />
             </a>
 
-            <nav class="flex items-center gap-6">
-                <a href="{{ route('login') }}" wire:navigate class="inline-flex min-h-11 items-center px-1 text-sm text-text-secondary transition-colors hover:text-text-primary">Iniciar sesión</a>
+            <nav class="flex items-center gap-3 sm:gap-6">
+                <a href="{{ route('portal.catalogo') }}" wire:navigate class="hidden min-h-11 items-center px-1 text-sm text-text-secondary transition-colors hover:text-text-primary sm:inline-flex">Catálogo</a>
+                <a href="{{ route('depositos.portal') }}" wire:navigate class="inline-flex min-h-11 items-center px-1 text-sm text-text-secondary transition-colors hover:text-text-primary">Depósitos</a>
+                @auth
+                    <a href="{{ route('dashboard') }}" wire:navigate class="inline-flex min-h-11 items-center rounded-lg bg-blue-navy px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-navy/90">Mi cuenta</a>
+                @else
+                    <a href="{{ route('login') }}" wire:navigate class="inline-flex min-h-11 items-center px-1 text-sm text-text-secondary transition-colors hover:text-text-primary">Iniciar sesión</a>
+                @endauth
             </nav>
         </div>
     </div>

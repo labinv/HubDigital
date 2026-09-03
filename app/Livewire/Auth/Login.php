@@ -51,7 +51,10 @@ class Login extends Component
         // cuenta; rolActivo() lo siembra en sesión si aún no existe.
         $user->rolActivo();
 
-        $this->redirect(route('dashboard'), navigate: true);
+        $this->redirectIntended(
+            default: route('dashboard', absolute: false),
+            navigate: true,
+        );
     }
 
     /**

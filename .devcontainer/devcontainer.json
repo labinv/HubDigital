@@ -1,0 +1,37 @@
+{
+    "name": "HubDigital - desarrollo gratuito",
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    },
+    "hostRequirements": {
+        "cpus": 2,
+        "memory": "4gb",
+        "storage": "16gb"
+    },
+    "forwardPorts": [80, 8025],
+    "portsAttributes": {
+        "80": {
+            "label": "HubDigital",
+            "onAutoForward": "notify"
+        },
+        "8025": {
+            "label": "Mailpit - correo de pruebas",
+            "onAutoForward": "notify"
+        }
+    },
+    "remoteEnv": {
+        "COMPOSE_PROJECT_NAME": "hubdigital-dev"
+    },
+    "postCreateCommand": "bash .devcontainer/start.sh",
+    "postStartCommand": "bash .devcontainer/start.sh --no-build",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-azuretools.vscode-docker",
+                "bmewburn.vscode-intelephense-client",
+                "onecentlin.laravel-blade"
+            ]
+        }
+    }
+}
