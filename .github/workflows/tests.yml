@@ -82,7 +82,6 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           php artisan config:clear --ansi
-          php artisan migrate:fresh --force
 
       - name: Run PHPUnit and Pest tests
         run: php artisan test
