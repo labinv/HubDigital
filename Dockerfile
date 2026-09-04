@@ -45,6 +45,7 @@ COPY --from=vendor /app/vendor vendor/
 COPY vite.config.js vite-module-loader.js modules_statuses.json ./
 COPY resources/ resources/
 COPY Modules/ Modules/
+COPY tests/js/ tests/js/
 
 RUN npm run test:signer && npm run build
 
