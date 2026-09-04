@@ -20,7 +20,7 @@ final class CargarDocumentacionOficialController
     /**
      * Maneja la petición HTTP para cargar documentos oficiales.
      */
-    public function __invoke(CargarDocumentacionOficialRequest $request): JsonResponse
+    public function __invoke(CargarDocumentacionOficialRequest $request, string $id): JsonResponse
     {
         $output = ($this->handler)(
             new CargarDocumentacionOficialInput(
