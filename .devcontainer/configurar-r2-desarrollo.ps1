@@ -81,12 +81,24 @@ try {
 }
 catch {
     # La ausencia previa de una politica CORS tambien es el estado esperado.
-    if ($_.Exception.Message -notmatch '404|not found|no existe') {
+    $status = if ($_.Exception.Response) { [int] $_.Exception.Response.StatusCode } else { 0 }
+    if ($status -ne 404) {
         throw
     }
 }
-$cors = Invoke-CloudflareApi -Uri "$baseUri/$BucketName/cors"
-if (@($cors.result.rules).Count -ne 0) {
+$corsRules = @()
+try {
+    $cors = Invoke-CloudflareApi -Uri "$baseUri/$BucketName/cors"
+    $corsRules = @($cors.result.rules)
+}
+catch {
+    # Cloudflare devuelve 404 cuando el bucket nunca tuvo una politica CORS.
+    $status = if ($_.Exception.Response) { [int] $_.Exception.Response.StatusCode } else { 0 }
+    if ($status -ne 404) {
+        throw
+    }
+}
+if ($corsRules.Count -ne 0) {
     throw 'El bucket conserva una politica CORS inesperada.'
 }
 
