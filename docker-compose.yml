@@ -24,6 +24,14 @@ services:
       target: production
     restart: unless-stopped
     env_file: ./.env
+    environment:
+      DEPOSIT_STORAGE_DRIVER: ${DEPOSIT_STORAGE_DRIVER:-auto}
+      DEPOSIT_STORAGE_REQUIRE_REMOTE: ${DEPOSIT_STORAGE_REQUIRE_REMOTE:-false}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
     volumes:
       - ./storage:/var/www/html/storage
       - laravel_cache:/var/www/html/bootstrap/cache
@@ -47,6 +55,14 @@ services:
       target: production
     restart: unless-stopped
     env_file: ./.env
+    environment:
+      DEPOSIT_STORAGE_DRIVER: ${DEPOSIT_STORAGE_DRIVER:-auto}
+      DEPOSIT_STORAGE_REQUIRE_REMOTE: ${DEPOSIT_STORAGE_REQUIRE_REMOTE:-false}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     volumes:
       - ./storage:/var/www/html/storage
@@ -63,6 +79,14 @@ services:
       target: production
     restart: unless-stopped
     env_file: ./.env
+    environment:
+      DEPOSIT_STORAGE_DRIVER: ${DEPOSIT_STORAGE_DRIVER:-auto}
+      DEPOSIT_STORAGE_REQUIRE_REMOTE: ${DEPOSIT_STORAGE_REQUIRE_REMOTE:-false}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
     command: php artisan schedule:work
     volumes:
       - ./storage:/var/www/html/storage

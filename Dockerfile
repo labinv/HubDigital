@@ -46,7 +46,7 @@ COPY vite.config.js vite-module-loader.js modules_statuses.json ./
 COPY resources/ resources/
 COPY Modules/ Modules/
 
-RUN npm run build
+RUN npm run test:signer && npm run build
 
 
 # ============================================================
@@ -77,6 +77,9 @@ RUN apk add --no-cache \
         icu-libs \
         postgresql-dev \
         poppler-utils \
+        tesseract-ocr \
+        tesseract-ocr-data-spa \
+        tesseract-ocr-data-eng \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
         libpng-dev \
@@ -118,6 +121,7 @@ COPY --from=frontend --chown=www-data:www-data /app/public/build ./public/build/
 # Ensure full storage directory tree for Docker volume seeding on first run
 RUN mkdir -p \
         storage/app/private/actas \
+        storage/app/private/depositos \
         storage/app/private/documentos-identidad \
         storage/app/private/firmas-investigador \
         storage/app/private/livewire-tmp \

@@ -37,3 +37,8 @@ Modules/InventarioGestionColeccion/docs/provisioning_prod/
 /.serena
 /.tokensave
 /.playwright-mcp
+
+# Certificados de firma y credenciales privadas: nunca versionar.
+**/*.p12
+**/*.pfx
+**/*credenciales*p12*.txt

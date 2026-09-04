@@ -17,6 +17,22 @@ fi
 docker compose --profile development up -d ${build_flag} postgres mailpit app worker scheduler nginx
 docker compose exec -T app php artisan migrate --force
 
+r2_presentes=0
+for variable in R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+    if [[ -n "${!variable:-}" ]]; then
+        r2_presentes=$((r2_presentes + 1))
+    fi
+done
+if [[ ${r2_presentes} -gt 0 && ${r2_presentes} -lt 4 ]]; then
+    echo "ERROR: la configuracion R2 de Codespaces esta incompleta." >&2
+    exit 1
+fi
+if [[ ${r2_presentes} -eq 4 ]]; then
+    docker compose exec -T app php artisan depositos:verificar-almacenamiento --exigir-r2
+else
+    echo "R2 no configurado: se usa fallback local solo para esta sesion de desarrollo."
+fi
+
 if [[ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]]; then
     docker compose --profile tunnel up -d cloudflared
     echo "HubDigital disponible en https://dev.labinvepn.org"

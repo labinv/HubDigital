@@ -75,6 +75,7 @@ jobs:
       - name: Build frontend assets
         run: |
           npm ci
+          npm run test:signer
           npm run build
 
       - name: Prepare test environment
