@@ -85,7 +85,7 @@ final class AnalizadorDocumentoAmbiental
             ['oficio-generico-v1', '/oficio\s+(?:nro|no|n[úu]mero)?\.?\s*[:#-]?\s*([A-Z]{2,12}(?:\s*[-\/]\s*[A-Z0-9]{1,18}){3,10})\b/iu', 0.88],
         ]);
         $autorizacion = $this->resolverCodigo($texto, [
-            ['aut-codigo-anio-inicial-v3', '/(?:autorizaci[oó0]n|permiso)\s+(?:para\s+|de\s+)?recolecci[oó0]n(?:\s+de\s+(?:espec[ií1]menes\s+de\s+especies\s+de\s+la\s+diversidad\s+biol[oó0]gica|espec[ií1]menes|vida\s+silvestre))?[\s\S]{0,100}?(?:n(?:ro|o|[úu]mero)\.?|n[º°])?\s*[:#-]?\s*([0-9]{1,4}\s*-\s*(?:19|20)\d{2}(?:\s+|\s*[-\/]\s*)[A-Z]{1,12}(?:\s*[-\/]+\s*[A-Z0-9]{1,16}){1,10})/iu', 0.98],
+            ['aut-codigo-anio-inicial-v3', '/(?:autorizaci[oó0]n|permiso)\s+(?:para\s+|de\s+)?recolecci[oó0]n(?:\s+de\s+(?:espec[ií1]menes\s+de\s+especies\s+de\s+la\s+diversidad\s+biol[oó0]gica|espec[ií1]menes|vida\s+silvestre))?[\s\S]{0,100}?(?:n(?:ro|o|[úu]mero)\.?|n[º°])?\s*[:#-]?\s*((?:[0-9]\s*){1,4}-\s*(?:19|20)\d{2}(?:\s+|\s*[-\/]\s*)[A-Z]{1,12}(?:\s*[-\/]+\s*[A-Z0-9]{1,16}){1,10})/iu', 0.98],
             ['aut-codigo-anio-final-v2', '/(?:autorizaci[oó0]n|permiso)\s+(?:para\s+|de\s+)?recolecci[oó0]n[\s\S]{0,100}?(?:n(?:ro|o|[úu]mero)\.?|n[º°])?\s*[:#-]?\s*([0-9]{1,4}(?:\s*[-\/]+\s*[A-Z0-9]{2,16}){2,10}\s*[-\/]+\s*(?:19|20)\d{2})/iu', 0.96],
             ['aut-codigo-suia-v1', '/(?:autorizaci[oó0]n|permiso)\s+(?:para\s+|de\s+)?recolecci[oó0]n[\s\S]{0,80}?(?:n(?:ro|o|[úu]mero)\.?|n[º°])?\s*[:#-]?\s*((?:MAATE|MAAE|MAE)-SUIA(?:\s*[-\/]+\s*[A-Z0-9]{1,18}){1,8})/iu', 0.94],
             ['aut-codigo-suia-etiqueta-v2', '/(?:autorizaci[oó0]n\s+de\s+recolecta[\s\S]{0,120}?)?c[oó0]digo\s*[:#-]?\s*((?:MAATE|MAAE|MAE)(?:\s*[-\/]\s*[A-Z0-9]{1,18}){2,10})/iu', 0.96],
