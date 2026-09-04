@@ -1355,7 +1355,7 @@ final class RegistroSolicitudDeposito extends Component
                         'acceptedUsageKey' => $item['acceptedKey'] ?? $item['key'] ?? null,
                         'parentKey' => $item['parentKey'] ?? null,
                         'acceptedNameUsage' => $item['accepted'] ?? $item['scientificName'] ?? null,
-                        'acceptedNameUsageID' => isset($item['acceptedKey'] ?? $item['key'])
+                        'acceptedNameUsageID' => (isset($item['acceptedKey']) || isset($item['key']))
                             ? 'https://www.gbif.org/species/'.($item['acceptedKey'] ?? $item['key'])
                             : null,
                         'nameAccordingTo' => 'GBIF Backbone Taxonomy',
