@@ -78,6 +78,7 @@ RUN apk add --no-cache \
         icu-libs \
         postgresql-dev \
         poppler-utils \
+        qpdf \
         tesseract-ocr \
         tesseract-ocr-data-spa \
         tesseract-ocr-data-eng \

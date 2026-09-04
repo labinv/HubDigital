@@ -6,4 +6,6 @@ return [
     'ocr_languages' => env('DOCUMENT_EXTRACTION_OCR_LANGUAGES', 'spa+eng'),
     'ocr_max_pages' => (int) env('DOCUMENT_EXTRACTION_OCR_MAX_PAGES', 25),
     'ocr_dpi' => (int) env('DOCUMENT_EXTRACTION_OCR_DPI', 200),
+    'max_page_points' => (int) env('DOCUMENT_EXTRACTION_MAX_PAGE_POINTS', 1440),
+    'max_render_pixels' => (int) env('DOCUMENT_EXTRACTION_MAX_RENDER_PIXELS', 120000000),
 ];

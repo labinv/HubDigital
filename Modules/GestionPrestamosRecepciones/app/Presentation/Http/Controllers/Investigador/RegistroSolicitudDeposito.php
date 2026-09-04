@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
@@ -88,6 +89,7 @@ final class RegistroSolicitudDeposito extends Component
 
     public string $tipoTramite = '';
 
+    #[Locked]
     public ?string $solicitudId = null;
 
     public string $numeroSolicitud = '';
@@ -130,9 +132,11 @@ final class RegistroSolicitudDeposito extends Component
     public array $documentosRequeridos = [];
 
     /** @var array<string, string> [nombre => ruta_storage] */
+    #[Locked]
     public array $documentosCargados = [];
 
     /** @var array<string, string> [nombre => nombre_original_archivo] */
+    #[Locked]
     public array $nombresArchivosOriginales = [];
 
     public bool $intervencionCuratoriaActiva = false;
@@ -149,6 +153,7 @@ final class RegistroSolicitudDeposito extends Component
     public string $advertenciaExtraccion = '';
 
     /** @var string[] */
+    #[Locked]
     public array $documentosProcesados = [];
 
     public string $estadoValidacionContenido = '';
@@ -165,6 +170,7 @@ final class RegistroSolicitudDeposito extends Component
     public array $datosExtraidos = [];
 
     /** @var array<string, mixed> Trazabilidad y confianza del OCR/autocompletado. */
+    #[Locked]
     public array $metadatosExtraccion = [];
 
     /** @var string[] */
@@ -185,12 +191,14 @@ final class RegistroSolicitudDeposito extends Component
     public string $estadoDocumental = '';
 
     /** @var array<string, string> [nombre_documento => estado_firma] */
+    #[Locked]
     public array $firmasElectronicas = [];
 
     // ── Paso 5 – Matriz de especies ─────────────────────────────────────────────
 
     public $archivoMatriz = null;
 
+    #[Locked]
     public ?string $matrizId = null;
 
     public string $estadoMatriz = '';
@@ -310,6 +318,7 @@ final class RegistroSolicitudDeposito extends Component
     public bool $solicitudFirmada = false;
 
     /** @var array<string, mixed> */
+    #[Locked]
     public array $solicitudFirmaMetadata = [];
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -352,6 +361,32 @@ final class RegistroSolicitudDeposito extends Component
             ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
             ->whereYear('created_at', (int) date('Y'))
             ->count();
+    }
+
+    /**
+     * Defensa en profundidad para cada petición Livewire posterior al montaje.
+     * Los identificadores también están bloqueados, pero esta verificación evita
+     * que cualquier operación confíe únicamente en el estado hidratado del cliente.
+     */
+    public function hydrate(): void
+    {
+        if ($this->solicitudId === null) {
+            return;
+        }
+
+        $esPropia = SolicitudDepositoEloquentModel::query()
+            ->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->exists();
+        abort_unless($esPropia, 404);
+
+        if ($this->matrizId !== null) {
+            $matrizPertenece = MatrizEspeciesEloquentModel::query()
+                ->whereKey($this->matrizId)
+                ->where('solicitud_id', $this->solicitudId)
+                ->exists();
+            abort_unless($matrizPertenece, 404);
+        }
     }
 
     /**
@@ -602,7 +637,9 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)->update([
+        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->update([
             'paso_actual' => $this->paso,
             'documentos_cargados' => $this->documentosCargados,
             'nombres_archivos_originales' => $this->nombresArchivosOriginales,
@@ -614,12 +651,21 @@ final class RegistroSolicitudDeposito extends Component
     public function descartarBorrador(): void
     {
         if ($this->solicitudId !== null) {
-            // Eliminar archivos cargados del storage
-            foreach ($this->documentosCargados as $ruta) {
+            $borrador = SolicitudDepositoEloquentModel::query()
+                ->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())
+                ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
+                ->firstOrFail();
+
+            // Las rutas se obtienen de la base, nunca del estado enviado por el navegador.
+            foreach (($borrador->documentos_cargados ?? []) as $ruta) {
+                if (! is_string($ruta) || $ruta === '') {
+                    continue;
+                }
                 app(AlmacenamientoDepositos::class)->eliminar($ruta);
             }
 
-            SolicitudDepositoEloquentModel::where('id', $this->solicitudId)->delete();
+            $borrador->delete();
         }
 
         $this->reset();
@@ -838,7 +884,9 @@ final class RegistroSolicitudDeposito extends Component
         $this->estadoValidacionContenido = '';
         $this->erroresDocumentales = [];
         $this->advertenciasDocumentales = [];
-        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)->update([
+        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->update([
             'extraccion_estado' => null,
             'extraccion_metadatos' => [],
             'documentos_procesados' => [],
@@ -921,7 +969,10 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        $model = SolicitudDepositoEloquentModel::find($this->solicitudId);
+        $model = SolicitudDepositoEloquentModel::query()
+            ->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->first();
 
         if ($model === null) {
             return;
@@ -1249,7 +1300,9 @@ final class RegistroSolicitudDeposito extends Component
 
         // Si ya existe una matriz para esta solicitud, eliminarla antes de crear la nueva
         if ($this->matrizId) {
-            MatrizEspeciesEloquentModel::where('id', $this->matrizId)->delete();
+            MatrizEspeciesEloquentModel::where('id', $this->matrizId)
+                ->where('solicitud_id', $this->solicitudId)
+                ->delete();
             $this->matrizId = null;
         }
 
@@ -1477,7 +1530,9 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         if ($this->matrizId) {
-            MatrizEspeciesEloquentModel::where('id', $this->matrizId)->delete();
+            MatrizEspeciesEloquentModel::where('id', $this->matrizId)
+                ->where('solicitud_id', $this->solicitudId)
+                ->delete();
             $this->matrizId = null;
         }
 
@@ -1696,7 +1751,9 @@ final class RegistroSolicitudDeposito extends Component
     public function eliminarMatriz(): void
     {
         if ($this->matrizId) {
-            MatrizEspeciesEloquentModel::where('id', $this->matrizId)->delete();
+            MatrizEspeciesEloquentModel::where('id', $this->matrizId)
+                ->where('solicitud_id', $this->solicitudId)
+                ->delete();
         }
 
         $this->archivoMatriz = null;
@@ -1911,7 +1968,10 @@ final class RegistroSolicitudDeposito extends Component
             ['declaracionAceptada.accepted' => 'Debes aceptar la declaración para enviar la solicitud.']
         );
 
-        $documento = SolicitudDepositoEloquentModel::find($this->solicitudId);
+        $documento = SolicitudDepositoEloquentModel::query()
+            ->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->firstOrFail();
         if ($documento?->solicitud_firmada_en === null) {
             $this->addError('solicitudFirmada', 'Firma electrónicamente la solicitud oficial antes de enviarla.');
 
@@ -1940,6 +2000,7 @@ final class RegistroSolicitudDeposito extends Component
 
                 if ($this->solicitudId !== null) {
                     SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
+                        ->where('investigador_id', (string) auth()->id())
                         ->update(['extraccion_estado' => null, 'firmas_electronicas' => '{}']);
                 }
 
@@ -2003,7 +2064,9 @@ final class RegistroSolicitudDeposito extends Component
             'valores_sha256' => hash('sha256', $json),
         ];
 
-        SolicitudDepositoEloquentModel::whereKey($this->solicitudId)->update([
+        SolicitudDepositoEloquentModel::whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->update([
             'extraccion_metadatos' => $metadatos,
         ]);
         $this->metadatosExtraccion = $metadatos;
@@ -2020,7 +2083,9 @@ final class RegistroSolicitudDeposito extends Component
             'invalidada_en' => now()->toIso8601String(),
             'invalidada_por' => (string) auth()->id(),
         ];
-        SolicitudDepositoEloquentModel::whereKey($this->solicitudId)->update([
+        SolicitudDepositoEloquentModel::whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->update([
             'extraccion_metadatos' => $this->metadatosExtraccion,
         ]);
     }
@@ -2239,7 +2304,10 @@ final class RegistroSolicitudDeposito extends Component
         if ($this->solicitudId === null) {
             return;
         }
-        $solicitud = SolicitudDepositoEloquentModel::find($this->solicitudId);
+        $solicitud = SolicitudDepositoEloquentModel::query()
+            ->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->first();
         if ($solicitud?->solicitud_firmada_en === null) {
             return;
         }

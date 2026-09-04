@@ -170,6 +170,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
         }
 
         try {
+            $this->validarPdfSeguro($archivo);
             $texto = $this->ejecutar(new Process(['pdftotext', '-layout', '-nopgbrk', $archivo, '-']));
             if (mb_strlen(trim($texto)) < config('document-extraction.minimum_text_length', 80)) {
                 $ocr = $this->aplicarOcr($archivo);
@@ -189,6 +190,59 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
             return [trim($texto), 'pdftotext'];
         } finally {
             $copia->limpiar();
+        }
+    }
+
+    /**
+     * Rechaza documentos patológicos antes de entregarlos a Poppler/Tesseract.
+     * El peso del archivo no limita el tamaño descomprimido de una página PDF.
+     */
+    private function validarPdfSeguro(string $archivo): void
+    {
+        $maxPaginas = max(1, (int) config('document-extraction.ocr_max_pages', 25));
+        $maxPoints = max(842, (int) config('document-extraction.max_page_points', 1440));
+        $dpi = max(72, min(300, (int) config('document-extraction.ocr_dpi', 200)));
+        $maxPixeles = max(10_000_000, (int) config('document-extraction.max_render_pixels', 120_000_000));
+
+        $proceso = new Process([
+            'pdfinfo', '-box', '-f', '1', '-l', (string) ($maxPaginas + 1), $archivo,
+        ]);
+        $proceso->setTimeout(15);
+        $proceso->run();
+        if (! $proceso->isSuccessful()) {
+            throw new \RuntimeException('El PDF no superó la validación técnica previa.');
+        }
+
+        $salida = $proceso->getOutput();
+        $paginas = preg_match('/^Pages:\s+(\d+)\s*$/mi', $salida, $matchPaginas) === 1
+            ? (int) $matchPaginas[1]
+            : 0;
+        if ($paginas < 1 || $paginas > $maxPaginas) {
+            throw new \RuntimeException("El PDF debe tener entre 1 y {$maxPaginas} páginas.");
+        }
+
+        preg_match_all(
+            '/^(?:Page(?:\s+\d+)?\s+)?size:\s*([0-9.]+)\s+x\s+([0-9.]+)\s+pts/mi',
+            $salida,
+            $tamanos,
+            PREG_SET_ORDER,
+        );
+        if ($tamanos === []) {
+            throw new \RuntimeException('No se pudo validar la geometría de las páginas del PDF.');
+        }
+
+        $maxPixelesPagina = 0.0;
+        foreach ($tamanos as $tamano) {
+            $ancho = (float) $tamano[1];
+            $alto = (float) $tamano[2];
+            if ($ancho <= 0 || $alto <= 0 || $ancho > $maxPoints || $alto > $maxPoints) {
+                throw new \RuntimeException('El PDF contiene una página con dimensiones no permitidas.');
+            }
+            $maxPixelesPagina = max($maxPixelesPagina, ($ancho * $dpi / 72) * ($alto * $dpi / 72));
+        }
+
+        if (($maxPixelesPagina * $paginas) > $maxPixeles) {
+            throw new \RuntimeException('El PDF excede el límite seguro de procesamiento gráfico.');
         }
     }
 

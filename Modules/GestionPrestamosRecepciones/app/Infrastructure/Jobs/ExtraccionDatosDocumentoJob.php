@@ -35,7 +35,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 600;
+    public int $timeout = 300;
 
     /**
      * @param  string  $solicitudId  ID de la solicitud de depósito.

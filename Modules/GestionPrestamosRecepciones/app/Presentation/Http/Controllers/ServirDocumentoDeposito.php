@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -29,7 +30,10 @@ final class ServirDocumentoDeposito
         abort_if($deposito === null, 404);
 
         $esCurador = $user?->esCurador() ?? false;
-        $esReceptor = $user?->esReceptor() ?? false;
+        $esReceptor = ($user?->esReceptor() ?? false)
+            && $deposito->estado === EstadoSolicitudDeposito::AprobadaDocumentalmente->value
+            && is_string($deposito->codigo_qr)
+            && trim($deposito->codigo_qr) !== '';
         $esDueno = (string) $deposito->investigador_id === (string) $user?->id;
         abort_unless($esCurador || $esReceptor || $esDueno, 403);
 

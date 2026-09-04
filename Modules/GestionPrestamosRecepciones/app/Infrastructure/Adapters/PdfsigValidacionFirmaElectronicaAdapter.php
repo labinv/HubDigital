@@ -159,11 +159,24 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
         }
 
         try {
+            if (! $this->estructuraPdfSegura($original, $directorio, 'original')
+                || ! $this->estructuraPdfSegura($firmado, $directorio, 'firmado')) {
+                return false;
+            }
+
             $infoOriginal = $this->informacionPdf($original);
             $infoFirmado = $this->informacionPdf($firmado);
-            $maxPaginas = (int) config('firma-electronica.max_pages', 200);
+            $maxPaginas = (int) config('firma-electronica.max_pages', 40);
+            $maxPoints = (int) config('firma-electronica.max_page_points', 1440);
+            $dpiNumero = (int) config('firma-electronica.render_dpi', 110);
+            $maxPixeles = (int) config('firma-electronica.max_render_pixels', 100_000_000);
             if ($infoOriginal['paginas'] < 1
                 || $infoOriginal['paginas'] > $maxPaginas
+                || $infoOriginal['ancho_maximo_points'] > $maxPoints
+                || $infoOriginal['alto_maximo_points'] > $maxPoints
+                || (($infoOriginal['ancho_maximo_points'] * $dpiNumero / 72)
+                    * ($infoOriginal['alto_maximo_points'] * $dpiNumero / 72)
+                    * $infoOriginal['paginas']) > $maxPixeles
                 || $infoOriginal !== $infoFirmado
             ) {
                 return false;
@@ -180,7 +193,7 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
             }
 
             $pdftoppm = $this->binario('pdftoppm_binary', 'pdftoppm', '/usr/bin/pdftoppm');
-            $dpi = (string) ((int) config('firma-electronica.render_dpi', 110));
+            $dpi = (string) $dpiNumero;
             $this->ejecutar([$pdftoppm, '-r', $dpi, '-png', $original, $directorio.DIRECTORY_SEPARATOR.'original']);
             $this->ejecutar([$pdftoppm, '-r', $dpi, '-png', $firmado, $directorio.DIRECTORY_SEPARATOR.'firmado']);
 
@@ -207,11 +220,47 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
         }
     }
 
-    /** @return array{paginas: int, tamano_pagina: string} */
+    /**
+     * QPDF descomprime los object streams para que los nombres peligrosos no
+     * puedan ocultarse en contenido comprimido. El firmador solo necesita un
+     * AcroForm con campo /Sig; scripts, acciones automáticas y adjuntos quedan
+     * expresamente prohibidos en documentos oficiales.
+     */
+    private function estructuraPdfSegura(string $ruta, string $directorio, string $prefijo): bool
+    {
+        $qpdf = $this->binario('qpdf_binary', 'qpdf', '/usr/bin/qpdf');
+        $normalizado = $directorio.DIRECTORY_SEPARATOR.$prefijo.'.qdf.pdf';
+        $process = new Process([
+            $qpdf,
+            '--qdf',
+            '--object-streams=disable',
+            '--stream-data=preserve',
+            $ruta,
+            $normalizado,
+        ]);
+        $process->setEnv($this->entorno());
+        $process->setTimeout(20);
+        $process->run();
+        if (! is_file($normalizado) || ! in_array($process->getExitCode(), [0, 3], true)) {
+            return false;
+        }
+
+        $contenido = file_get_contents($normalizado);
+        if (! is_string($contenido)) {
+            return false;
+        }
+
+        return preg_match(
+            '/\/(?:JavaScript|JS|Launch|EmbeddedFiles|RichMedia|XFA|OpenAction|AA)\b/',
+            $contenido,
+        ) !== 1;
+    }
+
+    /** @return array{paginas: int, tamano_pagina: string, ancho_maximo_points: float, alto_maximo_points: float} */
     private function informacionPdf(string $ruta): array
     {
         $pdfinfo = $this->binario('pdfinfo_binary', 'pdfinfo', '/usr/bin/pdfinfo');
-        $process = new Process([$pdfinfo, $ruta]);
+        $process = new Process([$pdfinfo, '-box', $ruta]);
         $process->setEnv($this->entorno());
         $process->setTimeout(15);
         $process->mustRun();
@@ -224,7 +273,21 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
             ? trim($matchTamano[1])
             : '';
 
-        return ['paginas' => $paginas, 'tamano_pagina' => $tamano];
+        preg_match_all(
+            '/^(?:Page(?:\s+\d+)?\s+)?size:\s*([0-9.]+)\s+x\s+([0-9.]+)\s+pts/mi',
+            $salida,
+            $tamanos,
+            PREG_SET_ORDER,
+        );
+        $anchos = array_map(static fn (array $item): float => (float) $item[1], $tamanos);
+        $altos = array_map(static fn (array $item): float => (float) $item[2], $tamanos);
+
+        return [
+            'paginas' => $paginas,
+            'tamano_pagina' => $tamano,
+            'ancho_maximo_points' => $anchos === [] ? 0.0 : max($anchos),
+            'alto_maximo_points' => $altos === [] ? 0.0 : max($altos),
+        ];
     }
 
     /** @param list<string> $comando */
