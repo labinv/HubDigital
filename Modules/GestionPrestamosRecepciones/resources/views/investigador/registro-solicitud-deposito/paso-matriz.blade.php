@@ -14,18 +14,18 @@
     $porcentajeResuelto = $totalRegistros > 0 ? round(($resueltoCount / $totalRegistros) * 100) : 0;
 @endphp
 
-<div class="space-y-6" wire:loading.class="opacity-40 pointer-events-none" wire:target="archivoMatriz">
+<div class="space-y-6" wire:loading.class="opacity-40 pointer-events-none" wire:target="archivoMatriz,guardarMatrizNativa">
 
     {{-- Header --}}
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <div class="flex flex-col gap-3 border-b border-blue-navy/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <flux:heading size="lg" level="2" class="font-display">Matriz de especies</flux:heading>
-            <flux:text class="text-text-secondary text-sm mt-1">
-                Carga la matriz <strong>Darwin Core</strong> de tus especímenes. El sistema valida la integridad
-                de campos y la consistencia taxonómica contra el catálogo mundial de GBIF.
+            <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Detalle biológico asistido</flux:heading>
+            <flux:text class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">
+                A partir de los datos MEPN y los códigos leídos en la guía, registra cada espécimen o lote.
+                HubDigital normaliza el resultado internamente a Darwin Core y lo contrasta con GBIF.
             </flux:text>
         </div>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-science-blue/30 bg-science-blue/5 text-science-blue whitespace-nowrap self-start">
+        <span class="inline-flex items-center gap-1.5 border-l-2 border-science-blue px-3 py-1 text-xs font-semibold text-science-blue whitespace-nowrap self-start">
             <flux:icon name="sparkles" class="size-3" />
             Estándar Darwin Core
         </span>
@@ -37,7 +37,7 @@
             <flux:heading>Carga rechazada</flux:heading>
             @if(!empty($camposObligatoriosVacios))
                 <flux:text class="text-sm">
-                    Algunos campos obligatorios llegaron vacíos. Complétalos en el Excel y vuelve a subirlo:
+                    Algunos campos obligatorios están vacíos. Complétalos en los registros de HubDigital y vuelve a validar:
                 </flux:text>
                 <div class="mt-2 flex flex-wrap gap-1.5">
                     @foreach($camposObligatoriosVacios as $vacio)
@@ -51,23 +51,111 @@
                 </div>
             @else
                 <flux:text class="text-sm">
-                    {{ $errorMatriz }}. Corrige el archivo y vuelve a subirlo.
+                    {{ $errorMatriz }}. Corrige los registros indicados y vuelve a validarlos.
                 </flux:text>
             @endif
         </flux:callout>
     @endif
 
-    {{-- Dropzone de la matriz --}}
-    <x-gestionprestamosrecepciones::dropzone-matriz
-        propiedad="archivoMatriz"
-        :requerido="true"
-        :cargado="$matrizCargada"
-        :archivoNombre="$archivoMatrizNombre"
-        :error="$errorMatriz"
-    />
+    {{-- Formulario nativo: vía principal para consultores y depositantes --}}
+    <section class="space-y-5 rounded-xl border border-bio-green/30 bg-bio-green/[0.04] p-5" aria-labelledby="registro-biologico-nativo">
+        <div class="flex items-start gap-3">
+            <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-bio-green/10">
+                <flux:icon name="bug-ant" class="size-5 text-bio-green" />
+            </div>
+            <div>
+                <flux:heading id="registro-biologico-nativo" size="sm" level="3">Registrar especímenes en HubDigital</flux:heading>
+                <flux:text class="mt-1 text-xs text-text-secondary">
+                    Busca el taxón en EPN/GBIF y confirma los datos de recolección. No debes llenar manualmente la plantilla interna de 106 columnas.
+                </flux:text>
+            </div>
+        </div>
+
+        @if(!empty($muestrasDetectadas))
+            <div class="rounded-lg border border-science-blue/25 bg-white p-4">
+                <p class="text-sm font-semibold text-blue-navy">Códigos leídos de la guía de movilización</p>
+                <p class="mt-1 text-xs text-text-secondary">Selecciona un código para trasladarlo sin volver a digitarlo. HubDigital no inventa la identificación taxonómica: debes elegirla del catálogo.</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    @foreach($muestrasDetectadas as $muestra)
+                        <button type="button" wire:click="usarMuestraDetectada(@js($muestra['recordNumber']))" class="rounded-full border border-science-blue/30 bg-science-blue/5 px-3 py-1 font-mono text-xs font-semibold text-science-blue hover:bg-science-blue/10">
+                            {{ $muestra['recordNumber'] }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <div class="relative">
+            <flux:field>
+                <flux:label>Taxón científico</flux:label>
+                <flux:input wire:model.live.debounce.400ms="busquedaTaxon" placeholder="Escribe al menos 3 caracteres, por ejemplo Atta…" autocomplete="off" />
+                <flux:description>Solo se acepta una opción seleccionada del catálogo EPN o de GBIF Backbone.</flux:description>
+                <flux:error name="registroNativo.scientificName" />
+            </flux:field>
+            @if(!empty($opcionesTaxones))
+                <div class="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-white p-1 shadow-xl">
+                    @foreach($opcionesTaxones as $opcion)
+                        <button type="button" wire:click="seleccionarTaxon(@js($opcion['nombre']))" class="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-bg-main">
+                            <span><em class="font-serif text-sm text-text-primary">{{ $opcion['nombre'] }}</em><span class="ml-2 text-xs text-text-secondary">{{ $opcion['rango'] }}</span></span>
+                            <span class="rounded-full bg-science-blue/10 px-2 py-0.5 text-[10px] font-semibold text-science-blue">{{ $opcion['fuente'] }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        @if($registroNativo['scientificName'])
+            <p class="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+                <flux:icon name="check-circle" class="size-4" /> Taxón seleccionado: <em>{{ $registroNativo['scientificName'] }}</em>
+            </p>
+        @endif
+
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <flux:field><flux:label>Código de campo</flux:label><flux:input wire:model="registroNativo.recordNumber" /><flux:error name="registroNativo.recordNumber" /></flux:field>
+            <flux:field><flux:label>Origen</flux:label><select wire:model="registroNativo.origin" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"><option value="research">Investigación</option><option value="consulting">Consultoría</option></select><flux:error name="registroNativo.origin" /></flux:field>
+            <flux:field><flux:label>Identificado por</flux:label><flux:input wire:model="registroNativo.identifiedBy" /><flux:error name="registroNativo.identifiedBy" /></flux:field>
+            <flux:field><flux:label>Fecha de identificación</flux:label><flux:input type="date" wire:model="registroNativo.dateIdentified" /><flux:error name="registroNativo.dateIdentified" /></flux:field>
+            <flux:field><flux:label>Permiso de investigación</flux:label><flux:input wire:model="registroNativo.researchPermit" readonly /><flux:description>Leído y confirmado desde la autorización.</flux:description><flux:error name="registroNativo.researchPermit" /></flux:field>
+            <flux:field><flux:label>Permiso de transporte</flux:label><flux:input wire:model="registroNativo.transportPermit" readonly /><flux:description>Leído y confirmado desde la guía.</flux:description><flux:error name="registroNativo.transportPermit" /></flux:field>
+            <flux:field class="lg:col-span-2"><flux:label>Localidad verbatim</flux:label><flux:input wire:model="registroNativo.verbatimLocality" /><flux:error name="registroNativo.verbatimLocality" /></flux:field>
+            <flux:field><flux:label>País</flux:label><select wire:model.live="registroNativo.country" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm">@foreach($catalogoPaises as $pais)<option value="{{ $pais['nombre'] }}">{{ $pais['nombre'] }} ({{ $pais['codigo'] }})</option>@endforeach</select><flux:error name="registroNativo.country" /></flux:field>
+            <flux:field><flux:label>Provincia/estado</flux:label><flux:input wire:model="registroNativo.stateProvince" /><flux:error name="registroNativo.stateProvince" /></flux:field>
+            <flux:field><flux:label>Cantón/municipio</flux:label><flux:input wire:model="registroNativo.municipality" /><flux:error name="registroNativo.municipality" /></flux:field>
+            <flux:field><flux:label>Latitud decimal</flux:label><flux:input type="number" step="any" wire:model="registroNativo.decimalLatitude" placeholder="-0.2100" /><flux:error name="registroNativo.decimalLatitude" /></flux:field>
+            <flux:field><flux:label>Longitud decimal</flux:label><flux:input type="number" step="any" wire:model="registroNativo.decimalLongitude" placeholder="-78.4900" /><flux:error name="registroNativo.decimalLongitude" /></flux:field>
+            <flux:field><flux:label>Fecha de colecta</flux:label><flux:input type="date" wire:model="registroNativo.eventDate" /><flux:error name="registroNativo.eventDate" /></flux:field>
+            <flux:field><flux:label>Colector</flux:label><flux:input wire:model="registroNativo.recordedBy" /><flux:error name="registroNativo.recordedBy" /></flux:field>
+            <flux:field><flux:label>N.º de individuos</flux:label><flux:input type="number" min="1" wire:model="registroNativo.individualCount" /><flux:error name="registroNativo.individualCount" /></flux:field>
+            <flux:field><flux:label>Método de colecta</flux:label><select wire:model="registroNativo.samplingProtocol" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"><option value="">Selecciona…</option><option value="hand_collection">Colecta manual</option><option value="aquatic_net">Red acuática</option><option value="malaise_trap">Trampa Malaise</option><option value="light_trap">Trampa de luz</option><option value="pitfall_trap">Trampa de caída</option><option value="leaf_litter">Hojarasca</option><option value="beating_sheet">Paraguas entomológico</option><option value="fogging">Nebulización</option><option value="other">Otro documentado</option></select><flux:error name="registroNativo.samplingProtocol" /></flux:field>
+            <flux:field><flux:label>Preparación</flux:label><select wire:model="registroNativo.preparations" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"><option value="ethanol">Preservado en etanol</option><option value="dry_pin">Montado en alfiler</option><option value="slide">Portaobjetos</option><option value="other">Otra preparación</option></select><flux:error name="registroNativo.preparations" /></flux:field>
+            <flux:field class="md:col-span-2 lg:col-span-3"><flux:label>Observaciones del espécimen/lote</flux:label><flux:textarea wire:model="registroNativo.occurrenceRemarks" rows="2" /><flux:error name="registroNativo.occurrenceRemarks" /></flux:field>
+        </div>
+
+        <div class="flex justify-end">
+            <flux:button variant="primary" icon="plus" wire:click="agregarRegistroNativo">Agregar registro</flux:button>
+        </div>
+
+        @if(!empty($registrosNativos))
+            <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+                <table class="min-w-full divide-y divide-border text-sm">
+                    <thead class="bg-bg-main text-left text-xs uppercase tracking-wide text-text-secondary"><tr><th class="px-3 py-2">Taxón</th><th class="px-3 py-2">Código</th><th class="px-3 py-2">Localidad</th><th class="px-3 py-2">Coordenadas</th><th class="px-3 py-2">Individuos</th><th class="px-3 py-2"></th></tr></thead>
+                    <tbody class="divide-y divide-border">
+                        @foreach($registrosNativos as $indice => $registro)
+                            <tr><td class="px-3 py-2 font-serif italic">{{ $registro['scientificName'] }}</td><td class="px-3 py-2 font-mono text-xs">{{ $registro['recordNumber'] }}</td><td class="px-3 py-2">{{ $registro['verbatimLocality'] }}</td><td class="px-3 py-2 font-mono text-xs">{{ $registro['decimalLatitude'] }}, {{ $registro['decimalLongitude'] }}</td><td class="px-3 py-2">{{ $registro['individualCount'] }}</td><td class="px-3 py-2 text-right"><button type="button" wire:click="eliminarRegistroNativo({{ $indice }})" class="text-error hover:underline">Quitar</button></td></tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end">
+                <flux:button variant="primary" icon="shield-check" wire:click="guardarMatrizNativa" wire:loading.attr="disabled" wire:target="guardarMatrizNativa">
+                    Validar {{ count($registrosNativos) }} registro(s) con GBIF
+                </flux:button>
+            </div>
+        @endif
+    </section>
 
     {{-- Pantalla de carga mientras se procesa la matriz --}}
-    <div wire:loading wire:target="archivoMatriz" class="w-full rounded-lg border border-border bg-surface p-10">
+    <div wire:loading wire:target="archivoMatriz,guardarMatrizNativa" class="w-full rounded-lg border border-border bg-surface p-10">
         <div class="flex flex-col items-center justify-center gap-4">
             <flux:icon name="arrow-path" class="size-8 text-science-blue animate-spin" />
             <div class="text-center space-y-1">
@@ -124,7 +212,7 @@
                 </div>
             @endif
 
-            {{-- Extras presentes en el Excel --}}
+            {{-- Campos adicionales presentes en los registros normalizados --}}
             @if(!empty($camposExtra))
                 <div>
                     <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">Otros campos incluidos</p>

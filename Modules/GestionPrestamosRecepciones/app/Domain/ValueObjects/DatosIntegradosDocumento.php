@@ -22,5 +22,10 @@ final readonly class DatosIntegradosDocumento
         public readonly ?string $localidad,
         public readonly ?string $origenDonacion,
         public readonly ?string $nombreInvestigador = null,
+        public readonly ?string $nroIndividuos = null,
+        public readonly ?string $nroMorfoespecies = null,
+        public readonly ?string $nroLotes = null,
+        /** @var array<string, mixed> */
+        public readonly array $metadatosExtraccion = [],
     ) {}
 }

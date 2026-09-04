@@ -9,6 +9,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvali
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaPorCurador;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaRecepcionFirmada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
@@ -19,8 +20,6 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaRechazada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaSolicitada;
-use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaConObservaciones;
-use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaFisicamente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
@@ -48,10 +47,9 @@ class EventServiceProvider extends ServiceProvider
 {
     /** @var array<string, array<int, string>> */
     protected $listen = [
-        // Traspaso a la colección: la recepción física aprobada materializa los
-        // especímenes de la matriz en InventarioGestionColeccion (en cola).
-        RecepcionLoteVerificadaFisicamente::class => [IngresarLoteEnColeccionListener::class],
-        RecepcionLoteVerificadaConObservaciones::class => [IngresarLoteEnColeccionListener::class],
+        // Accesión museológica: la recepción física deja el material bajo custodia;
+        // solo el acta final firmada materializa la matriz en InventarioGestionColeccion.
+        ActaRecepcionFirmada::class => [IngresarLoteEnColeccionListener::class],
 
         SolicitudPrestamoRegistrada::class => [RegistrarEventoHistorialListener::class],
         SolicitudPrestamoEnviada::class => [

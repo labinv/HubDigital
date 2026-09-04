@@ -8,8 +8,8 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Notifica al depositante la finalización de la entrega con observaciones registradas
- * en el Acta Digital de Recepción. Se envía por correo y por el portal (campana).
+ * Notifica al depositante que EPN constató el lote con observaciones que curaduría
+ * incorporará después al acta final.
  */
 final class RecepcionConObservacionesNotification extends Notification
 {
@@ -33,7 +33,7 @@ final class RecepcionConObservacionesNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('La recepción de tu lote finalizó con observaciones')
+            ->subject('EPN constató tu lote con observaciones')
             ->view('gestionprestamosrecepciones::mails.recepcion-con-observaciones', [
                 'numero' => $this->numero,
                 'observaciones' => $this->observaciones,
@@ -50,7 +50,7 @@ final class RecepcionConObservacionesNotification extends Notification
             'tipo' => 'recepcion_con_observaciones',
             'solicitudId' => $this->solicitudId,
             'numero' => $this->numero,
-            'mensaje' => 'La entrega de tu lote '.($this->numero ?? '').' finalizó con observaciones registradas en el acta.',
+            'mensaje' => 'EPN constató tu lote '.($this->numero ?? '').' con observaciones. Curaduría las incorporará al acta final.',
             'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
             'icono' => 'exclamation-triangle',
         ];

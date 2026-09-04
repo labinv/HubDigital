@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarRecepcionConObservaciones;
 
-/** Output de la aceptación con observaciones: estado del lote, registro en acta, estado de colección y notificación. */
+/** Output compatible: las observaciones aún no están en acta hasta que curaduría la genere. */
 final readonly class AceptarRecepcionConObservacionesOutput
 {
     public function __construct(

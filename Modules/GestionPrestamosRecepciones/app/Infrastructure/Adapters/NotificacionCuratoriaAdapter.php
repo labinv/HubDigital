@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\DecisionDocumentalCuradorNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\LoteRecibidoParaActaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\NuevaSolicitudPorRevisarNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
@@ -28,6 +29,55 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
     public function notificarNuevaSolicitudPorRevisar(string $solicitudId): string
     {
         return $this->notificarCuradores($solicitudId, 'Nueva solicitud por revisar');
+    }
+
+    public function notificarLoteRecibidoParaActa(
+        string $solicitudId,
+        string $receptorId,
+        bool $conObservaciones,
+    ): string {
+        $referencia = (string) Str::uuid();
+        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+        $curadores = User::whereHas('roles', fn ($q) => $q->where('rol', RolUsuario::CURADOR->value))
+            ->when(
+                $deposito?->curador_responsable,
+                fn ($q, string $curadorId) => $q->where('id', $curadorId),
+            )
+            ->get();
+
+        // Los expedientes antiguos pueden no tener responsable o apuntar a una
+        // cuenta ya deshabilitada. En ese caso la alerta no debe perderse.
+        if ($curadores->isEmpty() && $deposito?->curador_responsable) {
+            Log::warning('Curador responsable no disponible; la alerta se reasigna al equipo', [
+                'referencia' => $referencia,
+                'solicitud_id' => $solicitudId,
+                'curador_responsable' => $deposito->curador_responsable,
+            ]);
+            $curadores = User::whereHas(
+                'roles',
+                fn ($q) => $q->where('rol', RolUsuario::CURADOR->value),
+            )->get();
+        }
+
+        if ($curadores->isEmpty()) {
+            Log::warning('Lote recibido sin curadores a quienes asignar el acta', [
+                'referencia' => $referencia,
+                'solicitud_id' => $solicitudId,
+                'receptor_id' => $receptorId,
+            ]);
+
+            return $referencia;
+        }
+
+        Notification::send($curadores, new LoteRecibidoParaActaNotification(
+            solicitudId: $solicitudId,
+            numero: $deposito?->numero,
+            tipoTramite: $deposito?->tipo_tramite,
+            nombreReceptor: User::find($receptorId)?->name,
+            conObservaciones: $conObservaciones,
+        ));
+
+        return $referencia;
     }
 
     public function notificarDecisionDocumentalAOtrosCuradores(

@@ -52,6 +52,40 @@ it('marca catalogado un match exacto sin sugerencias', function () {
     $resultado = (new GbifValidacionTaxonomicaAdapter)->validarEspecies(['Anacroneuria']);
 
     expect($resultado[0]['estado'])->toBe('catalogado')
+        ->and($resultado[0]['sugerencias'])->toBe([])
+        ->and($resultado[0]['matchType'])->toBe('EXACT')
+        ->and($resultado[0]['confianza'])->toBe(99)
+        ->and($resultado[0]['fuenteReferencia'])->toContain('api.gbif.org');
+});
+
+it('no declara catalogado un match exacto por debajo del umbral', function () {
+    Http::fake(['api.gbif.org/*' => Http::response([
+        'matchType' => 'EXACT',
+        'confidence' => 40,
+        'canonicalName' => 'Nombre dudoso',
+        'status' => 'ACCEPTED',
+    ])]);
+
+    $resultado = (new GbifValidacionTaxonomicaAdapter)->validarEspecies(['Nombre dudoso']);
+
+    expect($resultado[0]['estado'])->toBe('no_catalogado');
+});
+
+it('descarta alternativas con estado taxonomico dudoso', function () {
+    Http::fake(['api.gbif.org/*' => Http::response([
+        'matchType' => 'NONE',
+        'confidence' => 0,
+        'alternatives' => [[
+            'matchType' => 'FUZZY',
+            'confidence' => 99,
+            'canonicalName' => 'Nombre no aceptado',
+            'status' => 'DOUBTFUL',
+        ]],
+    ])]);
+
+    $resultado = (new GbifValidacionTaxonomicaAdapter)->validarEspecies(['Nombre dudoso']);
+
+    expect($resultado[0]['estado'])->toBe('no_catalogado')
         ->and($resultado[0]['sugerencias'])->toBe([]);
 });
 

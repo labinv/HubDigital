@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador;
 
 use App\Concerns\HandlesDomainExceptions;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
-use Livewire\WithFileUploads;
-use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarRecepcionConObservaciones\AceptarRecepcionConObservacionesHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarRecepcionConObservaciones\AceptarRecepcionConObservacionesInput;
@@ -25,12 +22,10 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLo
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ReintentarRecepcionLote\ReintentarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ReintentarRecepcionLote\ReintentarRecepcionLoteInput;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemChecklistRecepcion;
 
 /**
- * Componente Livewire para que el curador ejecute la recepción física del lote de una
+ * Componente Livewire para que el receptor EPN ejecute la recepción física del lote de una
  * solicitud aprobada documentalmente: verifica la lista de ítems y decide aprobar,
  * suspender (anomalía subsanable) o aceptar con observaciones.
  */
@@ -38,13 +33,9 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemChecklistRecepci
 final class RecepcionFisicaLote extends Component
 {
     use HandlesDomainExceptions;
-    use WithFileUploads;
 
     public string $id;
 
-    // ── Subida del acta firmada electrónicamente (FirmaEC) ───────────────────
-    #[Validate('nullable|file|mimes:pdf|max:10240')]
-    public $actaFirmadaFile = null;
 
     public string $nombreInvestigador = '';
 
@@ -104,7 +95,7 @@ final class RecepcionFisicaLote extends Component
             itemsVerificacion: $items,
         ));
 
-        $this->dispatch('toast', message: 'Recepción aprobada. Acta Digital de Recepción emitida.');
+        $this->dispatch('toast', message: 'Lote recibido y constatado. Curaduría ya puede generar el acta final.');
     }
 
     public function rechazar(RechazarRecepcionLoteHandler $handler): void
@@ -160,43 +151,10 @@ final class RecepcionFisicaLote extends Component
         ));
 
         $this->showObservacionModal = false;
-        $this->dispatch('toast', message: 'Recepción aceptada con observaciones. Acta Digital de Recepción emitida.');
+        $this->dispatch('toast', message: 'Lote recibido y constatado con observaciones. Curaduría ya puede generar el acta final.');
     }
 
-    /**
-     * Adjunta el PDF del acta firmado electrónicamente (FirmaEC) por el curador. El caso
-     * de uso verifica la firma con pdfsig antes de aceptarlo; si el documento no trae
-     * firma electrónica válida se descarta el archivo y se informa el error.
-     */
-    public function subirActaFirmada(SubirActaRecepcionFirmadaHandler $handler): void
-    {
-        $this->validateOnly('actaFirmadaFile', ['actaFirmadaFile' => 'required|file|mimes:pdf|max:10240']);
-
-        $rutaRelativa = $this->actaFirmadaFile->storeAs(
-            'actas/recepcion-firmada',
-            $this->id.'.pdf',
-            'public',
-        );
-
-        try {
-            ($handler)(new SubirActaRecepcionFirmadaInput(
-                solicitudId: $this->id,
-                curadorId: (string) auth()->id(),
-                rutaRelativa: $rutaRelativa,
-                rutaAbsoluta: Storage::disk('public')->path($rutaRelativa),
-            ));
-        } catch (\Throwable $e) {
-            // Un PDF sin firma válida (u otro fallo) no debe dejar el archivo huérfano.
-            Storage::disk('public')->delete($rutaRelativa);
-
-            throw $e;
-        }
-
-        $this->actaFirmadaFile = null;
-        $this->dispatch('toast', message: 'Acta firmada cargada. El depositante ya puede descargarla.');
-    }
-
-    public function render(ConsultarDetalleRecepcionHandler $detalle, IngresoColeccionPort $ingresoColeccion): View
+    public function render(ConsultarDetalleRecepcionHandler $detalle): View
     {
         $recepcion = $detalle->handle(new ConsultarDetalleRecepcionInput($this->id));
         abort_if($recepcion === null, 404);
@@ -209,9 +167,6 @@ final class RecepcionFisicaLote extends Component
         return view('gestionprestamosrecepciones::curador.recepcion-fisica-lote', [
             'recepcion' => $recepcion,
             'items' => $items,
-            // Se consulta la colección en vivo: la pantalla dice lo que hay, no lo que
-            // se esperaba que hubiera.
-            'ingreso' => $ingresoColeccion->resumenDeLote($this->id),
         ]);
     }
 }

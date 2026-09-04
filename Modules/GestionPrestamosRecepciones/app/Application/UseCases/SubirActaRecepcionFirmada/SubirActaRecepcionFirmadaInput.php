@@ -18,5 +18,6 @@ final readonly class SubirActaRecepcionFirmadaInput
         public string $curadorId,
         public string $rutaRelativa,
         public string $rutaAbsoluta,
+        public string $rutaOriginalAbsoluta,
     ) {}
 }

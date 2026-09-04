@@ -9,16 +9,19 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Services;
  * trámite de depósito o donación de especímenes.
  *
  * Combina un documento base según el tipo de trámite con documentos suplementarios
- * que dependen del origen de recolección y la situación regulatoria. Aplica además
- * la excepción de Pichincha (no requiere permiso de movilización). Sin estado ni
- * dependencias externas.
+ * que dependen del origen de recolección y la situación regulatoria. En el flujo
+ * nacional con permisos se adjuntan tanto la autorización de recolección como la
+ * guía de movilización. Sin estado ni dependencias externas.
  */
 final class ReglaDocumentacionRequerida
 {
     /** Documento base obligatorio según el tipo de trámite */
     private const FORMATO_BASE = [
-        'Depósito' => ['Formato solicitud depósito'],
-        'Donación' => ['Formato solicitud donación', 'Carta de cesión de derechos / origen lícito'],
+        // Los formularios institucionales ya no se cargan como archivos preparados
+        // fuera del sistema. HubDigital los construye con los datos del expediente y
+        // exige que el depositante los firme electrónicamente en el último paso.
+        'Depósito' => [],
+        'Donación' => [],
     ];
 
     /** Documentos suplementarios según origen y situación regulatoria */
@@ -45,7 +48,7 @@ final class ReglaDocumentacionRequerida
      * @param  string  $tipoTramite  'Depósito' o 'Donación'.
      * @param  string  $origenRecoleccion  Origen de los especímenes (Nacional / Exterior).
      * @param  string  $situacionRegulatoria  Estado de permisos (con/sin MAE, colección foránea…).
-     * @param  string|null  $provinciaOrigen  Provincia; si es Pichincha se omite el permiso de movilización.
+     * @param  string|null  $provinciaOrigen  Provincia declarada; se conserva para trazabilidad.
      * @return string[] Nombres de los documentos requeridos, sin duplicados.
      *
      * @throws \DomainException Si no existe regla para la combinación origen/situación regulatoria.
@@ -68,12 +71,6 @@ final class ReglaDocumentacionRequerida
                     $origenRecoleccion,
                     $situacionRegulatoria
                 )
-            );
-        }
-
-        if ($provinciaOrigen !== null && strtolower(trim($provinciaOrigen)) === 'pichincha') {
-            $suplementarios = array_values(
-                array_filter($suplementarios, fn (string $d) => $d !== 'Copia del permiso de movilización')
             );
         }
 

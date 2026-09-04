@@ -27,6 +27,18 @@ interface NotificacionCuratoriaPort
     public function notificarNuevaSolicitudPorRevisar(string $solicitudId): string;
 
     /**
+     * Alerta a todos los curadores que recepción EPN ya constató el lote y que el
+     * acta final está pendiente de generación y firma.
+     *
+     * @return string Referencia de la notificación persistente generada.
+     */
+    public function notificarLoteRecibidoParaActa(
+        string $solicitudId,
+        string $receptorId,
+        bool $conObservaciones,
+    ): string;
+
+    /**
      * Notifica a los demás curadores que un colega tomó una decisión documental
      * (aprobó o rechazó) sobre una solicitud. Incluye el motivo si fue rechazo.
      *

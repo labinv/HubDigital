@@ -8,9 +8,8 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Notifica al depositante la finalización exitosa de la entrega física de su lote,
- * cuyos especímenes ingresaron a la colección. Se envía por correo y por el portal
- * (campana).
+ * Notifica al depositante que EPN recibió y constató físicamente su lote. La
+ * accesión todavía espera el acta final firmada por curaduría.
  */
 final class RecepcionFinalizadaNotification extends Notification
 {
@@ -31,7 +30,7 @@ final class RecepcionFinalizadaNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('La recepción de tu lote finalizó con éxito')
+            ->subject('EPN recibió y constató tu lote')
             ->view('gestionprestamosrecepciones::mails.recepcion-finalizada', [
                 'numero' => $this->numero,
                 'estadoColeccion' => $this->estadoColeccion,
@@ -45,10 +44,10 @@ final class RecepcionFinalizadaNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'tipo' => 'recepcion_finalizada',
+            'tipo' => 'recepcion_constatada',
             'solicitudId' => $this->solicitudId,
             'numero' => $this->numero,
-            'mensaje' => 'La entrega de tu lote '.($this->numero ?? '').' finalizó. Ingreso a colección: '.$this->estadoColeccion.'.',
+            'mensaje' => 'EPN recibió tu lote '.($this->numero ?? '').'. Curaduría preparará y firmará el acta antes de ingresarlo a la colección.',
             'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
             'icono' => 'check-badge',
         ];

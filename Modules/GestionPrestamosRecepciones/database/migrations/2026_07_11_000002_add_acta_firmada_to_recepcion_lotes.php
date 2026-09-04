@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('recepciones.recepcion_lotes', function (Blueprint $table): void {
-            // PDF del acta firmado electrónicamente (FirmaEC) por el curador y su marca de tiempo.
+            // PDF firmado por el curador mediante el firmador propio de HubDigital.
             $table->string('acta_firmada_ruta')->nullable()->after('acta_recepcion');
             $table->timestamp('firmada_en')->nullable()->after('acta_firmada_ruta');
         });

@@ -197,9 +197,9 @@
                         </div>
                         <flux:text class="text-text-secondary text-xs">Código QR disponible para el depositante.</flux:text>
 
-                        <flux:button variant="primary" icon="inbox-arrow-down" class="w-full sm:w-auto" wire:navigate
-                            href="{{ route('prestamos.curador.deposito.recepcion', $deposito->id) }}">
-                            Recepción física del lote
+                        <flux:button variant="primary" icon="document-check" class="w-full sm:w-auto" wire:navigate
+                            href="{{ route('prestamos.curador.deposito.acta', $deposito->id) }}">
+                            Seguimiento de recepción y acta final
                         </flux:button>
 
                         {{-- Cierre del ciclo: solo un depósito es devolutivo; una donación

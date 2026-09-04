@@ -12,7 +12,7 @@
     @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">
 
     <flux:breadcrumbs>
-        <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.depositos') }}">
+        <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.receptor.depositos') }}">
             Recepciones
         </flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $recepcion->numeroSolicitud }}</flux:breadcrumbs.item>
@@ -64,48 +64,13 @@
     {{-- Estado terminal: verificado (conforme o con observaciones) --}}
     @if($verificado)
         <flux:callout variant="success" icon="check-badge">
-            <flux:callout.heading>Recepción finalizada</flux:callout.heading>
+            <flux:callout.heading>Lote recibido y constatado</flux:callout.heading>
             <flux:callout.text>
-                @if($ingreso->ingresoCompleto())
-                    Los {{ $ingreso->especimenesEnColeccion }} especímenes del lote ya están en la colección,
-                    en estado <span class="font-semibold">{{ $recepcion->estadoColeccion }}</span>.
-                @elseif($ingreso->especimenesEnColeccion > 0)
-                    {{ $ingreso->especimenesEnColeccion }} de {{ $ingreso->registrosEnMatriz }} especímenes
-                    están en la colección, en estado
-                    <span class="font-semibold">{{ $recepcion->estadoColeccion }}</span>.
-                @else
-                    Los especímenes ingresan a la colección en estado
-                    <span class="font-semibold">{{ $recepcion->estadoColeccion }}</span>.
-                @endif
-                @if($recepcion->actaEmitida) Se emitió el Acta Digital de Recepción. @endif
+                La cadena de custodia quedó registrada. Se envió a curaduría una alerta con enlace
+                directo para generar y firmar el acta final. Hasta que la firma sea validada, los
+                especímenes no ingresan a la colección. Régimen propuesto:
+                <span class="font-semibold">{{ $recepcion->estadoColeccion }}</span>.
             </flux:callout.text>
-
-            {{-- Resultado real del ingreso: lo que hay en la colección, no lo prometido --}}
-            @if($ingreso->registrosEnMatriz > 0)
-                <div class="mt-3 flex flex-wrap gap-2">
-                    <span class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium
-                        {{ $ingreso->ingresoCompleto()
-                            ? 'border-success/20 bg-success/10 text-success'
-                            : 'border-warning/30 bg-warning/10 text-warning' }}">
-                        <flux:icon name="{{ $ingreso->ingresoCompleto() ? 'check-circle' : 'exclamation-triangle' }}" class="size-3.5" />
-                        {{ $ingreso->especimenesEnColeccion }} de {{ $ingreso->registrosEnMatriz }} en la colección
-                    </span>
-
-                    @if($ingreso->pendientesRevision > 0)
-                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-info/30 bg-info/10 px-3 py-1.5 text-xs font-medium text-info">
-                            <flux:icon name="magnifying-glass" class="size-3.5" />
-                            {{ $ingreso->pendientesRevision }} esperan revisión de curaduría
-                        </span>
-                    @endif
-                </div>
-
-                @if(! $ingreso->ingresoCompleto())
-                    <p class="mt-2 text-xs text-text-secondary">
-                        Faltan especímenes por ingresar. Vuelve a cargar la página en unos segundos; si sigue
-                        incompleto, revisa el registro de la aplicación.
-                    </p>
-                @endif
-            @endif
             @if($recepcion->observaciones !== [])
                 <ul class="mt-2 space-y-1 text-sm text-text-primary">
                     @foreach($recepcion->observaciones as $observacion)
@@ -115,55 +80,6 @@
                         </li>
                     @endforeach
                 </ul>
-            @endif
-            @if($recepcion->actaEmitida)
-                <div class="mt-4 flex flex-col gap-3 border-t border-border pt-4">
-                    @if($recepcion->actaFirmada)
-                        {{-- Acta ya firmada electrónicamente: disponible para el depositante --}}
-                        <p class="flex items-center gap-2 text-sm font-medium text-success">
-                            <flux:icon name="shield-check" variant="outline" class="size-5 shrink-0" />
-                            Acta firmada electrónicamente. El depositante ya puede descargarla.
-                        </p>
-                        <flux:button href="{{ route('prestamos.deposito.acta-recepcion', $this->id) }}"
-                            target="_blank" rel="noopener" variant="primary" icon="document-arrow-down"
-                            class="w-full sm:w-auto">
-                            Descargar acta firmada
-                        </flux:button>
-                    @else
-                        {{-- Flujo de firma FirmaEC: descargar → firmar fuera → subir → validar --}}
-                        <p class="text-sm text-text-secondary">
-                            Descarga el acta, fírmala con <span class="font-medium text-text-primary">FirmaEC</span>
-                            y súbela aquí. El sistema verificará la firma electrónica antes de aceptarla.
-                        </p>
-                        <flux:button href="{{ route('prestamos.deposito.acta-recepcion', $this->id) }}"
-                            target="_blank" rel="noopener" variant="filled" icon="document-arrow-down"
-                            class="w-full sm:w-auto">
-                            Descargar acta para firmar
-                        </flux:button>
-
-                        <div
-                            x-data="{ error: '' }"
-                            x-on:domain-error.window="error = $event.detail.message"
-                            class="flex flex-col gap-2"
-                        >
-                            <flux:input type="file" wire:model="actaFirmadaFile" accept="application/pdf"
-                                label="Acta firmada (PDF)" />
-                            <flux:error name="actaFirmadaFile" />
-
-                            <template x-if="error">
-                                <p class="flex items-center gap-1 text-sm text-error" x-text="error"></p>
-                            </template>
-
-                            <flux:button wire:click="subirActaFirmada" variant="primary" icon="arrow-up-tray"
-                                x-on:click="error = ''"
-                                wire:loading.attr="disabled" wire:target="subirActaFirmada,actaFirmadaFile"
-                                class="w-full sm:w-auto">
-                                <span wire:loading.remove wire:target="subirActaFirmada">Subir acta firmada</span>
-                                <span wire:loading wire:target="subirActaFirmada">Verificando firma…</span>
-                            </flux:button>
-                        </div>
-                    @endif
-                </div>
             @endif
         </flux:callout>
     @endif
@@ -303,10 +219,10 @@
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Aceptar con observaciones</flux:heading>
             <flux:text class="text-text-secondary text-sm">
-                Los siguientes ítems quedaron no conformes y se registrarán como observaciones en el Acta Digital
+                Los siguientes ítems quedaron no conformes y curaduría los incorporará al Acta Digital
                 de Recepción.
                 @unless($conforme[1] ?? false)
-                    Como el estado de los especímenes no es conforme, ingresarán a la colección en
+                    Si curaduría firma el acta, se propondrá su ingreso en
                     <span class="font-semibold">cuarentena</span>.
                 @endunless
             </flux:text>

@@ -1,4 +1,8 @@
 <div wire:poll.30s
+    data-hub-notification-id="{{ $ultimaNoLeida?->id }}"
+    data-hub-notification-title="HubDigital · Laboratorio de Invertebrados"
+    data-hub-notification-body="{{ $ultimaNoLeida?->data['mensaje'] ?? '' }}"
+    data-hub-notification-url="{{ $ultimaNoLeida?->data['url'] ?? '' }}"
     x-data="{
         open: false,
         coords: { left: 0, top: 0 },
@@ -46,6 +50,14 @@
                     Marcar todas como leídas
                 </button>
             @endif
+        </div>
+
+        <div class="border-b border-border bg-bg-main px-4 py-2.5" data-hub-notification-opt-in>
+            <button type="button" x-on:click="window.hubPwaNotifications?.enable()"
+                class="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-science-blue hover:underline">
+                <flux:icon name="device-phone-mobile" class="size-3.5" />
+                Activar avisos en este dispositivo
+            </button>
         </div>
 
         <div class="max-h-96 overflow-y-auto divide-y divide-border">

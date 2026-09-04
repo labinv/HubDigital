@@ -9,8 +9,8 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoColeccion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 /**
- * Evento de dominio emitido cuando el lote supera la lista de verificación y la
- * recepción se aprueba: los especímenes ingresan a la colección en el estado dado.
+ * Evento emitido cuando recepción EPN constata el lote y define el régimen de
+ * tenencia propuesto. El alta en colección espera el acta final firmada.
  */
 final readonly class RecepcionLoteVerificadaFisicamente
 {

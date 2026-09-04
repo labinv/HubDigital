@@ -12,6 +12,8 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Ba
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\CerrarPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ConfiguracionRecordatorios;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\DetallePrestamo as CuradorDetallePrestamo;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\FirmarActaRecepcion;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\GestionActaRecepcion;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\GestionarProrroga;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\PanelPrestamos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RecepcionFisicaLote;
@@ -27,6 +29,8 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetallePrestamo as InvestigadorDetallePrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleSolicitud;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DocumentoSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\FirmarSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisDepositos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\PortalDepositos;
@@ -36,6 +40,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VerificacionEntrega;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ResolverLoteQr;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Receptor\BandejaRecepciones;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirActaTransferenciaDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoExportacion;
@@ -52,6 +57,10 @@ Route::middleware(['auth', 'verified', 'role:depositante'])
     ->group(function () {
         Route::get('/solicitud', RegistroSolicitudDeposito::class)->name('solicitud.crear');
         Route::get('/mis-solicitudes', MisDepositos::class)->name('mis-solicitudes');
+        Route::get('/solicitud/{id}/documento.pdf', DocumentoSolicitudDeposito::class)->name('solicitud.documento');
+        Route::post('/solicitud/{id}/firmar', FirmarSolicitudDeposito::class)
+            ->middleware('throttle:10,1')
+            ->name('solicitud.firmar');
     });
 
 Route::middleware(['auth', 'verified'])
@@ -106,7 +115,10 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/solicitud/{id}', RevisarSolicitud::class)->name('curador.solicitud.revisar');
             Route::get('/curador/depositos', BandejaDepositos::class)->name('curador.depositos');
             Route::get('/curador/deposito/{id}', RevisarDeposito::class)->name('curador.deposito.revisar');
-            Route::get('/curador/deposito/{id}/recepcion', RecepcionFisicaLote::class)->name('curador.deposito.recepcion');
+            Route::get('/curador/deposito/{id}/acta-final', GestionActaRecepcion::class)->name('curador.deposito.acta');
+            Route::post('/curador/deposito/{id}/acta-final/firmar', FirmarActaRecepcion::class)
+                ->middleware('throttle:10,1')
+                ->name('curador.deposito.acta.firmar');
             Route::get('/curador/actas', BandejaActas::class)->name('curador.actas');
             Route::get('/curador/acta/{id}/validar', ValidarActa::class)->name('curador.acta.validar');
             Route::get('/curador/prestamos', CuradorBandejaPrestamos::class)->name('curador.prestamos');
@@ -116,5 +128,11 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/prestamo/{id}/cerrar', CerrarPrestamo::class)->name('curador.prestamo.cerrar');
             Route::get('/curador/prestamo/{id}/prorroga', GestionarProrroga::class)->name('curador.prestamo.gestionar-prorroga');
             Route::get('/curador/configuracion', ConfiguracionRecordatorios::class)->name('curador.configuracion');
+        });
+
+        // Recepcion EPN: constata el lote fisico, sin atribuciones curatoriales.
+        Route::middleware('role:receptor')->group(function () {
+            Route::get('/receptor/depositos', BandejaRecepciones::class)->name('receptor.depositos');
+            Route::get('/receptor/deposito/{id}/recepcion', RecepcionFisicaLote::class)->name('receptor.deposito.recepcion');
         });
     });

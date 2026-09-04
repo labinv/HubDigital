@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recepción finalizada</title>
+    <title>Lote recibido y constatado</title>
 </head>
 <body style="margin:0;padding:0;background-color:#F5F7FA;font-family:Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F7FA;padding:40px 16px;">
@@ -16,7 +16,7 @@
                 Laboratorio de Invertebrados · EPN
             </p>
             <h1 style="margin:0;font-size:22px;color:#ffffff;font-weight:700;line-height:1.3;">
-                Recepción finalizada
+                Lote recibido y constatado
             </h1>
             @if($numero)
                 <p style="margin:6px 0 0;font-size:13px;color:#A8C3E0;">N.º {{ $numero }}</p>
@@ -27,7 +27,7 @@
     <tr>
         <td style="background-color:#E8F5E9;padding:14px 40px;border-left:4px solid #2E7D32;">
             <p style="margin:0;font-size:14px;color:#1B5E20;font-weight:600;">
-                ✓ La entrega física de tu lote fue recibida conforme
+                ✓ EPN recibió y constató físicamente tu lote
             </p>
         </td>
     </tr>
@@ -35,19 +35,20 @@
     <tr>
         <td style="padding:28px 40px;">
             <p style="margin:0 0 16px;font-size:15px;color:#212121;line-height:1.6;">
-                El curador verificó tu lote y los especímenes ingresaron a la colección. Se emitió el
-                Acta Digital de Recepción, disponible desde tu solicitud.
+                El responsable de recepción verificó el material entregado. El lote permanece bajo
+                custodia de EPN mientras curaduría genera y firma electrónicamente el acta final;
+                solo después se realizará el alta en la colección.
             </p>
             <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F7FA;border-radius:8px;margin:0 0 24px;">
                 <tr><td style="padding:16px 20px;text-align:center;">
-                    <p style="margin:0 0 4px;font-size:11px;color:#757575;text-transform:uppercase;letter-spacing:1px;">Estado en colección</p>
-                    <p style="margin:0;font-size:20px;color:#1B365D;font-weight:700;">{{ $estadoColeccion }}</p>
+                    <p style="margin:0 0 4px;font-size:11px;color:#757575;text-transform:uppercase;letter-spacing:1px;">Régimen propuesto</p>
+                    <p style="margin:0;font-size:20px;color:#1B365D;font-weight:700;">{{ $estadoColeccion }} · pendiente de acta</p>
                 </td></tr>
             </table>
             <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr><td style="border-radius:8px;background-color:#1B365D;">
                     <a href="{{ $url }}" style="display:inline-block;padding:12px 28px;font-size:14px;color:#ffffff;font-weight:600;text-decoration:none;">
-                        Ver mi solicitud y el acta
+                        Ver seguimiento de mi solicitud
                     </a>
                 </td></tr>
             </table>

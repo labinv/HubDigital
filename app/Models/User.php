@@ -142,12 +142,17 @@ class User extends Authenticatable implements MustVerifyEmail
 
         $asignados = $this->rolesAsignados();
 
-        if ($rol === RolUsuario::CURADOR && $asignados->isNotEmpty()) {
-            throw new \DomainException('El rol CURADOR no puede combinarse con otros roles.');
+        $esRolInterno = in_array($rol, [RolUsuario::CURADOR, RolUsuario::RECEPTOR], true);
+        $tieneRolInterno = $asignados->contains(
+            fn (RolUsuario $asignado): bool => in_array($asignado, [RolUsuario::CURADOR, RolUsuario::RECEPTOR], true)
+        );
+
+        if ($esRolInterno && $asignados->isNotEmpty()) {
+            throw new \DomainException('Los roles internos de la EPN no pueden combinarse con otros roles.');
         }
 
-        if ($asignados->contains(RolUsuario::CURADOR)) {
-            throw new \DomainException('Una cuenta curador no puede asumir otros roles.');
+        if ($tieneRolInterno) {
+            throw new \DomainException('Una cuenta interna de la EPN no puede asumir otros roles.');
         }
 
         $this->roles()->create(['rol' => $rol->value]);
@@ -157,6 +162,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function esCurador(): bool
     {
         return $this->tieneRol(RolUsuario::CURADOR);
+    }
+
+    public function esReceptor(): bool
+    {
+        return $this->tieneRol(RolUsuario::RECEPTOR);
     }
 
     public function esDepositante(): bool

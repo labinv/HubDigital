@@ -27,7 +27,7 @@
     <tr>
         <td style="background-color:#FFF3E0;padding:14px 40px;border-left:4px solid #FF9800;">
             <p style="margin:0;font-size:14px;color:#E65100;font-weight:600;">
-                ⚠ Tu lote fue recibido con observaciones registradas en el acta
+                ⚠ Tu lote fue constatado con observaciones
             </p>
         </td>
     </tr>
@@ -35,9 +35,9 @@
     <tr>
         <td style="padding:28px 40px;">
             <p style="margin:0 0 16px;font-size:15px;color:#212121;line-height:1.6;">
-                El curador aceptó la recepción de tu lote pese a una anomalía que no era posible
-                devolver. Los especímenes ingresaron a la colección y las siguientes observaciones
-                quedaron registradas en el Acta Digital de Recepción:
+                El responsable de recepción aceptó el lote bajo custodia con las siguientes
+                observaciones. Curaduría las incorporará al acta final; los especímenes aún no
+                ingresan a la colección:
             </p>
             @if(! empty($observaciones))
                 <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F7FA;border-radius:8px;margin:0 0 24px;">
@@ -53,7 +53,7 @@
             <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr><td style="border-radius:8px;background-color:#1B365D;">
                     <a href="{{ $url }}" style="display:inline-block;padding:12px 28px;font-size:14px;color:#ffffff;font-weight:600;text-decoration:none;">
-                        Ver mi solicitud y el acta
+                        Ver seguimiento de mi solicitud
                     </a>
                 </td></tr>
             </table>

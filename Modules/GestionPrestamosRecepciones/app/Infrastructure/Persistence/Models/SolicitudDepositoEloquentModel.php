@@ -45,6 +45,7 @@ final class SolicitudDepositoEloquentModel extends Model
         'nro_morfoespecies',
         'nro_lotes',
         'extraccion_estado',
+        'extraccion_metadatos',
         'documentos_procesados',
         'firmas_electronicas',
         'paso_actual',
@@ -59,6 +60,11 @@ final class SolicitudDepositoEloquentModel extends Model
         'comentario_curador',
         'prioridad',
         'acta_transferencia_dominio',
+        'solicitud_firmada_ruta',
+        'solicitud_firmada_sha256',
+        'solicitud_firmada_en',
+        'solicitud_firma_metadata',
+        'solicitud_documento_version',
     ];
 
     protected $casts = [
@@ -67,6 +73,7 @@ final class SolicitudDepositoEloquentModel extends Model
         'datos_faltantes' => 'array',
         'datos_ingresados_manualmente' => 'array',
         'documentos_procesados' => 'array',
+        'extraccion_metadatos' => 'array',
         'firmas_electronicas' => 'array',
         'nro_individuos' => 'integer',
         'nro_morfoespecies' => 'integer',
@@ -78,6 +85,9 @@ final class SolicitudDepositoEloquentModel extends Model
         'aprobada_en' => 'datetime',
         'rechazada_en' => 'datetime',
         'acta_transferencia_dominio' => 'array',
+        'solicitud_firmada_en' => 'datetime',
+        'solicitud_firma_metadata' => 'array',
+        'solicitud_documento_version' => 'integer',
     ];
 
     public function alertas(): HasMany

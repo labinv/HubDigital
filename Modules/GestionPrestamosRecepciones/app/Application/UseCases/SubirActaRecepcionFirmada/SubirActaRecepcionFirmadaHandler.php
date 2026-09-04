@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada;
 
+use Illuminate\Support\Facades\Log;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\RecepcionLoteNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
@@ -12,13 +13,11 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectro
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaRecepcionSinFirmaElectronica;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 /**
- * Adjunta al acta de recepción el PDF firmado electrónicamente (FirmaEC) por el curador.
- * Antes de persistirlo, verifica con pdfsig que el documento traiga una firma electrónica
- * válida; si no la tiene, rechaza la subida.
+ * Adjunta el PDF producido por el firmador local de HubDigital. Antes de persistirlo,
+ * verifica la firma criptográfica y compara su contenido con el documento oficial.
  */
 final class SubirActaRecepcionFirmadaHandler
 {
@@ -44,28 +43,67 @@ final class SubirActaRecepcionFirmadaHandler
             throw RecepcionLoteNoEncontradaException::conSolicitud($input->solicitudId);
         }
 
-        if ($this->validadorFirma->verificarFirma($input->rutaAbsoluta) !== ResultadoValidacionFirma::Firmado) {
+        $validacion = $this->validadorFirma->verificarFirmaDetallada(
+            $input->rutaAbsoluta,
+            $input->rutaOriginalAbsoluta,
+        );
+
+        if (! $validacion->esAceptable((bool) config('firma-electronica.exigir_certificado_confiable'))) {
             throw ActaRecepcionSinFirmaElectronica::crear();
         }
 
-        $lote->adjuntarActaFirmada($input->rutaRelativa);
+        $firmanteId = trim($input->curadorId);
+        if ($firmanteId === '') {
+            throw new \InvalidArgumentException('El curador firmante es obligatorio.');
+        }
 
-        $this->transactionManager->executeTransactional(function () use ($lote): void {
-            $this->recepcionRepo->guardar($lote);
-            foreach ($lote->pullEvents() as $event) {
+        $firmaMetadata = $validacion->toArray();
+        $firmaMetadata['firmante_usuario_id'] = $firmanteId;
+        $firmaMetadata['proposito'] = 'acta_final_recepcion';
+        $firmaMetadata['pdf_sha256'] = hash_file('sha256', $input->rutaAbsoluta);
+
+        $loteFirmado = null;
+        $this->transactionManager->executeTransactional(function () use ($solicitudId, $input, $firmaMetadata, &$loteFirmado): void {
+            // La validación criptográfica se hace antes del bloqueo porque puede ser
+            // costosa. Dentro de la transacción se vuelve a leer el lote con
+            // SELECT ... FOR UPDATE para garantizar un único cierre definitivo.
+            $loteActual = $this->recepcionRepo->buscarPorSolicitudIdParaActualizar($solicitudId);
+            if ($loteActual === null) {
+                throw RecepcionLoteNoEncontradaException::conSolicitud($input->solicitudId);
+            }
+
+            $loteActual->adjuntarActaFirmada($input->rutaRelativa, $firmaMetadata);
+            $this->recepcionRepo->guardar($loteActual);
+            foreach ($loteActual->pullEvents() as $event) {
                 $this->eventPublisher->publish($event);
             }
+
+            $loteFirmado = $loteActual;
         });
+
+        if (! $loteFirmado instanceof \Modules\GestionPrestamosRecepciones\Domain\Entities\RecepcionLote) {
+            throw new \LogicException('No se pudo cerrar el expediente con el acta firmada.');
+        }
 
         // Avisar al depositante que el acta firmada ya está disponible para descargar.
         $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
         if ($solicitud !== null) {
-            $this->notificacionInvestigador->notificarActaRecepcionDisponible(
-                solicitudId: $input->solicitudId,
-                investigadorId: $solicitud->investigadorId(),
-            );
+            try {
+                $this->notificacionInvestigador->notificarActaRecepcionDisponible(
+                    solicitudId: $input->solicitudId,
+                    investigadorId: $solicitud->investigadorId(),
+                );
+            } catch (\Throwable $e) {
+                // La entrega del correo/aviso es reintentable y no debe invalidar
+                // un acta que ya superó la validación criptográfica y fue persistida.
+                Log::error('No se pudo notificar el acta de recepción firmada', [
+                    'solicitud_id' => $input->solicitudId,
+                    'investigador_id' => $solicitud->investigadorId(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
-        return SubirActaRecepcionFirmadaOutput::fromEntity($lote);
+        return SubirActaRecepcionFirmadaOutput::fromEntity($loteFirmado);
     }
 }

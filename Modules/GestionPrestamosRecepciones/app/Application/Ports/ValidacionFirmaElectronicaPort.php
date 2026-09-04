@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\Ports;
 
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DetalleValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
 
 /**
@@ -20,4 +21,9 @@ interface ValidacionFirmaElectronicaPort
      * @return ResultadoValidacionFirma Firmado, SinFirma o NoVerificado si hubo error
      */
     public function verificarFirma(string $rutaAbsoluta): ResultadoValidacionFirma;
+
+    public function verificarFirmaDetallada(
+        string $rutaFirmadaAbsoluta,
+        string $rutaOriginalAbsoluta,
+    ): DetalleValidacionFirma;
 }

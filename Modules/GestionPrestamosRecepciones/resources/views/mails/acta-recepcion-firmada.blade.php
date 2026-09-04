@@ -35,9 +35,9 @@
     <tr>
         <td style="padding:28px 40px;">
             <p style="margin:0 0 24px;font-size:15px;color:#212121;line-height:1.6;">
-                El Acta de recepción-depósito, firmada electrónicamente (FirmaEC) por el curador, ya está
-                disponible. Es la constancia oficial de la recepción de tus muestras y puedes descargarla
-                desde tu solicitud.
+                El Acta de recepción-depósito, firmada electrónicamente por el curador mediante
+                HubDigital, ya está disponible. La firma validada habilitó el alta del lote en la
+                colección y deja constancia oficial de la recepción de tus muestras.
             </p>
             <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr><td style="border-radius:8px;background-color:#2E7D32;">

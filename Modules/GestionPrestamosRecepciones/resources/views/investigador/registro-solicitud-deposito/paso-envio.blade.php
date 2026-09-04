@@ -139,10 +139,10 @@
     {{-- ── Paso 5: Revisar y enviar ────────────────────────────────────────────── --}}
     <div class="space-y-6">
 
-        <div>
-            <flux:heading size="lg" level="2" class="font-display">Revisar y enviar</flux:heading>
-            <flux:text class="text-text-secondary text-sm mt-1">
-                Confirma la información antes de remitir la solicitud al equipo curatorial.
+        <div class="border-b border-blue-navy/10 pb-5">
+            <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Revisar, firmar y enviar</flux:heading>
+            <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
+                Comprueba la información, genera el documento institucional y fírmalo antes de remitir el expediente al equipo curatorial.
             </flux:text>
         </div>
 
@@ -219,13 +219,87 @@
         </div>
 
         {{-- Declaración jurada --}}
-        <div class="rounded-lg border border-border bg-bg-main p-4 space-y-3">
+        <div class="space-y-3 border-l-2 border-blue-navy/20 bg-[#F8FAFC] px-4 py-4">
             <flux:heading size="sm" level="3">Declaración del solicitante</flux:heading>
             <flux:checkbox
                 wire:model="declaracionAceptada"
                 label="Declaro bajo juramento que la información proporcionada y los documentos cargados son verídicos, y que cumplo con la normativa nacional e institucional vigente para el manejo de especímenes biológicos."
             />
             <flux:error name="declaracionAceptada" />
+        </div>
+
+        {{-- Documento institucional generado y firmado dentro de HubDigital --}}
+        <div class="space-y-4 rounded-xl border border-bio-green/30 bg-bio-green/[0.04] p-5">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3">
+                    <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-bio-green/10">
+                        <flux:icon name="document-check" class="size-5 text-bio-green" />
+                    </div>
+                    <div>
+                        <flux:heading size="sm" level="3">Solicitud oficial y firma electrónica</flux:heading>
+                        <flux:text class="mt-1 text-xs text-text-secondary">
+                            HubDigital ya generó el formulario institucional con los datos confirmados y la matriz Darwin Core.
+                        </flux:text>
+                    </div>
+                </div>
+                @if($solicitudFirmada)
+                    <span class="inline-flex items-center gap-1.5 border-l-2 border-success bg-white px-2.5 py-1 text-xs font-semibold text-success">
+                        <flux:icon name="shield-check" class="size-4" /> Firmada y validada
+                    </span>
+                @endif
+            </div>
+
+            <iframe
+                title="Vista previa de la solicitud oficial"
+                src="{{ route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1]) }}"
+                class="h-96 w-full rounded-lg border border-border bg-white"
+            ></iframe>
+
+            @if(!$solicitudFirmada)
+                <div
+                    class="space-y-5 rounded-lg border border-blue-navy/15 bg-surface p-4 sm:p-5"
+                    x-data="hubDigitalFirmador({
+                        documentUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])),
+                        uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])),
+                        reason: 'Solicitud de {{ $tipoTramite }} de especímenes biológicos',
+                        location: 'Quito, Ecuador'
+                    })"
+                >
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <flux:field>
+                            <flux:label>Certificado electrónico (.p12 o .pfx)</flux:label>
+                            <input x-ref="certificado" type="file" accept=".p12,.pfx,application/x-pkcs12" class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm" />
+                            <flux:description>El certificado se abre localmente en un proceso aislado de tu navegador.</flux:description>
+                        </flux:field>
+                        <flux:field>
+                            <flux:label>Contraseña del certificado</flux:label>
+                            <flux:input x-ref="clave" type="password" autocomplete="off" />
+                            <flux:description>La contraseña nunca se transmite ni se almacena.</flux:description>
+                        </flux:field>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <flux:button variant="primary" icon="lock-closed" x-on:click="firmar" x-bind:disabled="estado === 'procesando' || !declaracionAceptada">
+                            <span x-show="estado !== 'procesando'">Firmar con Firmador HubDigital</span>
+                            <span x-show="estado === 'procesando'" x-text="progreso || 'Procesando…'"></span>
+                        </flux:button>
+                        <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1]) }}" target="_blank" class="text-sm font-medium text-science-blue hover:underline">Abrir PDF completo</a>
+                    </div>
+                    <p x-show="error" x-text="error" class="text-sm font-medium text-error" role="alert" aria-live="assertive"></p>
+                    <div class="flex items-start gap-2 border-t border-blue-navy/10 pt-4 text-xs leading-5 text-text-secondary">
+                        <flux:icon name="shield-check" class="mt-0.5 size-4 shrink-0 text-bio-green" />
+                        <p><strong class="text-text-primary">Firma privada en tu navegador.</strong> El archivo P12 y la clave permanecen en este dispositivo. El servidor recibe únicamente el PDF firmado y comprueba el certificado, la cobertura total y la integridad visual.</p>
+                    </div>
+                </div>
+            @else
+                <div class="flex flex-wrap items-center gap-3">
+                    <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-blue-navy hover:border-science-blue/40">
+                        <flux:icon name="arrow-down-tray" class="size-4" /> Ver documento firmado
+                    </a>
+                    <p class="text-xs text-text-secondary">La copia firmada quedó sellada con huella SHA-256 en el expediente.</p>
+                </div>
+            @endif
+            <flux:error name="solicitudFirmada" />
         </div>
 
     </div>

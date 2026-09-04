@@ -78,6 +78,17 @@
                                 Nueva solicitud
                             </flux:sidebar.item>
                         </flux:sidebar.group>
+                    @elseif($rolActivo === RolUsuario::RECEPTOR)
+                        <flux:sidebar.group heading="Recepción EPN" class="grid">
+                            <flux:sidebar.item
+                                icon="clipboard-document-check"
+                                :href="route('prestamos.receptor.depositos')"
+                                :current="request()->routeIs('prestamos.receptor.*')"
+                                wire:navigate
+                            >
+                                Lotes por recibir
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
                     @elseif($rolActivo === RolUsuario::CURADOR)
                         <flux:sidebar.group
                             heading="Gestión de préstamos"
@@ -422,6 +433,7 @@
                                         RolUsuario::DEPOSITANTE => ['bg-bio-green/10 text-bio-green', 'archive-box'],
                                         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
                                         RolUsuario::CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
+                                        RolUsuario::RECEPTOR => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
                                     };
                                 @endphp
                                 <div class="grid flex-1 text-start text-sm leading-tight">

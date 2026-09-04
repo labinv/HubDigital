@@ -11,6 +11,7 @@ use Behat\Step\When;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\SolicitudFirmadaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CargarDocumentacionOficial\CargarDocumentacionOficialHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CargarDocumentacionOficial\CargarDocumentacionOficialInput;
@@ -36,6 +37,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionI
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificacionCuratoriaAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeSolicitudFirmadaAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudDepositoRepository;
@@ -112,6 +114,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(ExtraccionDatosDocumentoPort::class, new FakeExtraccionDatosDocumentoAdapter);
         self::$app->instance(NotificacionCuratoriaPort::class, new FakeNotificacionCuratoriaAdapter);
+        self::$app->instance(SolicitudFirmadaPort::class, new FakeSolicitudFirmadaAdapter);
 
         // 3. Resolver Handlers — ya usan las instancias In-Memory
         $this->registrarHandler = $this->make(RegistrarSolicitudDepositoHandler::class);

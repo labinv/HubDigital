@@ -10,10 +10,10 @@
     }"
 >
 
-    <div>
-        <flux:heading size="lg" level="2" class="font-display">Tipo de trámite</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Selecciona cómo deseas registrar tus especímenes entomológicos en la colección.
+    <div class="border-b border-blue-navy/10 pb-5">
+        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Tipo de trámite</flux:heading>
+        <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
+            Indica si el material permanecerá temporalmente en custodia o pasará a formar parte definitiva de la colección.
         </flux:text>
     </div>
 
@@ -26,14 +26,20 @@
 
     <flux:error name="tipoTramite" />
 
-    <div class="grid gap-4 sm:grid-cols-2" wire:ignore>
+    <div class="grid gap-4 sm:grid-cols-2" wire:ignore aria-label="Modalidad del trámite">
         <x-gestionprestamosrecepciones::radio-card
             :activo="$tipoTramite === 'Depósito'"
             :deshabilitado="$limiteAlcanzado"
             titulo="Depósito"
             grupo="tipoTramite"
             descripcion="Custodia temporal con devolución programada. Cupo anual limitado a 3 solicitudes."
+            role="radio"
+            x-bind:aria-checked="active"
+            aria-disabled="{{ $limiteAlcanzado ? 'true' : 'false' }}"
+            tabindex="{{ $limiteAlcanzado ? '-1' : '0' }}"
             x-on:click="!{{ $limiteAlcanzado ? 'true' : 'false' }} && seleccionar('Depósito')"
+            x-on:keydown.enter.prevent="!{{ $limiteAlcanzado ? 'true' : 'false' }} && seleccionar('Depósito')"
+            x-on:keydown.space.prevent="!{{ $limiteAlcanzado ? 'true' : 'false' }} && seleccionar('Depósito')"
         >
             <x-slot:icono>
                 <flux:icon name="archive-box" class="size-5 text-blue-navy" />
@@ -52,7 +58,12 @@
             titulo="Donación"
             grupo="tipoTramite"
             descripcion="Cesión definitiva al patrimonio de la colección. Requiere carta de cesión de derechos."
+            role="radio"
+            x-bind:aria-checked="active"
+            tabindex="0"
             x-on:click="seleccionar('Donación')"
+            x-on:keydown.enter.prevent="seleccionar('Donación')"
+            x-on:keydown.space.prevent="seleccionar('Donación')"
         >
             <x-slot:icono>
                 <flux:icon name="heart" class="size-5 text-bio-green" />
@@ -69,12 +80,12 @@
                 El <strong>Depósito</strong> es temporal. Los especímenes permanecerán en custodia y serán devueltos según el acta de préstamo correspondiente.
             </flux:text>
         </flux:callout>
-        <div class="rounded-lg border border-border bg-bg-main p-4">
-            <p class="text-xs font-medium text-text-primary mb-2">Documentos que necesitarás preparar:</p>
-            <ul class="text-xs text-text-secondary space-y-1">
+        <div class="border-l-2 border-blue-navy/20 bg-[#F8FAFC] px-4 py-3">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-blue-navy">Documentos que necesitarás</p>
+            <ul class="space-y-2 text-xs leading-5 text-text-secondary">
                 <li class="flex items-center gap-2">
                     <flux:icon name="document-text" class="size-3.5 text-text-secondary shrink-0" />
-                    Formato de solicitud de depósito
+                    Solicitud de depósito generada y firmada dentro de HubDigital
                 </li>
                 <li class="flex items-center gap-2">
                     <flux:icon name="document-check" class="size-3.5 text-text-secondary shrink-0" />
@@ -84,17 +95,9 @@
                     <flux:icon name="document-text" class="size-3.5 text-text-secondary shrink-0" />
                     Carta de procedencia o justificación <span class="text-text-secondary/60">(según situación regulatoria)</span>
                 </li>
-                <li class="flex items-center gap-2 flex-wrap">
+                <li class="flex items-center gap-2">
                     <flux:icon name="table-cells" class="size-3.5 text-text-secondary shrink-0" />
-                    Matriz de especies en formato Darwin Core
-                    <a href="{{ asset('templates/formato_matriz_invertebrados.xlsx') }}"
-                       download
-                       class="inline-flex items-center gap-1 text-science-blue hover:underline text-xs"
-                       x-on:click.stop
-                    >
-                        <flux:icon name="arrow-down-tray" class="size-3" />
-                        Descargar plantilla
-                    </a>
+                    Datos de depósito material MEPN y detalle biológico, completados mediante formularios guiados
                 </li>
             </ul>
             <p class="text-xs text-text-secondary/60 mt-2 italic">Los documentos exactos se determinarán en el siguiente paso según el origen de los especímenes.</p>
@@ -106,28 +109,20 @@
                 La <strong>Donación</strong> transfiere permanentemente la propiedad de los especímenes a la colección. Se requiere carta de cesión de derechos con firma del donante.
             </flux:text>
         </flux:callout>
-        <div class="rounded-lg border border-border bg-bg-main p-4">
-            <p class="text-xs font-medium text-text-primary mb-2">Documentos que necesitarás preparar:</p>
-            <ul class="text-xs text-text-secondary space-y-1">
+        <div class="border-l-2 border-bio-green/30 bg-[#F8FAFC] px-4 py-3">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-blue-navy">Documentos que necesitarás</p>
+            <ul class="space-y-2 text-xs leading-5 text-text-secondary">
                 <li class="flex items-center gap-2">
                     <flux:icon name="document-text" class="size-3.5 text-text-secondary shrink-0" />
-                    Formato de solicitud de donación
+                    Solicitud de donación generada y firmada dentro de HubDigital
                 </li>
                 <li class="flex items-center gap-2">
                     <flux:icon name="document-check" class="size-3.5 text-text-secondary shrink-0" />
                     Carta de cesión de derechos / origen lícito
                 </li>
-                <li class="flex items-center gap-2 flex-wrap">
+                <li class="flex items-center gap-2">
                     <flux:icon name="table-cells" class="size-3.5 text-text-secondary shrink-0" />
-                    Matriz de especies en formato Darwin Core
-                    <a href="{{ asset('templates/formato_matriz_invertebrados.xlsx') }}"
-                       download
-                       class="inline-flex items-center gap-1 text-science-blue hover:underline text-xs"
-                       x-on:click.stop
-                    >
-                        <flux:icon name="arrow-down-tray" class="size-3" />
-                        Descargar plantilla
-                    </a>
+                    Datos de depósito material MEPN y detalle biológico, completados mediante formularios guiados
                 </li>
             </ul>
         </div>

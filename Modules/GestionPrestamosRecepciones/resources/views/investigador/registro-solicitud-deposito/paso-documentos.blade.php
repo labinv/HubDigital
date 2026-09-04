@@ -1,15 +1,15 @@
 <div class="space-y-6" x-data="{ total: {{ count($documentosRequeridos) }} }">
 
-    <div>
-        <flux:heading size="lg" level="2" class="font-display">Carga de documentación oficial</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Adjunta los documentos requeridos en formato PDF.
+    <div class="border-b border-blue-navy/10 pb-5">
+        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Documentos oficiales</flux:heading>
+        <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
+            Adjunta archivos PDF legibles. HubDigital los clasificará por su contenido, leerá códigos y fechas y comprobará que pertenezcan al mismo expediente.
         </flux:text>
     </div>
 
     {{-- Procesando documentos (polling activo) --}}
     @if($extraccionProcesando)
-        <div wire:poll.500ms="verificarExtraccion" class="rounded-xl border border-science-blue/30 bg-science-blue/5 p-6 space-y-4">
+        <div wire:poll.500ms="verificarExtraccion" class="space-y-4 rounded-xl border border-science-blue/30 bg-science-blue/5 p-6" role="status" aria-live="polite">
             <div class="flex items-center gap-3">
                 <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-science-blue/15">
                     <flux:icon name="arrow-path" class="size-5 text-science-blue animate-spin" />
@@ -90,6 +90,28 @@
         {{-- Error de documentos faltantes --}}
         <flux:error name="documentos" />
 
+        @if($estadoValidacionContenido === 'rechazado' || !empty($erroresDocumentales))
+            <flux:callout variant="danger" icon="x-circle" heading="Los documentos no superaron la validación de contenido">
+                <p class="mb-2 text-sm">HubDigital revisó la estructura, códigos, titulares, proyecto y fechas; no se basa en el nombre del archivo.</p>
+                <ul class="list-disc space-y-1 pl-5 text-sm">
+                    @foreach($erroresDocumentales as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <p class="mt-2 text-xs">Reemplaza el archivo incorrecto y vuelve a ejecutar el análisis.</p>
+            </flux:callout>
+        @endif
+
+        @if(!empty($advertenciasDocumentales))
+            <flux:callout variant="warning" icon="exclamation-triangle" heading="Aspectos que requieren confirmación humana">
+                <ul class="list-disc space-y-1 pl-5 text-sm">
+                    @foreach($advertenciasDocumentales as $advertencia)
+                        <li>{{ $advertencia }}</li>
+                    @endforeach
+                </ul>
+            </flux:callout>
+        @endif
+
         {{-- Dropzones dinámicas --}}
         @if(!empty($documentosRequeridos))
             @php
@@ -111,9 +133,9 @@
                     'Formato solicitud donación'
                         => 'Formulario oficial para formalizar la transferencia permanente de los especímenes. Consulta el ejemplo de referencia para ver cómo debe quedar.',
                     'Copia de la autorización de recolección (MAE)'
-                        => 'Documento emitido por el Ministerio del Ambiente y Agua (MAE) que autoriza la recolección en campo. Sube la copia del que ya tienes; el ejemplo te muestra cómo identificarlo.',
+                        => 'Oficio emitido por el Ministerio del Ambiente que concede la autorización de recolección. El sistema extraerá el número, titular, organización, proyecto, grupos biológicos, fechas y firma.',
                     'Copia del permiso de movilización'
-                        => 'Guía de movilización emitida por el MAE que ampara el traslado de los especímenes. Sube la copia del documento que tienes; el ejemplo te orienta sobre su formato.',
+                        => 'Guía que ampara el traslado. El sistema extraerá su número, autorización relacionada, vigencia, origen, destino y códigos de muestra para llenar la matriz.',
                     'Documento de explicación de motivos y/o carta de justificación (institucional o personal)'
                         => 'Carta redactada por ti o tu institución que explica por qué no cuentas con permisos del MAE. El ejemplo te muestra el tipo de contenido y tono esperados.',
                     'Documento de procedencia de los especimenes'
@@ -125,7 +147,14 @@
                 ];
             @endphp
 
-            <div class="space-y-3">
+            <section class="space-y-3" aria-labelledby="documentos-requeridos-titulo">
+                <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <h3 id="documentos-requeridos-titulo" class="text-sm font-semibold text-blue-navy">Archivos requeridos</h3>
+                        <p class="mt-1 text-xs leading-5 text-text-secondary">Puedes cargarlos con cualquier nombre; validaremos el tipo mediante su contenido.</p>
+                    </div>
+                    <p class="font-mono text-xs text-text-secondary">{{ count($documentosCargados) }}/{{ count($documentosRequeridos) }} cargados</p>
+                </div>
                 @foreach($documentosRequeridos as $docNombre)
                     @php $prop = $this->propiedadParaDocumento($docNombre); @endphp
                     <x-gestionprestamosrecepciones::dropzone
@@ -136,9 +165,14 @@
                         :archivo-nombre="$nombresArchivosOriginales[$docNombre] ?? null"
                         :plantilla="$plantillasDisponibles[$docNombre] ?? null"
                         :ayuda="$ayudas[$docNombre] ?? null"
+                        role="button"
+                        tabindex="0"
+                        aria-label="Cargar documento: {{ $docNombre }}"
+                        x-on:keydown.enter.prevent="if (!cargado) $refs.fileInput.click()"
+                        x-on:keydown.space.prevent="if (!cargado) $refs.fileInput.click()"
                     />
                 @endforeach
-            </div>
+            </section>
         @else
             <div class="rounded-lg border border-dashed border-border p-8 text-center">
                 <flux:icon name="document-text" class="size-8 text-text-secondary mx-auto mb-2" />
@@ -147,7 +181,7 @@
         @endif
 
         {{-- Sección de intervención curatorial --}}
-        <div class="rounded-lg border border-border bg-bg-main p-4 space-y-3">
+        <div class="space-y-3 border-t border-blue-navy/10 pt-5">
             <div class="flex items-start gap-3">
                 <flux:icon name="question-mark-circle" class="size-5 text-text-secondary shrink-0 mt-0.5" />
                 <div class="flex-1">

@@ -37,5 +37,10 @@ final readonly class ConsultarDetalleRecepcionOutput
         public bool $actaEmitida,
         public bool $actaFirmada,
         public ?string $actaFirmadaRuta,
+        public ?string $recibidoPor,
+        public ?DateTimeImmutable $verificadoEn,
+        public ?string $actaGeneradaPor,
+        public ?DateTimeImmutable $actaGeneradaEn,
+        public array $firmaMetadata,
     ) {}
 }

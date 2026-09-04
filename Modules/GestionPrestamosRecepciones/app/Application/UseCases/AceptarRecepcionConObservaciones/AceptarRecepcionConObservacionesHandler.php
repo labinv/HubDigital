@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarRecepc
 
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\RecepcionLoteNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
@@ -16,8 +17,8 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 /**
  * Acepta la recepción de un lote con observaciones cuando la anomalía no puede
  * devolverse al investigador: lo deja Verificado con Observaciones, registra las
- * observaciones en el Acta Digital de Recepción, ingresa los especímenes a la
- * colección (en cuarentena si corresponde) y notifica al investigador.
+ * observaciones que irán al Acta Digital de Recepción, propone cuarentena cuando
+ * corresponde y notifica al depositante. El alta espera el acta final firmada.
  */
 final class AceptarRecepcionConObservacionesHandler
 {
@@ -27,6 +28,7 @@ final class AceptarRecepcionConObservacionesHandler
         private readonly TransactionManagerPort $transactionManager,
         private readonly EventPublisherPort $eventPublisher,
         private readonly NotificacionInvestigadorPort $notificacionInvestigador,
+        private readonly NotificacionCuratoriaPort $notificacionCuratoria,
     ) {}
 
     /**
@@ -45,7 +47,7 @@ final class AceptarRecepcionConObservacionesHandler
             static fn (string $item): ItemChecklistRecepcion => ItemChecklistRecepcion::from($item),
             array_values($input->itemsNoConformes),
         );
-        $lote->aceptarConObservaciones($itemsNoConformes, $input->comentario);
+        $lote->aceptarConObservaciones($itemsNoConformes, $input->comentario, $input->curadorId);
 
         $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 
@@ -61,10 +63,15 @@ final class AceptarRecepcionConObservacionesHandler
             investigadorId: $solicitud?->investigadorId() ?? '',
             observaciones: $lote->observaciones(),
         );
+        $this->notificacionCuratoria->notificarLoteRecibidoParaActa(
+            solicitudId: (string) $lote->solicitudId(),
+            receptorId: $input->curadorId,
+            conObservaciones: true,
+        );
 
         return AceptarRecepcionConObservacionesOutput::fromPrimitives(
             estado: $lote->estado()->value,
-            observacionesRegistradasEnActa: $lote->actaEmitida() && $lote->observaciones() !== [],
+            observacionesRegistradasEnActa: false,
             estadoColeccion: $lote->estadoColeccion()->value,
             notificacionInvestigadorEnviada: $notifRef !== '',
         );

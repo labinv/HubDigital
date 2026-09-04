@@ -1,7 +1,7 @@
 @php
     /**
      * Plantilla del "Acta recepción-depósito" oficial (MEPN / EPN). Se renderiza con
-     * DomPDF para producir el PDF que el curador firma electrónicamente (FirmaEC).
+     * DomPDF para producir el PDF que el curador firma con el Firmador HubDigital.
      * Los logos se incrustan en base64 porque DomPDF no resuelve URLs externas.
      */
     $logoEpn = public_path('images/logo-epn.png');
@@ -138,10 +138,16 @@
         únicamente especímenes en perfecto estado de conservación y con valor científico.
     </p>
 
+    <p>
+        La recepción física fue constatada por <strong>{{ $receptor ?? 'Recepción EPN' }}</strong>
+        @if($recepcion->verificadoEn) el {{ $recepcion->verificadoEn->format('d/m/Y H:i') }}@endif.
+        La trazabilidad de esta actuación se conserva en HubDigital.
+    </p>
+
     <p>Atentamente,</p>
 
     <div class="firma">
-        <div class="espacio"></div>
+        <div class="espacio">Firmado electrónicamente al finalizar este documento en HubDigital</div>
         <p class="nombre-curador">{{ $curador ?? 'Curador responsable' }}</p>
         <p>Curador</p>
         <p>Laboratorio de Invertebrados</p>

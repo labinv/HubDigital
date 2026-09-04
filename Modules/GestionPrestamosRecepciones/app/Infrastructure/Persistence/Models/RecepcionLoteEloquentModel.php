@@ -35,6 +35,12 @@ final class RecepcionLoteEloquentModel extends Model
         'acta_recepcion',
         'acta_firmada_ruta',
         'firmada_en',
+        'recibido_por',
+        'verificado_en',
+        'suspendido_en',
+        'acta_generada_por',
+        'acta_generada_en',
+        'firma_metadata',
     ];
 
     protected $casts = [
@@ -42,5 +48,9 @@ final class RecepcionLoteEloquentModel extends Model
         'observaciones' => 'array',
         'acta_recepcion' => 'array',
         'firmada_en' => 'datetime',
+        'verificado_en' => 'datetime',
+        'suspendido_en' => 'datetime',
+        'acta_generada_en' => 'datetime',
+        'firma_metadata' => 'array',
     ];
 }

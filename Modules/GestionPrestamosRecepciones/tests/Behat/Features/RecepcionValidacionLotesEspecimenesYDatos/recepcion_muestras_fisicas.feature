@@ -2,13 +2,13 @@
 # Feature: 4
 @listo
 Característica: Recepción de muestras físicas
-    Como curador
+    Como responsable de recepción EPN y curador
     Quiero registrar la evaluación física de los lotes entregados
-    Para ingresar a la colección los especímenes de las solicitudes aprobadas
+    Para documentar la custodia y accesionar solo lotes con acta final firmada
 
     Antecedentes:
         Dado que el investigador entrega el lote físico de una solicitud "Aprobada Documentalmente"
-        Y el curador accede a los datos de la solicitud a partir de su Código QR
+        Y el receptor EPN accede a los datos de la solicitud a partir de su Código QR
 
     Esquema del escenario: Recepción física conforme cuando el lote supera la lista de verificación
         Dado que la solicitud es un trámite de "<tipo_tramite>"
@@ -18,9 +18,11 @@ Característica: Recepción de muestras físicas
             | Estado de los especímenes  | Sanos     |
             | Integridad de los frascos  | Íntegros  |
             | Completitud del conteo     | Exacto    |
-        Cuando el curador aprueba la recepción del lote
+        Cuando el receptor EPN constata la recepción del lote
         Entonces el lote pasa a estado "Verificado Físicamente"
-        Y se emite el "Acta Digital de Recepción"
+        Y el acta final queda pendiente de curaduría
+        Y los especímenes todavía no ingresan a la colección
+        Cuando el curador genera y firma electrónicamente el acta final
         Y los especímenes asociados ingresan a la colección en estado "<estado_coleccion>"
         Y se notifica al investigador la finalización exitosa de la entrega
 
@@ -30,8 +32,8 @@ Característica: Recepción de muestras físicas
             | Donación     | Permanente       |
 
     Esquema del escenario: Rechazo y devolución al investigador cuando la anomalía es subsanable
-        Cuando el curador registra el fallo de integridad subsanable "<motivo_fallo>"
-        Entonces el curador rechaza la recepción del lote
+        Cuando el receptor EPN registra el fallo de integridad subsanable "<motivo_fallo>"
+        Entonces el receptor EPN rechaza la recepción del lote
         Y el lote pasa a estado "Recepción Suspendida"
         Y se emite una orden de "<accion_correctiva>" para el investigador
         Y el Código QR permanece vigente para reintentar la recepción del mismo lote
@@ -45,9 +47,11 @@ Característica: Recepción de muestras físicas
     Esquema del escenario: Aceptación con observaciones según los ítems no conformes del lote
         Dado que la solicitud es un trámite de "<tipo_tramite>"
         Y el lote presenta el ítem no conforme "<item_no_conforme>"
-        Cuando el curador acepta la recepción del lote con observaciones
+        Cuando el receptor EPN acepta la recepción del lote con observaciones
         Entonces el lote pasa a estado "Verificado con Observaciones"
-        Y las observaciones quedan registradas en el "Acta Digital de Recepción"
+        Y las observaciones quedan registradas para el "Acta Digital de Recepción"
+        Y los especímenes todavía no ingresan a la colección
+        Cuando el curador genera y firma electrónicamente el acta final
         Y los especímenes asociados ingresan a la colección en estado "<estado_coleccion>"
         Y se notifica al investigador la finalización de la entrega con observaciones
 

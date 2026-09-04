@@ -4,7 +4,7 @@ use App\Livewire\ActivarRol;
 use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/portal')->name('home');
+Route::view('/', 'portal-inicio')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');

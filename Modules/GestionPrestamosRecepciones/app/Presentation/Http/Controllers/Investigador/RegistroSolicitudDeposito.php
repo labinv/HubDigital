@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador;
 
 use App\Concerns\HandlesDomainExceptions;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -53,7 +56,9 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ExtraccionDatosDocumentoJob;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\MatrizEspeciesEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\TaxonEloquentModel;
 
 /**
  * Componente Livewire para el registro de una solicitud de depósito o donación.
@@ -146,10 +151,21 @@ final class RegistroSolicitudDeposito extends Component
     /** @var string[] */
     public array $documentosProcesados = [];
 
+    public string $estadoValidacionContenido = '';
+
+    /** @var list<string> */
+    public array $erroresDocumentales = [];
+
+    /** @var list<string> */
+    public array $advertenciasDocumentales = [];
+
     // ── Paso 4 – Datos ────────────────────────────────────────────────────────────
 
     /** @var array<string, string|null> */
     public array $datosExtraidos = [];
+
+    /** @var array<string, mixed> Trazabilidad y confianza del OCR/autocompletado. */
+    public array $metadatosExtraccion = [];
 
     /** @var string[] */
     public array $datosFaltantes = [];
@@ -230,6 +246,54 @@ final class RegistroSolicitudDeposito extends Component
 
     public bool $matrizCargada = false;
 
+    /** Matriz nativa: elimina la dependencia obligatoria de una hoja de cálculo. */
+    public string $busquedaTaxon = '';
+
+    /** @var list<array<string, mixed>> */
+    public array $opcionesTaxones = [];
+
+    /** @var array<string, mixed> */
+    public array $taxonSeleccionado = [];
+
+    /** @var list<array{codigo: string, nombre: string, rango: string}> */
+    public array $catalogoGrupos = [];
+
+    /** @var list<array{codigo: string, nombre: string, continente: string}> */
+    public array $catalogoPaises = [];
+
+    /** @var list<array<string, mixed>> */
+    public array $muestrasDetectadas = [];
+
+    /** @var array<string, string|int> */
+    public array $registroNativo = [
+        'scientificName' => '',
+        'recordNumber' => '',
+        'origin' => 'research',
+        'identifiedBy' => '',
+        'dateIdentified' => '',
+        'researchPermit' => '',
+        'transportPermit' => '',
+        'decimalLatitude' => '',
+        'decimalLongitude' => '',
+        'verbatimLocality' => '',
+        'country' => 'Ecuador',
+        'countryCode' => 'EC',
+        'continent' => 'South America',
+        'stateProvince' => '',
+        'municipality' => '',
+        'eventDate' => '',
+        'recordedBy' => '',
+        'individualCount' => 1,
+        'basisOfRecord' => 'PreservedSpecimen',
+        'samplingProtocol' => '',
+        'preparations' => 'ethanol',
+        'occurrenceRemarks' => '',
+        'datasetName' => 'Colección de Invertebrados MEPN',
+    ];
+
+    /** @var list<array<string, mixed>> */
+    public array $registrosNativos = [];
+
     public string $errorMatriz = '';
 
     /** @var list<array{fila: string, campo: string}> Campos obligatorios vacíos que bloquean la carga. */
@@ -243,10 +307,17 @@ final class RegistroSolicitudDeposito extends Component
 
     public string $estadoFinal = '';
 
+    public bool $solicitudFirmada = false;
+
+    /** @var array<string, mixed> */
+    public array $solicitudFirmaMetadata = [];
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
     public function mount(?string $id = null): void
     {
+        $this->cargarCatalogosControlados();
+
         // Flujo de corrección: se abrió /deposito/{id}/corregir para subsanar un rechazo.
         if ($id !== null) {
             $this->iniciarCorreccion($id);
@@ -347,6 +418,8 @@ final class RegistroSolicitudDeposito extends Component
         $this->solicitudId = $model->id;
         $this->numeroSolicitud = $model->numero;
         $this->tipoTramite = $model->tipo_tramite;
+        $this->solicitudFirmada = $model->solicitud_firmada_en !== null;
+        $this->solicitudFirmaMetadata = $model->solicitud_firma_metadata ?? [];
 
         $pasoGuardado = $model->paso_actual ?? 1;
 
@@ -363,7 +436,7 @@ final class RegistroSolicitudDeposito extends Component
         // Si hay archivos cargados, verificar que aún existen en storage
         $this->documentosCargados = array_filter(
             $this->documentosCargados,
-            fn (string $ruta) => Storage::disk('public')->exists($ruta)
+            fn (string $ruta) => app(AlmacenamientoDepositos::class)->existe($ruta)
         );
 
         // Limpiar originales de documentos cuyo archivo ya no existe
@@ -386,6 +459,8 @@ final class RegistroSolicitudDeposito extends Component
         // Paso 4+ data
         if ($pasoGuardado >= 4) {
             $this->datosExtraidos = $this->construirDatosExtraidos($model);
+            $this->metadatosExtraccion = $model->extraccion_metadatos ?? [];
+            $this->aplicarResultadosDocumentales($this->metadatosExtraccion);
             $this->datosFaltantes = $model->datos_faltantes ?? [];
             $this->datosIngresadosManualmente = $model->datos_ingresados_manualmente ?? [];
 
@@ -541,7 +616,7 @@ final class RegistroSolicitudDeposito extends Component
         if ($this->solicitudId !== null) {
             // Eliminar archivos cargados del storage
             foreach ($this->documentosCargados as $ruta) {
-                Storage::disk('public')->delete($ruta);
+                app(AlmacenamientoDepositos::class)->eliminar($ruta);
             }
 
             SolicitudDepositoEloquentModel::where('id', $this->solicitudId)->delete();
@@ -617,7 +692,9 @@ final class RegistroSolicitudDeposito extends Component
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 1]));
 
         if ($this->tipoTramite === TipoTramite::Donacion->value) {
-            $this->documentosRequeridos = ['Formato solicitud donación', 'Carta de cesión de derechos / origen lícito'];
+            // La solicitud y la declaración de cesión se generan dentro de HubDigital;
+            // no se obliga al ciudadano a editar plantillas fuera del sistema.
+            $this->documentosRequeridos = [];
             $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 2]));
             $this->paso = 3;
             $this->persistirEstadoWizard();
@@ -748,9 +825,25 @@ final class RegistroSolicitudDeposito extends Component
             ]
         );
 
-        $ruta = $archivo->store('depositos', 'public');
+        if (isset($this->documentosCargados[$nombre])) {
+            $rutaAnterior = $this->documentosCargados[$nombre];
+            app(AlmacenamientoDepositos::class)->eliminar($rutaAnterior);
+        }
+
+        $ruta = app(AlmacenamientoDepositos::class)->guardarArchivo($archivo, 'depositos/'.$this->solicitudId);
         $this->documentosCargados[$nombre] = $ruta;
         $this->nombresArchivosOriginales[$nombre] = $archivo->getClientOriginalName();
+        $this->extraccionProcesando = false;
+        $this->documentosProcesados = [];
+        $this->estadoValidacionContenido = '';
+        $this->erroresDocumentales = [];
+        $this->advertenciasDocumentales = [];
+        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)->update([
+            'extraccion_estado' => null,
+            'extraccion_metadatos' => [],
+            'documentos_procesados' => [],
+        ]);
+        $this->invalidarFirmaSolicitud();
 
         $this->persistirEstadoWizard();
     }
@@ -761,10 +854,16 @@ final class RegistroSolicitudDeposito extends Component
     public function eliminarDocumento(string $nombre): void
     {
         if (isset($this->documentosCargados[$nombre])) {
-            Storage::disk('public')->delete($this->documentosCargados[$nombre]);
+            $ruta = $this->documentosCargados[$nombre];
+            app(AlmacenamientoDepositos::class)->eliminar($ruta);
             unset($this->documentosCargados[$nombre]);
             unset($this->nombresArchivosOriginales[$nombre]);
         }
+
+        $this->estadoValidacionContenido = '';
+        $this->erroresDocumentales = [];
+        $this->advertenciasDocumentales = [];
+        $this->invalidarFirmaSolicitud();
 
         $propiedad = $this->propiedadParaDocumento($nombre);
         $this->reset($propiedad);
@@ -871,6 +970,17 @@ final class RegistroSolicitudDeposito extends Component
         if ($model->extraccion_estado === 'completada') {
             $this->extraccionProcesando = false;
 
+            $this->metadatosExtraccion = $model->extraccion_metadatos ?? [];
+            $this->aplicarResultadosDocumentales($this->metadatosExtraccion);
+            if ($this->estadoValidacionContenido === 'rechazado') {
+                $this->addError(
+                    'documentos',
+                    'Los archivos no forman un expediente regulatorio coherente. Corrige los documentos indicados para continuar.',
+                );
+
+                return;
+            }
+
             $outputValidar = ($validar)(new ValidarDocumentacionInicialInput(
                 solicitudId: $this->solicitudId,
                 provinciaOrigen: $this->provincia ?: null,
@@ -913,6 +1023,20 @@ final class RegistroSolicitudDeposito extends Component
      */
     private function avanzarDesdeFalloExtraccion(): void
     {
+        $regulatorios = [
+            'Copia de la autorización de recolección (MAE)',
+            'Copia del permiso de movilización',
+        ];
+        if (array_intersect($regulatorios, $this->documentosRequeridos) !== []) {
+            $this->estadoValidacionContenido = 'error_procesamiento';
+            $this->erroresDocumentales = [
+                'No fue posible leer y validar los documentos regulatorios. Vuelve a intentarlo o carga copias PDF legibles.',
+            ];
+            $this->addError('documentos', $this->erroresDocumentales[0]);
+
+            return;
+        }
+
         if ($this->tipoTramite === TipoTramite::Deposito->value) {
             if ($this->origenRecoleccion === 'Exterior (Extranjero)') {
                 $this->datosExtraidos = [
@@ -1025,10 +1149,22 @@ final class RegistroSolicitudDeposito extends Component
             $this->datosIngresadosManualmente[] = $campo;
         }
         unset($this->datosEnEdicion[$clave]);
+        $this->invalidarConfirmacionExtraccion();
+        $this->invalidarFirmaSolicitud();
     }
 
     public function guardarPasoCuatro(): void
     {
+        $usuario = auth()->user();
+        if (trim((string) $usuario->cargo) === '' || trim((string) $usuario->institucion) === '') {
+            $this->addError(
+                'perfilConsultor',
+                'Completa el cargo y la empresa o institución en tu perfil antes de continuar.',
+            );
+
+            return;
+        }
+
         if (! empty($this->datosFaltantes)) {
             $this->mostrarToast('Completa los datos faltantes.', 'error');
 
@@ -1074,6 +1210,18 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
+        $this->registroNativo = array_replace($this->registroNativo, [
+            'identifiedBy' => auth()->user()->name,
+            'recordedBy' => auth()->user()->name,
+            'dateIdentified' => now()->toDateString(),
+            'verbatimLocality' => (string) ($this->datosExtraidos['Localidad'] ?? $this->localidad),
+            'researchPermit' => (string) ($this->datosExtraidos['N.º Permiso Recolección'] ?? 'No aplica — expediente justificado'),
+            'transportPermit' => (string) ($this->datosExtraidos['N.º Permiso Movilización'] ?? 'No aplica — expediente justificado'),
+            'recordNumber' => (string) ($this->muestrasDetectadas[0]['recordNumber'] ?? $this->numeroSolicitud.'-001'),
+            'stateProvince' => (string) ($this->datosExtraidos['Provincia'] ?? ''),
+        ]);
+
+        $this->registrarConfirmacionExtraccion();
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 4]));
         $this->paso = 5;
         $this->persistirEstadoWizard();
@@ -1156,6 +1304,216 @@ final class RegistroSolicitudDeposito extends Component
         $matriz = $repo->buscarPorId(MatrizEspeciesId::from($this->matrizId));
 
         $this->poblarEstadosRegistros($matriz, $registros);
+        $this->invalidarFirmaSolicitud();
+        $this->persistirEstadoWizard();
+    }
+
+    /** Busca taxones controlados primero en PostgreSQL y completa con GBIF Species. */
+    public function updatedBusquedaTaxon(): void
+    {
+        $consulta = trim($this->busquedaTaxon);
+        $this->opcionesTaxones = [];
+        if (($this->taxonSeleccionado['nombre'] ?? null) !== $consulta) {
+            $this->taxonSeleccionado = [];
+            $this->registroNativo['scientificName'] = '';
+        }
+        if (mb_strlen($consulta) < 3) {
+            return;
+        }
+
+        $patronConsulta = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $consulta);
+        $locales = TaxonEloquentModel::query()
+            ->where('nombre_cientifico', 'ilike', '%'.$patronConsulta.'%')
+            ->where('estado', 'activo')
+            ->orderBy('nombre_cientifico')
+            ->limit(8)
+            ->get(['id', 'nombre_cientifico', 'rango', 'autor', 'epiteto_infraespecifico'])
+            ->map(fn ($taxon): array => [
+                'nombre' => $taxon->nombre_cientifico,
+                'rango' => $taxon->rango,
+                'fuente' => 'Catálogo EPN',
+                'taxonID' => 'EPN:'.$taxon->id,
+                'scientificNameAuthorship' => $taxon->autor,
+                'infraspecificEpithet' => $taxon->epiteto_infraespecifico,
+            ])->all();
+
+        $remotos = Cache::remember('gbif-search:'.md5(mb_strtolower($consulta)), now()->addDays(7), function () use ($consulta): array {
+            try {
+                return Http::timeout(8)->get('https://api.gbif.org/v1/species/search', [
+                    'q' => $consulta,
+                    'kingdom' => 'Animalia',
+                    'limit' => 10,
+                ])->throw()->collect('results')
+                    ->filter(fn ($item): bool => ($item['taxonomicStatus'] ?? null) === 'ACCEPTED')
+                    ->map(fn ($item): array => [
+                        'nombre' => (string) ($item['canonicalName'] ?? $item['scientificName'] ?? ''),
+                        'scientificName' => (string) ($item['scientificName'] ?? $item['canonicalName'] ?? ''),
+                        'rango' => mb_strtolower((string) ($item['rank'] ?? 'taxón')),
+                        'fuente' => 'GBIF Backbone',
+                        'taxonID' => isset($item['key']) ? 'https://www.gbif.org/species/'.$item['key'] : null,
+                        'gbifKey' => $item['key'] ?? null,
+                        'acceptedUsageKey' => $item['acceptedKey'] ?? $item['key'] ?? null,
+                        'parentKey' => $item['parentKey'] ?? null,
+                        'acceptedNameUsage' => $item['accepted'] ?? $item['scientificName'] ?? null,
+                        'acceptedNameUsageID' => isset($item['acceptedKey'] ?? $item['key'])
+                            ? 'https://www.gbif.org/species/'.($item['acceptedKey'] ?? $item['key'])
+                            : null,
+                        'nameAccordingTo' => 'GBIF Backbone Taxonomy',
+                        'nameAccordingToID' => 'https://www.gbif.org/species/search',
+                        'taxonomicStatus' => $item['taxonomicStatus'] ?? null,
+                        'kingdom' => $item['kingdom'] ?? null,
+                        'phylum' => $item['phylum'] ?? null,
+                        'class' => $item['class'] ?? null,
+                        'order' => $item['order'] ?? null,
+                        'family' => $item['family'] ?? null,
+                        'genus' => $item['genus'] ?? null,
+                        'specificEpithet' => $item['specificEpithet'] ?? null,
+                        'scientificNameAuthorship' => $item['authorship'] ?? null,
+                        'respuestaFuente' => $item,
+                    ])->filter(fn (array $item): bool => $item['nombre'] !== '')
+                    ->values()->all();
+            } catch (\Throwable) {
+                return [];
+            }
+        });
+
+        $unicos = [];
+        foreach ([...$locales, ...$remotos] as $opcion) {
+            $unicos[mb_strtolower($opcion['nombre'])] ??= $opcion;
+        }
+        $this->opcionesTaxones = array_slice(array_values($unicos), 0, 12);
+        $this->persistirTaxonesGbif($this->opcionesTaxones);
+    }
+
+    public function seleccionarTaxon(string $nombre): void
+    {
+        $opcion = collect($this->opcionesTaxones)->first(
+            fn (array $opcion): bool => $opcion['nombre'] === $nombre
+        );
+        if (! is_array($opcion)) {
+            $this->addError('registroNativo.scientificName', 'Selecciona un taxón de la lista EPN/GBIF.');
+
+            return;
+        }
+
+        $this->registroNativo['scientificName'] = $nombre;
+        $this->taxonSeleccionado = $opcion;
+        $this->busquedaTaxon = $nombre;
+        $this->opcionesTaxones = [];
+        $this->resetErrorBag('registroNativo.scientificName');
+    }
+
+    public function agregarRegistroNativo(): void
+    {
+        $this->validate([
+            'registroNativo.scientificName' => ['required', 'string', 'max:255'],
+            'registroNativo.recordNumber' => ['required', 'string', 'max:120', 'regex:/^[A-Za-z]{2,8}-?[A-Za-z0-9]{1,16}$/'],
+            'registroNativo.origin' => ['required', 'in:research,consulting'],
+            'registroNativo.identifiedBy' => ['required', 'string', 'max:255'],
+            'registroNativo.dateIdentified' => ['required', 'date'],
+            'registroNativo.researchPermit' => ['required', 'string', 'max:255'],
+            'registroNativo.transportPermit' => ['required', 'string', 'max:255'],
+            'registroNativo.decimalLatitude' => ['required', 'numeric', 'between:-90,90'],
+            'registroNativo.decimalLongitude' => ['required', 'numeric', 'between:-180,180'],
+            'registroNativo.verbatimLocality' => ['required', 'string', 'max:500'],
+            'registroNativo.country' => ['required', 'string', 'max:120'],
+            'registroNativo.eventDate' => ['required', 'date'],
+            'registroNativo.recordedBy' => ['required', 'string', 'max:255'],
+            'registroNativo.individualCount' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'registroNativo.samplingProtocol' => ['required', 'string', 'max:120'],
+            'registroNativo.preparations' => ['required', 'in:dry_pin,ethanol,slide,other'],
+        ]);
+
+        if (($this->taxonSeleccionado['nombre'] ?? null) !== $this->registroNativo['scientificName']) {
+            $this->addError('registroNativo.scientificName', 'Busca y selecciona el nombre científico desde EPN/GBIF.');
+
+            return;
+        }
+
+        if (collect($this->registrosNativos)->contains(
+            fn (array $registro): bool => $registro['recordNumber'] === $this->registroNativo['recordNumber']
+                && mb_strtolower((string) ($registro['scientificName'] ?? ''))
+                    === mb_strtolower((string) $this->registroNativo['scientificName'])
+        )) {
+            $this->addError('registroNativo.recordNumber', 'Ese taxón ya fue agregado para el mismo código de campo. Un lote sí puede contener varios taxones distintos.');
+
+            return;
+        }
+
+        $this->registrosNativos[] = $this->completarFilaPlantillaV2($this->registroNativo, $this->taxonSeleccionado);
+        $this->registroNativo = array_replace($this->registroNativo, [
+            'scientificName' => '',
+            'recordNumber' => '',
+            'dateIdentified' => '',
+            'decimalLatitude' => '',
+            'decimalLongitude' => '',
+            'eventDate' => '',
+            'individualCount' => 1,
+        ]);
+        $this->taxonSeleccionado = [];
+        $this->busquedaTaxon = '';
+        $this->opcionesTaxones = [];
+        $this->seleccionarSiguienteMuestraDetectada();
+    }
+
+    public function eliminarRegistroNativo(int $indice): void
+    {
+        if (! array_key_exists($indice, $this->registrosNativos)) {
+            return;
+        }
+        unset($this->registrosNativos[$indice]);
+        $this->registrosNativos = array_values($this->registrosNativos);
+        $this->matrizCargada = false;
+        $this->estadoMatriz = '';
+        $this->invalidarFirmaSolicitud();
+    }
+
+    public function guardarMatrizNativa(): void
+    {
+        if ($this->registrosNativos === []) {
+            $this->mostrarToast('Agrega al menos un registro biológico.', 'warning');
+
+            return;
+        }
+
+        if ($this->matrizId) {
+            MatrizEspeciesEloquentModel::where('id', $this->matrizId)->delete();
+            $this->matrizId = null;
+        }
+
+        $campos = array_values(array_unique(array_merge(...array_map('array_keys', $this->registrosNativos))));
+        $this->camposDwCPresentes = $campos;
+        $catalogo = app(CatalogoCuraduriaPort::class);
+        $this->camposDwCCriticos = $catalogo->camposCriticos($this->solicitudId ?? '');
+        $this->camposDwCRecomendados = $catalogo->camposRecomendados($this->solicitudId ?? '');
+
+        try {
+            $output = app(CargarMatrizEspeciesHandler::class)(new CargarMatrizEspeciesInput(
+                solicitudId: $this->solicitudId,
+                camposDwCPresentes: array_fill_keys($campos, true),
+                camposCriticos: $this->camposDwCCriticos,
+                camposRecomendados: $this->camposDwCRecomendados,
+                registros: $this->registrosNativos,
+            ));
+        } catch (CamposDwCFaltantesException|CamposObligatoriosVaciosException $e) {
+            $this->errorMatriz = $e->getMessage();
+            $this->matrizCargada = true;
+
+            return;
+        }
+
+        $this->matrizId = $output->matrizId;
+        $this->estadoMatriz = $output->estadoMatriz->value;
+        $this->validacionTipograficaAplicada = $output->validacionTipograficaAplicada;
+        $this->totalRegistros = $output->totalRegistros;
+        $this->camposDwCRecomendadosFaltantes = $output->camposRecomendadosFaltantes;
+        $this->matrizCargada = true;
+        $this->errorMatriz = '';
+        $this->registrosMatriz = $this->registrosNativos;
+
+        $matriz = app(MatrizEspeciesRepositoryInterface::class)->buscarPorId(MatrizEspeciesId::from($this->matrizId));
+        $this->poblarEstadosRegistros($matriz, $this->registrosNativos);
+        $this->invalidarFirmaSolicitud();
         $this->persistirEstadoWizard();
     }
 
@@ -1553,6 +1911,15 @@ final class RegistroSolicitudDeposito extends Component
             ['declaracionAceptada.accepted' => 'Debes aceptar la declaración para enviar la solicitud.']
         );
 
+        $documento = SolicitudDepositoEloquentModel::find($this->solicitudId);
+        if ($documento?->solicitud_firmada_en === null) {
+            $this->addError('solicitudFirmada', 'Firma electrónicamente la solicitud oficial antes de enviarla.');
+
+            return;
+        }
+
+        $this->solicitudFirmada = true;
+
         $output = ($handler)(new EnviarSolicitudDepositoInput(solicitudId: $this->solicitudId));
         $this->estadoFinal = $output->estado->value;
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 6]));
@@ -1602,6 +1969,292 @@ final class RegistroSolicitudDeposito extends Component
     private function mostrarToast(string $message, string $variant = 'warning'): void
     {
         $this->dispatch('show-toast', message: $message, variant: $variant);
+    }
+
+    /** @param array<string, mixed> $metadatos */
+    private function aplicarResultadosDocumentales(array $metadatos): void
+    {
+        $validacion = is_array($metadatos['validacion_contenido'] ?? null)
+            ? $metadatos['validacion_contenido']
+            : [];
+        $this->estadoValidacionContenido = (string) ($validacion['estado'] ?? '');
+        $this->erroresDocumentales = array_values(array_filter($validacion['errores'] ?? [], 'is_string'));
+        $this->advertenciasDocumentales = array_values(array_filter($validacion['advertencias'] ?? [], 'is_string'));
+        $this->muestrasDetectadas = array_values(array_filter(
+            $metadatos['registros_sugeridos'] ?? [],
+            static fn (mixed $registro): bool => is_array($registro) && ! empty($registro['recordNumber']),
+        ));
+    }
+
+    private function registrarConfirmacionExtraccion(): void
+    {
+        if ($this->solicitudId === null) {
+            return;
+        }
+
+        $valores = $this->datosExtraidos;
+        ksort($valores);
+        $json = json_encode($valores, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        $metadatos = $this->metadatosExtraccion;
+        $metadatos['confirmacion_humana'] = [
+            'estado' => 'confirmada',
+            'usuario_id' => (string) auth()->id(),
+            'confirmada_en' => now()->toIso8601String(),
+            'valores_sha256' => hash('sha256', $json),
+        ];
+
+        SolicitudDepositoEloquentModel::whereKey($this->solicitudId)->update([
+            'extraccion_metadatos' => $metadatos,
+        ]);
+        $this->metadatosExtraccion = $metadatos;
+    }
+
+    private function invalidarConfirmacionExtraccion(): void
+    {
+        if ($this->solicitudId === null || $this->metadatosExtraccion === []) {
+            return;
+        }
+
+        $this->metadatosExtraccion['confirmacion_humana'] = [
+            'estado' => 'pendiente',
+            'invalidada_en' => now()->toIso8601String(),
+            'invalidada_por' => (string) auth()->id(),
+        ];
+        SolicitudDepositoEloquentModel::whereKey($this->solicitudId)->update([
+            'extraccion_metadatos' => $this->metadatosExtraccion,
+        ]);
+    }
+
+    public function usarMuestraDetectada(string $codigo): void
+    {
+        $muestra = collect($this->muestrasDetectadas)->first(
+            static fn (array $item): bool => ($item['recordNumber'] ?? null) === $codigo,
+        );
+        if (! is_array($muestra)) {
+            return;
+        }
+
+        $this->registroNativo = array_replace($this->registroNativo, array_filter([
+            'recordNumber' => $muestra['recordNumber'] ?? null,
+            'researchPermit' => $muestra['researchPermit'] ?? null,
+            'transportPermit' => $muestra['transportPermit'] ?? null,
+            'verbatimLocality' => $muestra['verbatimLocality'] ?? null,
+        ], static fn (mixed $valor): bool => is_string($valor) && trim($valor) !== ''));
+    }
+
+    private function seleccionarSiguienteMuestraDetectada(): void
+    {
+        $utilizados = array_column($this->registrosNativos, 'recordNumber');
+        foreach ($this->muestrasDetectadas as $muestra) {
+            $codigo = (string) ($muestra['recordNumber'] ?? '');
+            if ($codigo !== '' && ! in_array($codigo, $utilizados, true)) {
+                $this->usarMuestraDetectada($codigo);
+
+                return;
+            }
+        }
+    }
+
+    public function updatedRegistroNativo(mixed $valor, string $campo): void
+    {
+        if ($campo !== 'country' || ! is_string($valor)) {
+            return;
+        }
+
+        $seleccion = collect($this->catalogoPaises)->first(
+            static fn (array $item): bool => $item['nombre'] === $valor,
+        );
+        if (is_array($seleccion)) {
+            $this->registroNativo['countryCode'] = $seleccion['codigo'];
+            $this->registroNativo['continent'] = $seleccion['continente'] === 'América del Sur'
+                ? 'South America'
+                : $seleccion['continente'];
+        }
+    }
+
+    /** @param array<string, mixed> $fila @param array<string, mixed> $taxon @return array<string, mixed> */
+    private function completarFilaPlantillaV2(array $fila, array $taxon): array
+    {
+        $fechaColecta = (string) ($fila['eventDate'] ?? '');
+        $partesFecha = $fechaColecta !== '' ? date_parse($fechaColecta) : [];
+        $nombre = (string) ($taxon['nombre'] ?? $fila['scientificName'] ?? '');
+        $rango = mb_strtolower((string) ($taxon['rango'] ?? ''));
+        $partesNombre = preg_split('/\s+/u', trim($nombre)) ?: [];
+        $epiteto = in_array($rango, ['species', 'especie', 'subspecies', 'subespecie'], true)
+            ? ($partesNombre[1] ?? null)
+            : null;
+
+        $defaults = [
+            'origin' => 'research',
+            'type' => 'PhysicalObject',
+            'language' => 'es',
+            'license' => 'https://creativecommons.org/licenses/by-nc/4.0/',
+            'rightsHolder' => 'Museo de Historia Natural Gustavo Orcés V — Escuela Politécnica Nacional',
+            'accessRights' => 'https://creativecommons.org/licenses/by-nc/4.0/',
+            'institutionID' => 'bd33fb5b-71da-43c7-9ed0-c95cbc7a5383',
+            'collectionID' => '914603d1-c523-42ef-84d4-82b9b246216a',
+            'institutionCode' => 'MHNGOV',
+            'collectionCode' => 'MEPN-INV',
+            'datasetName' => 'Colección de Invertebrados MEPN',
+            'ownerInstitutionCode' => 'EPN',
+            'basisOfRecord' => 'PreservedSpecimen',
+            'occurrenceStatus' => 'present',
+            'kingdom' => 'Animalia',
+            'nomenclaturalCode' => 'ICZN',
+            // El depositante describe material propuesto. Solo el acta final firmada
+            // completa la accesion y permite considerarlo parte de la coleccion.
+            'disposition' => 'pending accession',
+            'geodeticDatum' => 'WGS84',
+            'continent' => 'South America',
+            'country' => 'Ecuador',
+            'countryCode' => 'EC',
+            'recordCreatedBy' => auth()->user()->name.', '.now()->translatedFormat('M-Y'),
+            'iptUpload' => 'no',
+        ];
+        $taxonomia = array_filter([
+            'taxonID' => $taxon['taxonID'] ?? null,
+            'scientificName' => $nombre,
+            'taxonRank' => $rango,
+            'kingdom' => $taxon['kingdom'] ?? 'Animalia',
+            'phylum' => $taxon['phylum'] ?? null,
+            'class' => $taxon['class'] ?? null,
+            'order' => $taxon['order'] ?? null,
+            'family' => $taxon['family'] ?? null,
+            'genus' => $taxon['genus'] ?? null,
+            'specificEpithet' => $epiteto,
+            'infraspecificEpithet' => $taxon['infraspecificEpithet'] ?? null,
+            'scientificNameAuthorship' => $taxon['scientificNameAuthorship'] ?? null,
+            'acceptedNameUsage' => $taxon['acceptedNameUsage'] ?? null,
+            'acceptedNameUsageID' => $taxon['acceptedNameUsageID'] ?? null,
+            'nameAccordingTo' => $taxon['nameAccordingTo'] ?? null,
+            'nameAccordingToID' => $taxon['nameAccordingToID'] ?? null,
+            'taxonomicStatus' => isset($taxon['taxonomicStatus'])
+                ? mb_strtolower((string) $taxon['taxonomicStatus'])
+                : null,
+        ], static fn (mixed $valor): bool => $valor !== null && $valor !== '');
+        $fecha = array_filter([
+            'year' => $partesFecha['year'] ?? null,
+            'month' => $partesFecha['month'] ?? null,
+            'day' => $partesFecha['day'] ?? null,
+        ], static fn (mixed $valor): bool => is_int($valor) && $valor > 0);
+
+        return array_filter(
+            array_replace($defaults, $fila, $taxonomia, $fecha),
+            static fn (mixed $valor): bool => $valor !== null && $valor !== '',
+        );
+    }
+
+    /** @param list<array<string, mixed>> $opciones */
+    private function persistirTaxonesGbif(array $opciones): void
+    {
+        try {
+            if (! Schema::hasTable('recepciones.catalogo_taxones_externos')) {
+                return;
+            }
+            $ahora = now();
+            $filas = [];
+            foreach ($opciones as $opcion) {
+                if (($opcion['fuente'] ?? null) !== 'GBIF Backbone' || ! is_numeric($opcion['gbifKey'] ?? null)) {
+                    continue;
+                }
+                $nombre = (string) $opcion['nombre'];
+                $partes = preg_split('/\s+/u', $nombre) ?: [];
+                $filas[] = [
+                    'gbif_key' => (int) $opcion['gbifKey'],
+                    'scientific_name' => (string) ($opcion['scientificName'] ?? $nombre),
+                    'canonical_name' => $nombre,
+                    'rank' => (string) $opcion['rango'],
+                    'taxonomic_status' => (string) ($opcion['taxonomicStatus'] ?? 'ACCEPTED'),
+                    'kingdom' => $opcion['kingdom'] ?? null,
+                    'phylum' => $opcion['phylum'] ?? null,
+                    'class' => $opcion['class'] ?? null,
+                    'order' => $opcion['order'] ?? null,
+                    'family' => $opcion['family'] ?? null,
+                    'genus' => $opcion['genus'] ?? null,
+                    'specific_epithet' => count($partes) >= 2 ? $partes[1] : null,
+                    'accepted_usage_key' => is_numeric($opcion['acceptedUsageKey'] ?? null)
+                        ? (int) $opcion['acceptedUsageKey']
+                        : null,
+                    'parent_key' => is_numeric($opcion['parentKey'] ?? null)
+                        ? (int) $opcion['parentKey']
+                        : null,
+                    'taxon_id' => $opcion['taxonID'] ?? null,
+                    'accepted_name_usage' => $opcion['acceptedNameUsage'] ?? null,
+                    'accepted_name_usage_id' => $opcion['acceptedNameUsageID'] ?? null,
+                    'name_according_to' => $opcion['nameAccordingTo'] ?? null,
+                    'name_according_to_id' => $opcion['nameAccordingToID'] ?? null,
+                    'respuesta_fuente' => json_encode($opcion['respuestaFuente'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'sincronizado_en' => $ahora,
+                    'created_at' => $ahora,
+                    'updated_at' => $ahora,
+                ];
+            }
+            if ($filas !== []) {
+                DB::table('recepciones.catalogo_taxones_externos')->upsert(
+                    $filas,
+                    ['gbif_key'],
+                    ['scientific_name', 'canonical_name', 'rank', 'taxonomic_status', 'kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'specific_epithet', 'accepted_usage_key', 'parent_key', 'taxon_id', 'accepted_name_usage', 'accepted_name_usage_id', 'name_according_to', 'name_according_to_id', 'respuesta_fuente', 'sincronizado_en', 'updated_at'],
+                );
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    private function cargarCatalogosControlados(): void
+    {
+        try {
+            if (Schema::hasTable('recepciones.catalogo_grupos_invertebrados')) {
+                $this->catalogoGrupos = DB::table('recepciones.catalogo_grupos_invertebrados')
+                    ->where('activo', true)->orderBy('orden_visual')
+                    ->get(['codigo', 'nombre', 'rango_referencia as rango'])
+                    ->map(static fn (object $fila): array => (array) $fila)->all();
+            }
+            if (Schema::hasTable('recepciones.catalogo_paises')) {
+                $this->catalogoPaises = DB::table('recepciones.catalogo_paises')
+                    ->where('activo', true)->orderBy('orden_visual')
+                    ->get(['codigo_iso2 as codigo', 'nombre_es as nombre', 'continente'])
+                    ->map(static fn (object $fila): array => (array) $fila)->all();
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        $this->catalogoGrupos = $this->catalogoGrupos ?: [
+            ['codigo' => 'INSECTA', 'nombre' => 'Insectos', 'rango' => 'class'],
+            ['codigo' => 'ARACHNIDA', 'nombre' => 'Arácnidos', 'rango' => 'class'],
+            ['codigo' => 'CRUSTACEA', 'nombre' => 'Crustáceos', 'rango' => 'subphylum'],
+            ['codigo' => 'MOLLUSCA', 'nombre' => 'Moluscos', 'rango' => 'phylum'],
+            ['codigo' => 'ANNELIDA', 'nombre' => 'Anélidos', 'rango' => 'phylum'],
+        ];
+        $this->catalogoPaises = $this->catalogoPaises ?: [
+            ['codigo' => 'EC', 'nombre' => 'Ecuador', 'continente' => 'América del Sur'],
+            ['codigo' => 'CO', 'nombre' => 'Colombia', 'continente' => 'América del Sur'],
+            ['codigo' => 'PE', 'nombre' => 'Perú', 'continente' => 'América del Sur'],
+        ];
+    }
+
+    private function invalidarFirmaSolicitud(): void
+    {
+        if ($this->solicitudId === null) {
+            return;
+        }
+        $solicitud = SolicitudDepositoEloquentModel::find($this->solicitudId);
+        if ($solicitud?->solicitud_firmada_en === null) {
+            return;
+        }
+        if (is_string($solicitud->solicitud_firmada_ruta)) {
+            app(AlmacenamientoDepositos::class)->eliminar($solicitud->solicitud_firmada_ruta);
+        }
+        $solicitud->forceFill([
+            'solicitud_firmada_ruta' => null,
+            'solicitud_firmada_sha256' => null,
+            'solicitud_firmada_en' => null,
+            'solicitud_firma_metadata' => [],
+            'solicitud_documento_version' => ((int) $solicitud->solicitud_documento_version) + 1,
+        ])->save();
+        $this->solicitudFirmada = false;
+        $this->solicitudFirmaMetadata = [];
     }
 
     // ── Helper público para vistas ────────────────────────────────────────────────

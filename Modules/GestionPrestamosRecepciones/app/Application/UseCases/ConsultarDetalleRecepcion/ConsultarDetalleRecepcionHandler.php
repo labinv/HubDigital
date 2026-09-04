@@ -62,6 +62,11 @@ final class ConsultarDetalleRecepcionHandler
             actaEmitida: $lote?->actaEmitida() ?? false,
             actaFirmada: $lote?->actaFirmada() ?? false,
             actaFirmadaRuta: $lote?->actaFirmadaRuta(),
+            recibidoPor: $lote?->recibidoPor(),
+            verificadoEn: $lote?->verificadoEn(),
+            actaGeneradaPor: $lote?->actaGeneradaPor(),
+            actaGeneradaEn: $lote?->actaGeneradaEn(),
+            firmaMetadata: $lote?->firmaMetadata() ?? [],
         );
     }
 }

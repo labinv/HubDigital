@@ -7,6 +7,7 @@
         RolUsuario::DEPOSITANTE => ['bg-bio-green/10 text-bio-green', 'archive-box'],
         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
         RolUsuario::CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
+        RolUsuario::RECEPTOR => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
     };
 @endphp
 

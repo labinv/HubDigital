@@ -23,6 +23,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\SolicitudFirmadaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
@@ -44,19 +45,21 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecime
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentColaRevisionCuratorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentGeneradorCodigoPrestamoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentSolicitudFirmadaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionCatalogoCuraduriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEspecimenesAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEstadoEspecimenAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioIngresoColeccionAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LocalExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionInvestigadorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarPlazosDevolucionTodosLosPrestamosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\VerificarAlmacenamientoDepositosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\DomPdfGeneratorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUserInvestigadorEmailAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUsuarioNombreAdapter;
@@ -118,6 +121,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         NotificacionInvestigadorPort::class => NotificacionInvestigadorAdapter::class,
         ColaRevisionCuratorialPort::class => EloquentColaRevisionCuratorialAdapter::class,
         ValidacionFirmaElectronicaPort::class => PdfsigValidacionFirmaElectronicaAdapter::class,
+        SolicitudFirmadaPort::class => EloquentSolicitudFirmadaAdapter::class,
         HistorialPort::class => EloquentHistorialAdapter::class,
         RecordatorioDevolucionRepositoryInterface::class => EloquentRecordatorioDevolucionRepository::class,
         ConfiguracionGlobalRecordatoriosRepositoryInterface::class => EloquentConfiguracionGlobalRecordatoriosRepository::class,
@@ -143,11 +147,16 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         $this->commands([
             LimpiarBorradoresAbandonadosCommand::class,
             EvaluarPlazosDevolucionTodosLosPrestamosCommand::class,
+            VerificarAlmacenamientoDepositosCommand::class,
         ]);
 
-        $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new GroqExtraccionDatosDocumentoAdapter(
-            modelo: config('ai.providers.groq.model'),
-        ));
+        // Los documentos regulatorios producen hechos auditables. Por diseño, su
+        // extractor es siempre local y determinista (Poppler + Tesseract + reglas);
+        // un LLM generativo no puede declarar números, fechas ni identidades.
+        $this->app->bind(
+            ExtraccionDatosDocumentoPort::class,
+            static fn (): ExtraccionDatosDocumentoPort => new LocalExtraccionDatosDocumentoAdapter,
+        );
     }
 
     /**

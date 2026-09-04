@@ -43,6 +43,13 @@ class Dashboard extends Component
                 'graficoFamilias' => $this->graficoFamilias(),
                 'graficoDeterminacion' => $this->graficoDeterminacion(),
             ]),
+            RolUsuario::RECEPTOR => view('livewire.dashboard.receptor-panel', [
+                'pendientesRecepcion' => SolicitudDepositoEloquentModel::query()
+                    ->whereNotNull('codigo_qr')
+                    ->whereNotIn('id', RecepcionLoteEloquentModel::query()->select('solicitud_deposito_id'))
+                    ->count(),
+                'lotesRecibidos' => RecepcionLoteEloquentModel::query()->count(),
+            ]),
             RolUsuario::PRESTAMISTA => view(
                 'livewire.dashboard.prestamista-panel',
                 $this->estadisticasPrestamista((string) $user->id),

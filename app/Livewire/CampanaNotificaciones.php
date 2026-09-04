@@ -46,10 +46,12 @@ final class CampanaNotificaciones extends Component
     public function render(): View
     {
         $usuario = auth()->user();
+        $ultimaNoLeida = $usuario?->unreadNotifications()->latest()->first();
 
         return view('livewire.campana-notificaciones', [
             'noLeidas' => $usuario ? $usuario->unreadNotifications()->count() : 0,
             'notificaciones' => $usuario ? $usuario->notifications()->latest()->limit(10)->get() : collect(),
+            'ultimaNoLeida' => $ultimaNoLeida,
         ]);
     }
 }

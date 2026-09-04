@@ -22,5 +22,11 @@ interface RecepcionLoteRepositoryInterface
 
     public function buscarPorSolicitudId(SolicitudDepositoId $solicitudId): ?RecepcionLote;
 
+    /**
+     * Recupera el agregado con bloqueo de escritura durante una transaccion.
+     * Evita que dos curadores cierren el mismo expediente simultaneamente.
+     */
+    public function buscarPorSolicitudIdParaActualizar(SolicitudDepositoId $solicitudId): ?RecepcionLote;
+
     public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?RecepcionLote;
 }

@@ -8,12 +8,12 @@ use DomainException;
 
 /**
  * Se lanza cuando el PDF que el curador sube como acta firmada no contiene una firma
- * electrónica válida (FirmaEC), según la verificación con pdfsig.
+ * electrónica válida, según la verificación criptográfica y de contenido.
  */
 final class ActaRecepcionSinFirmaElectronica extends DomainException
 {
     public static function crear(): self
     {
-        return new self('El documento subido no contiene una firma electrónica válida. Fírmalo con FirmaEC e inténtalo de nuevo.');
+        return new self('El documento no superó la validación de firma, certificado e integridad de HubDigital.');
     }
 }

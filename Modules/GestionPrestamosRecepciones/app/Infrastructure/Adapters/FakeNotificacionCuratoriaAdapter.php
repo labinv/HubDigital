@@ -32,6 +32,11 @@ final class FakeNotificacionCuratoriaAdapter implements NotificacionCuratoriaPor
         return self::CURADOR_ID;
     }
 
+    public function notificarLoteRecibidoParaActa(string $solicitudId, string $receptorId, bool $conObservaciones): string
+    {
+        return self::CURADOR_ID;
+    }
+
     /**
      * Simula la notificación de una decisión documental a los demás curadores.
      */

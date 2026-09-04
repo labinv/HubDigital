@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepc
 
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\RecepcionLoteNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
@@ -15,15 +16,9 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 /**
  * Aprueba la recepción de un lote que cumple todos los ítems de la lista de
- * verificación: lo deja Verificado Físicamente, emite el Acta Digital de Recepción,
- * fija el régimen de colección con el que entran sus especímenes y notifica al
- * investigador.
- *
- * El ingreso de los especímenes a la colección NO ocurre aquí: lo hace el listener
- * IngresarLoteEnColeccionListener al recibir el evento que este caso de uso publica
- * (se nombra sin importar para no acoplar Application a Infrastructure). Ocurre de
- * forma síncrona, dentro de la misma petición, así que al volver de este caso de uso
- * los especímenes ya están en la colección.
+ * verificación: lo deja Verificado Físicamente, fija el régimen de tenencia
+ * propuesto y notifica al depositante que EPN recibió el material. Curaduría debe
+ * generar y firmar el acta antes del alta en colección.
  */
 final class AprobarRecepcionLoteHandler
 {
@@ -33,6 +28,7 @@ final class AprobarRecepcionLoteHandler
         private readonly TransactionManagerPort $transactionManager,
         private readonly EventPublisherPort $eventPublisher,
         private readonly NotificacionInvestigadorPort $notificacionInvestigador,
+        private readonly NotificacionCuratoriaPort $notificacionCuratoria,
     ) {}
 
     /**
@@ -55,7 +51,7 @@ final class AprobarRecepcionLoteHandler
             $input->itemsVerificacion,
         );
 
-        $lote->verificarConforme($items);
+        $lote->verificarConforme($items, $input->curadorId);
 
         $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 
@@ -70,6 +66,11 @@ final class AprobarRecepcionLoteHandler
             solicitudId: (string) $lote->solicitudId(),
             investigadorId: $solicitud?->investigadorId() ?? '',
             estadoColeccion: $lote->estadoColeccion()->value,
+        );
+        $this->notificacionCuratoria->notificarLoteRecibidoParaActa(
+            solicitudId: (string) $lote->solicitudId(),
+            receptorId: $input->curadorId,
+            conObservaciones: false,
         );
 
         return AprobarRecepcionLoteOutput::fromPrimitives(

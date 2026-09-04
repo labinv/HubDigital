@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote;
 
-/** Output de la recepción conforme: estado del lote, emisión del acta, estado de colección y notificación. */
+/** Output compatible de recepción: el acta queda en falso hasta que actúe curaduría. */
 final readonly class AprobarRecepcionLoteOutput
 {
     public function __construct(

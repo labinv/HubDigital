@@ -1,11 +1,25 @@
 <div class="space-y-6">
 
-    <div>
-        <flux:heading size="lg" level="2" class="font-display">Resumen y validación de datos</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Revisa los datos extraídos automáticamente de la documentación y valida la identidad del solicitante.
+    <div class="border-b border-blue-navy/10 pb-5">
+        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Datos del depósito de material MEPN</flux:heading>
+        <flux:text class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">
+            Completa dentro de HubDigital la información de <strong>Datos depósito material MEPN.xlsx</strong>.
+            El sistema recupera lo posible de tus documentos y te pide confirmar el resultado.
         </flux:text>
     </div>
+
+    <div class="overflow-hidden rounded-xl border border-science-blue/25 bg-surface shadow-sm">
+        <div class="border-b border-science-blue/20 bg-science-blue/5 px-4 py-3">
+            <p class="text-sm font-semibold text-blue-navy">Identificación del consultor · columnas A–C</p>
+            <p class="mt-0.5 text-xs text-text-secondary">Se toman de tu perfil autenticado para evitar volver a digitarlas.</p>
+        </div>
+        <dl class="grid gap-px bg-border sm:grid-cols-3">
+            <div class="bg-white p-4"><dt class="text-xs font-semibold text-text-secondary">A. Nombre representante legal empresa</dt><dd class="mt-1 text-sm text-text-primary">{{ $nombreEnDocumento ?: auth()->user()->name }}</dd></div>
+            <div class="bg-white p-4"><dt class="text-xs font-semibold text-text-secondary">B. Cargo o posición</dt><dd class="mt-1 text-sm text-text-primary">{{ auth()->user()->cargo ?: 'Completar en el perfil' }}</dd></div>
+            <div class="bg-white p-4"><dt class="text-xs font-semibold text-text-secondary">C. Empresa o institución</dt><dd class="mt-1 text-sm text-text-primary">{{ auth()->user()->institucion ?: 'Completar en el perfil' }}</dd></div>
+        </dl>
+    </div>
+    <flux:error name="perfilConsultor" />
 
     {{-- Aviso cuando la extracción automática no pudo completarse --}}
     @if($advertenciaExtraccion === 'error_modelo')
@@ -83,7 +97,23 @@
 
     {{-- Datos extraídos --}}
     <div id="datos-manuales" class="space-y-3 scroll-mt-6">
-        <flux:heading size="sm" level="3">Datos integrados de documentación</flux:heading>
+        @if(($metadatosExtraccion['motor'] ?? null) === 'local')
+            <div class="rounded-lg border border-science-blue/25 bg-science-blue/5 p-3 text-sm">
+                <div class="flex items-start gap-2">
+                    <flux:icon name="lock-closed" class="mt-0.5 size-4 shrink-0 text-science-blue" />
+                    <div>
+                        <p class="font-medium text-text-primary">Autocompletado privado con modelos gratuitos</p>
+                        <p class="mt-0.5 text-xs text-text-secondary">
+                            El texto se procesa dentro de HubDigital con Poppler (pdftotext) y Tesseract 5 en español. Los documentos no se envían a un proveedor de IA y cada propuesta requiere confirmación.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
+        <div>
+            <flux:heading size="sm" level="3">Columnas D–J · Material entregado</flux:heading>
+            <flux:text class="mt-1 text-xs text-text-secondary">Permisos, grupo biológico, cantidades y localidades. Estos datos son responsabilidad del consultor.</flux:text>
+        </div>
 
         @php
             $fuentesPorCampo = [
@@ -143,14 +173,30 @@
                 >
                     @if($estaEditando)
                         <div class="flex gap-2 mt-1">
-                            <flux:input
-                                wire:model="datosEnEdicion.{{ $clave }}"
-                                size="sm"
-                                class="flex-1"
-                                placeholder="Ingresa el valor…"
-                                :type="$esCuantitativo ? 'number' : 'text'"
-                                :min="$esCuantitativo ? 0 : null"
-                            />
+                            @if($campo === 'Grupo Animal')
+                                <select wire:model="datosEnEdicion.{{ $clave }}" class="min-h-9 flex-1 rounded-lg border border-border bg-white px-3 text-sm">
+                                    <option value="">Selecciona un grupo controlado</option>
+                                    @foreach($catalogoGrupos as $grupo)
+                                        <option value="{{ $grupo['nombre'] }}">{{ $grupo['nombre'] }}</option>
+                                    @endforeach
+                                </select>
+                            @elseif($campo === 'Provincia')
+                                <select wire:model="datosEnEdicion.{{ $clave }}" class="min-h-9 flex-1 rounded-lg border border-border bg-white px-3 text-sm">
+                                    <option value="">Selecciona una provincia</option>
+                                    @foreach(['Azuay','Bolívar','Cañar','Carchi','Chimborazo','Cotopaxi','El Oro','Esmeraldas','Galápagos','Guayas','Imbabura','Loja','Los Ríos','Manabí','Morona Santiago','Napo','Orellana','Pastaza','Pichincha','Santa Elena','Santo Domingo de los Tsáchilas','Sucumbíos','Tungurahua','Zamora Chinchipe'] as $provinciaOpcion)
+                                        <option>{{ $provinciaOpcion }}</option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <flux:input
+                                    wire:model="datosEnEdicion.{{ $clave }}"
+                                    size="sm"
+                                    class="flex-1"
+                                    placeholder="Ingresa el valor…"
+                                    :type="$esCuantitativo ? 'number' : 'text'"
+                                    :min="$esCuantitativo ? 0 : null"
+                                />
+                            @endif
                             <flux:button
                                 size="sm"
                                 variant="primary"
@@ -185,6 +231,16 @@
                     @endif
                 </x-gestionprestamosrecepciones::sum-cell>
             @endforeach
+        </div>
+    </div>
+
+    <div class="rounded-lg border border-bio-green/25 bg-bio-green/5 p-4">
+        <div class="flex items-start gap-3">
+            <flux:icon name="building-library" class="mt-0.5 size-5 shrink-0 text-bio-green" />
+            <div>
+                <p class="text-sm font-semibold text-text-primary">Columnas K–O · Uso interno de la EPN</p>
+                <p class="mt-1 text-xs text-text-secondary">Proceso interno, fecha de recepción, período, observaciones y estado serán completados por el receptor y la curaduría. El consultor no puede modificarlos.</p>
+            </div>
         </div>
     </div>
 

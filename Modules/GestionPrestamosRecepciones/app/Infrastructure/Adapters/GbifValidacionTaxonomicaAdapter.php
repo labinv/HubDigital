@@ -65,7 +65,7 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
         $nombresPendientes = [];
 
         foreach ($nombresUnicos as $nombre) {
-            $cached = Cache::get(self::CACHE_PREFIX.md5($nombre));
+            $cached = Cache::get($this->claveCache($nombre));
             if ($cached !== null) {
                 $resultadosCache[$nombre] = $cached;
             } else {
@@ -83,7 +83,7 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
 
                 if ($resultado['estado'] !== 'no_verificado') {
                     Cache::put(
-                        self::CACHE_PREFIX.md5($nombre),
+                        $this->claveCache($nombre),
                         $resultado,
                         now()->addDays(self::CACHE_TTL_DAYS)
                     );
@@ -163,9 +163,15 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
     {
         $matchType = $data['matchType'] ?? 'NONE';
 
-        // Match exacto y confiable: el nombre está catalogado tal cual.
-        if (! in_array($matchType, ['NONE', 'HIGHERRANK', 'FUZZY'], true)) {
-            return $this->resultadoCatalogado($nombreCientifico);
+        $confianza = (int) ($data['confidence'] ?? 0);
+        $estadoTaxonomico = mb_strtoupper((string) ($data['status'] ?? $data['taxonomicStatus'] ?? ''));
+
+        // Solo un match EXACT por encima del umbral puede afirmar que el nombre
+        // está catalogado. Los estados dudosos permanecen para revisión humana.
+        if ($matchType === 'EXACT'
+            && $confianza >= $this->umbralConfianzaExact
+            && ($estadoTaxonomico === '' || in_array($estadoTaxonomico, ['ACCEPTED', 'SYNONYM'], true))) {
+            return $this->resultadoCatalogado($nombreCientifico, $data);
         }
 
         // Para NONE/HIGHERRANK/FUZZY buscamos candidatos de corrección confiables,
@@ -178,6 +184,12 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
                 'estado' => 'inconsistencia_tipografica',
                 'sugerencia' => $sugerencias[0],
                 'sugerencias' => $sugerencias,
+                'fuenteReferencia' => self::BASE_URL,
+                'matchType' => $matchType,
+                'confianza' => $confianza,
+                'gbifKey' => $data['usageKey'] ?? $data['speciesKey'] ?? null,
+                'acceptedUsageKey' => $data['acceptedUsageKey'] ?? null,
+                'taxonomicStatus' => $estadoTaxonomico !== '' ? $estadoTaxonomico : null,
             ];
         }
 
@@ -186,6 +198,12 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
             'estado' => 'no_catalogado',
             'sugerencia' => null,
             'sugerencias' => [],
+            'fuenteReferencia' => self::BASE_URL,
+            'matchType' => $matchType,
+            'confianza' => $confianza,
+            'gbifKey' => $data['usageKey'] ?? $data['speciesKey'] ?? null,
+            'acceptedUsageKey' => $data['acceptedUsageKey'] ?? null,
+            'taxonomicStatus' => $estadoTaxonomico !== '' ? $estadoTaxonomico : null,
         ];
     }
 
@@ -210,6 +228,7 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
             $tipo = $match['matchType'] ?? null;
             $confianza = (int) ($match['confidence'] ?? 0);
             $canonico = $match['canonicalName'] ?? ($match['scientificName'] ?? null);
+            $estado = mb_strtoupper((string) ($match['status'] ?? $match['taxonomicStatus'] ?? ''));
 
             $umbral = match ($tipo) {
                 'EXACT' => $this->umbralConfianzaExact,
@@ -217,7 +236,10 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
                 default => null,
             };
 
-            if ($canonico === null || $umbral === null || $confianza < $umbral) {
+            if ($canonico === null
+                || $umbral === null
+                || $confianza < $umbral
+                || ($estado !== '' && ! in_array($estado, ['ACCEPTED', 'SYNONYM'], true))) {
                 return;
             }
 
@@ -255,13 +277,19 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
     /**
      * @return array{nombreCientifico: string, estado: string, sugerencia: ?string, sugerencias: list<string>}
      */
-    private function resultadoCatalogado(string $nombreCientifico): array
+    private function resultadoCatalogado(string $nombreCientifico, array $data): array
     {
         return [
             'nombreCientifico' => $nombreCientifico,
             'estado' => 'catalogado',
             'sugerencia' => null,
             'sugerencias' => [],
+            'fuenteReferencia' => self::BASE_URL,
+            'matchType' => (string) ($data['matchType'] ?? 'EXACT'),
+            'confianza' => (int) ($data['confidence'] ?? 0),
+            'gbifKey' => $data['usageKey'] ?? $data['speciesKey'] ?? null,
+            'acceptedUsageKey' => $data['acceptedUsageKey'] ?? null,
+            'taxonomicStatus' => $data['status'] ?? $data['taxonomicStatus'] ?? null,
         ];
     }
 
@@ -275,6 +303,19 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
             'estado' => 'no_verificado',
             'sugerencia' => null,
             'sugerencias' => [],
+            'fuenteReferencia' => self::BASE_URL,
+            'matchType' => null,
+            'confianza' => null,
+            'gbifKey' => null,
+            'acceptedUsageKey' => null,
+            'taxonomicStatus' => null,
         ];
+    }
+
+    private function claveCache(string $nombre): string
+    {
+        $normalizado = mb_strtolower(trim(preg_replace('/\s+/u', ' ', $nombre) ?? $nombre));
+
+        return self::CACHE_PREFIX.hash('sha256', $normalizado);
     }
 }

@@ -13,7 +13,9 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\PriorizarSolicitudEnCola\PriorizarSolicitudEnColaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\PriorizarSolicitudEnCola\PriorizarSolicitudEnColaInput;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecepcionLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrioridadSolicitud;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 /**
@@ -25,7 +27,7 @@ final class BandejaDepositos extends Component
 {
     use HandlesDomainExceptions;
 
-    /** Vista activa: 'pendientes' (cola por revisar) o 'resueltas' (ya decididas). */
+    /** Vista activa: revisión documental, actas pendientes o historial resuelto. */
     #[Url]
     public string $vista = 'pendientes';
 
@@ -43,7 +45,9 @@ final class BandejaDepositos extends Component
      */
     public function cambiarVista(string $vista): void
     {
-        $this->vista = $vista === 'resueltas' ? 'resueltas' : 'pendientes';
+        $this->vista = in_array($vista, ['pendientes', 'actas', 'resueltas'], true)
+            ? $vista
+            : 'pendientes';
     }
 
     /**
@@ -85,6 +89,23 @@ final class BandejaDepositos extends Component
     public function render(UsuarioNombrePort $usuarios): View
     {
         $esResueltas = $this->vista === 'resueltas';
+        $esActas = $this->vista === 'actas';
+
+        $estadosRecepcionConstatada = [
+            EstadoRecepcionLote::VerificadoFisicamente->value,
+            EstadoRecepcionLote::VerificadoConObservaciones->value,
+        ];
+
+        // El receptor termina aquí su trabajo. Desde este momento la acción está
+        // en curaduría hasta que el acta final quede firmada electrónicamente.
+        $recepcionesPendientes = RecepcionLoteEloquentModel::query()
+            ->whereIn('estado', $estadosRecepcionConstatada)
+            ->whereNull('acta_firmada_ruta')
+            ->orderByDesc('verificado_en')
+            ->get()
+            ->keyBy('solicitud_deposito_id');
+
+        $idsActasPendientes = $recepcionesPendientes->keys()->all();
 
         // Pendientes: cola por revisar. Resueltas: solicitudes ya decididas por el curador.
         $estadosResueltas = [
@@ -99,11 +120,6 @@ final class BandejaDepositos extends Component
         $idsPorNombre = $this->busqueda !== '' ? $usuarios->buscarIdsPorNombre($this->busqueda) : [];
 
         $query = SolicitudDepositoEloquentModel::query()
-            ->when(
-                $esResueltas,
-                fn ($q) => $q->whereIn('estado', $estadosResueltas),
-                fn ($q) => $q->where('estado', EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value),
-            )
             ->when($this->tipoTramite !== '', fn ($q) => $q->where('tipo_tramite', $this->tipoTramite))
             ->when($this->busqueda !== '', function ($q) use ($idsPorNombre): void {
                 $q->where(function ($sub) use ($idsPorNombre): void {
@@ -116,7 +132,15 @@ final class BandejaDepositos extends Component
                 });
             });
 
-        $solicitudes = $esResueltas
+        if ($esActas) {
+            $query->whereIn('id', $idsActasPendientes);
+        } elseif ($esResueltas) {
+            $query->whereIn('estado', $estadosResueltas);
+        } else {
+            $query->where('estado', EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value);
+        }
+
+        $solicitudes = ($esResueltas || $esActas)
             ? $query->orderBy('updated_at', $this->ordenDireccion === 'asc' ? 'asc' : 'desc')->get()
             : $query
                 ->orderByRaw('CASE WHEN prioridad = ? THEN 0 ELSE 1 END', [PrioridadSolicitud::Prioritaria->value])
@@ -139,8 +163,15 @@ final class BandejaDepositos extends Component
             ->where('estado', EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value)
             ->count();
 
+        $totalActasPendientes = $recepcionesPendientes->count();
+
+        // Solo se exponen al Blade las recepciones que aún requieren actuación del
+        // curador; esto permite destacar el mismo acceso directo también en el historial.
+        $recepciones = $recepcionesPendientes;
+
         return view('gestionprestamosrecepciones::curador.bandeja-depositos', compact(
-            'solicitudes', 'nombres', 'hayFiltros', 'esResueltas', 'totalPendientes',
+            'solicitudes', 'nombres', 'hayFiltros', 'esResueltas', 'esActas',
+            'totalPendientes', 'totalActasPendientes', 'recepciones',
         ));
     }
 }

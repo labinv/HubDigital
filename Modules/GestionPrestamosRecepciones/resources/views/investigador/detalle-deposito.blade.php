@@ -258,7 +258,7 @@
                                 </div>
 
                                 @if($recepcion->estadoRecepcion === 'En Verificación')
-                                    <flux:text class="text-text-secondary text-sm">El curador está verificando físicamente tus muestras.</flux:text>
+                                    <flux:text class="text-text-secondary text-sm">El responsable de recepción EPN está constatando físicamente tus muestras.</flux:text>
                                 @elseif($recepcion->estadoRecepcion === 'Recepción Suspendida')
                                     <flux:text class="text-text-secondary text-sm">
                                         Anomalía: <span class="font-medium text-text-primary">{{ $recepcion->motivoFallo }}</span>.
@@ -270,10 +270,15 @@
                                         <span class="font-medium text-text-primary">devueltas al depositante</span>
                                         y ya no forman parte de la colección.
                                     </flux:text>
+                                @elseif($recepcion->actaFirmada)
+                                    <flux:text class="text-text-secondary text-sm">
+                                        El acta final fue firmada y tus muestras ingresaron a la colección en estado
+                                        <span class="font-medium text-text-primary">{{ $recepcion->estadoColeccion ?? '—' }}</span>.
+                                    </flux:text>
                                 @else
                                     <flux:text class="text-text-secondary text-sm">
-                                        Tus muestras fueron recibidas e ingresan a la colección en estado
-                                        <span class="font-medium text-text-primary">{{ $recepcion->estadoColeccion ?? '—' }}</span>.
+                                        Tus muestras fueron recibidas y constatadas por EPN. Curaduría debe generar y
+                                        firmar el acta final antes de su ingreso a la colección.
                                     </flux:text>
                                 @endif
                             </div>

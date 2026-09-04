@@ -33,9 +33,11 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
  * aprobación documental). Nace {@see EstadoRecepcionLote::EnVerificacion} vía
  * {@see iniciar()} y transiciona según la decisión del curador sobre la lista de
  * verificación:
- *  - {@see verificarConforme()}   → Verificado Físicamente (ingreso a colección),
+ *  - {@see verificarConforme()}   → Verificado Físicamente (custodia constatada),
  *  - {@see rechazarPorAnomaliaSubsanable()} → Recepción Suspendida (devolución, QR vigente),
- *  - {@see aceptarConObservaciones()} → Verificado con Observaciones (ingreso a colección).
+ *  - {@see aceptarConObservaciones()} → Verificado con Observaciones (custodia constatada).
+ *
+ * El alta en la colección se habilita únicamente al adjuntar el acta final firmada.
  *
  * Construir vía {@see iniciar()}; rehidratar vía {@see reconstituir()}.
  */
@@ -69,8 +71,15 @@ final class RecepcionLote
 
     private ?DocumentoAdjunto $actaRecepcion = null;
 
-    /** Ruta (disco público) del PDF del acta firmado electrónicamente (FirmaEC) por el curador. */
+    /** Ruta privada del PDF firmado electrónicamente por el curador. */
     private ?string $actaFirmadaRuta = null;
+
+    private ?string $recibidoPor = null;
+
+    private ?string $actaGeneradaPor = null;
+
+    /** @var array<string, mixed> */
+    private array $firmaMetadata = [];
 
     // ── Hitos de negocio ─────────────────────────────────────────
 
@@ -79,6 +88,8 @@ final class RecepcionLote
     private ?DateTimeImmutable $suspendidoEn = null;
 
     private ?DateTimeImmutable $firmadaEn = null;
+
+    private ?DateTimeImmutable $actaGeneradaEn = null;
 
     /** @var object[] */
     private array $events = [];
@@ -137,6 +148,10 @@ final class RecepcionLote
         ?DateTimeImmutable $suspendidoEn = null,
         ?string $actaFirmadaRuta = null,
         ?DateTimeImmutable $firmadaEn = null,
+        ?string $recibidoPor = null,
+        ?string $actaGeneradaPor = null,
+        array $firmaMetadata = [],
+        ?DateTimeImmutable $actaGeneradaEn = null,
     ): self {
         $lote = new self;
         $lote->id = $id;
@@ -154,6 +169,10 @@ final class RecepcionLote
         $lote->suspendidoEn = $suspendidoEn;
         $lote->actaFirmadaRuta = $actaFirmadaRuta;
         $lote->firmadaEn = $firmadaEn;
+        $lote->recibidoPor = $recibidoPor;
+        $lote->actaGeneradaPor = $actaGeneradaPor;
+        $lote->firmaMetadata = $firmaMetadata;
+        $lote->actaGeneradaEn = $actaGeneradaEn;
 
         return $lote;
     }
@@ -162,12 +181,12 @@ final class RecepcionLote
 
     /**
      * Aprueba la recepción cuando el lote cumple todos los ítems de la lista de
-     * verificación. Los especímenes ingresan a la colección según el tipo de trámite
-     * y se emite el Acta Digital de Recepción.
+     * verificación. Registra el régimen de tenencia propuesto; el alta en colección
+     * queda pendiente del acta final firmada por curaduría.
      *
      * @param  list<ItemVerificacionRecepcion>  $items
      */
-    public function verificarConforme(array $items): void
+    public function verificarConforme(array $items, string $receptorId): void
     {
         $this->garantizarEnVerificacion('verificarConforme');
 
@@ -180,13 +199,13 @@ final class RecepcionLote
         $this->estado = EstadoRecepcionLote::VerificadoFisicamente;
         $this->estadoColeccion = EstadoColeccion::porTipoTramite($this->tipoTramite);
         $this->verificadoEn = $ahora;
+        $this->recibidoPor = $this->actorValido($receptorId);
 
         $this->events[] = new RecepcionLoteVerificadaFisicamente(
             solicitudId: $this->solicitudId,
             estadoColeccion: $this->estadoColeccion,
             ocurridoEn: $ahora,
         );
-        $this->emitirActaRecepcion($ahora);
     }
 
     /**
@@ -231,13 +250,12 @@ final class RecepcionLote
     /**
      * Acepta la recepción con observaciones cuando la anomalía no puede devolverse al
      * investigador. Las observaciones se derivan de los ítems no conformes del checklist
-     * (más un comentario opcional) y quedan registradas en el acta; los especímenes
-     * ingresan a la colección, en cuarentena si algún ítem no conforme compromete su
-     * sanidad.
+     * (más un comentario opcional) y se incorporan al acta final; el régimen será
+     * cuarentena si algún ítem no conforme compromete su sanidad.
      *
      * @param  list<ItemChecklistRecepcion>  $itemsNoConformes
      */
-    public function aceptarConObservaciones(array $itemsNoConformes, ?string $comentario = null): void
+    public function aceptarConObservaciones(array $itemsNoConformes, ?string $comentario = null, ?string $receptorId = null): void
     {
         $this->garantizarEnVerificacion('aceptarConObservaciones');
 
@@ -247,6 +265,8 @@ final class RecepcionLote
 
         $ahora = new DateTimeImmutable;
         $this->estado = EstadoRecepcionLote::VerificadoConObservaciones;
+        $this->verificadoEn = $ahora;
+        $this->recibidoPor = $this->actorValido($receptorId ?? '');
 
         foreach ($itemsNoConformes as $item) {
             $this->observaciones[] = $item->value;
@@ -274,19 +294,41 @@ final class RecepcionLote
             estadoColeccion: $this->estadoColeccion,
             ocurridoEn: $ahora,
         );
+    }
+
+    /**
+     * El curador genera el acta solo despues de que recepcion EPN constato el lote.
+     */
+    public function generarActaRecepcion(string $curadorId): void
+    {
+        if (! in_array($this->estado, [EstadoRecepcionLote::VerificadoFisicamente, EstadoRecepcionLote::VerificadoConObservaciones], true)) {
+            throw new \DomainException('El acta solo puede generarse despues de recibir y constatar el lote.');
+        }
+
+        if ($this->actaEmitida()) {
+            return;
+        }
+
+        $ahora = new DateTimeImmutable;
+        $this->actaGeneradaPor = $this->actorValido($curadorId);
+        $this->actaGeneradaEn = $ahora;
         $this->emitirActaRecepcion($ahora);
     }
 
     /**
-     * Adjunta al acta el PDF firmado electrónicamente (FirmaEC) por el curador. La
+     * Adjunta al acta el PDF firmado electrónicamente por el curador. La
      * validación de que el PDF trae una firma electrónica real es responsabilidad del
      * caso de uso (mediante el puerto de validación de firma); el agregado solo exige
      * que el acta ya haya sido emitida (recepción finalizada).
      */
-    public function adjuntarActaFirmada(string $rutaPdfFirmado): void
+    public function adjuntarActaFirmada(string $rutaPdfFirmado, array $firmaMetadata = []): void
     {
         if (! $this->actaEmitida()) {
             throw new \DomainException('No es posible firmar un acta que aún no ha sido emitida');
+        }
+
+        if ($this->actaFirmada()) {
+            throw new \DomainException('El acta ya fue firmada y el expediente está cerrado');
         }
 
         $ruta = trim($rutaPdfFirmado);
@@ -297,10 +339,13 @@ final class RecepcionLote
         $ahora = new DateTimeImmutable;
         $this->actaFirmadaRuta = $ruta;
         $this->firmadaEn = $ahora;
+        $this->firmaMetadata = $firmaMetadata;
 
         $this->events[] = new ActaRecepcionFirmada(
             solicitudId: $this->solicitudId,
             ruta: $ruta,
+            estadoColeccion: $this->estadoColeccion
+                ?? throw new \DomainException('El lote firmado no tiene un régimen de colección definido'),
             ocurridoEn: $ahora,
         );
     }
@@ -384,6 +429,37 @@ final class RecepcionLote
         return $this->firmadaEn;
     }
 
+    public function recibidoPor(): ?string
+    {
+        return $this->recibidoPor;
+    }
+
+    public function actaGeneradaPor(): ?string
+    {
+        return $this->actaGeneradaPor;
+    }
+
+    public function actaGeneradaEn(): ?DateTimeImmutable
+    {
+        return $this->actaGeneradaEn;
+    }
+
+    public function verificadoEn(): ?DateTimeImmutable
+    {
+        return $this->verificadoEn;
+    }
+
+    public function suspendidoEn(): ?DateTimeImmutable
+    {
+        return $this->suspendidoEn;
+    }
+
+    /** @return array<string, mixed> */
+    public function firmaMetadata(): array
+    {
+        return $this->firmaMetadata;
+    }
+
     /**
      * Extrae y vacía la cola interna de eventos. El Handler los publica tras guardar.
      *
@@ -404,6 +480,16 @@ final class RecepcionLote
         if (! $this->estado->equals(EstadoRecepcionLote::EnVerificacion)) {
             throw TransicionEstadoInvalida::de($this->estado->value, $accion);
         }
+    }
+
+    private function actorValido(string $actorId): string
+    {
+        $actorId = trim($actorId);
+        if ($actorId === '') {
+            throw new \InvalidArgumentException('El funcionario responsable es obligatorio.');
+        }
+
+        return $actorId;
     }
 
     private function emitirActaRecepcion(DateTimeImmutable $ahora): void

@@ -13,6 +13,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarRecepcionConObservaciones\AceptarRecepcionConObservacionesHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarRecepcionConObservaciones\AceptarRecepcionConObservacionesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalmenteSolicitud\AprobarDocumentalmenteSolicitudHandler;
@@ -21,20 +22,25 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDonacionConT
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDonacionConTransferencia\AprobarDonacionConTransferenciaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\GenerarActaRecepcion\GenerarActaRecepcionHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\GenerarActaRecepcion\GenerarActaRecepcionInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
-use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaConObservaciones;
-use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaFisicamente;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaRecepcionFirmada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DetalleValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoColeccion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecepcionLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IngresarLoteEnColeccionListener;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
@@ -89,6 +95,10 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
 
     private AceptarRecepcionConObservacionesHandler $aceptarConObservacionesHandler;
 
+    private GenerarActaRecepcionHandler $generarActaRecepcionHandler;
+
+    private SubirActaRecepcionFirmadaHandler $subirActaFirmadaHandler;
+
     // ── Estado del escenario ─────────────────────────────────────────────────
 
     private ?SolicitudDeposito $solicitudEnCurso = null;
@@ -100,6 +110,8 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
     private string $investigadorId = 'inv-rec-001';
 
     private string $curadorId = 'cur-001';
+
+    private string $receptorId = 'rec-001';
 
     private ?CodigoQRLote $codigoQrLote = null;
 
@@ -137,6 +149,29 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         self::$app->instance(NotificacionInvestigadorPort::class, $this->fakeNotificacionInvestigador);
         self::$app->instance(NotificacionCuratoriaPort::class, new FakeNotificacionCuratoriaAdapter);
         self::$app->instance(IngresoColeccionPort::class, $this->fakeIngresoColeccion);
+        self::$app->instance(ValidacionFirmaElectronicaPort::class, new class implements ValidacionFirmaElectronicaPort
+        {
+            public function verificarFirma(string $rutaAbsoluta): ResultadoValidacionFirma
+            {
+                return ResultadoValidacionFirma::Firmado;
+            }
+
+            public function verificarFirmaDetallada(string $rutaFirmadaAbsoluta, string $rutaOriginalAbsoluta): DetalleValidacionFirma
+            {
+                return new DetalleValidacionFirma(
+                    resultado: ResultadoValidacionFirma::Firmado,
+                    integridadCriptografica: true,
+                    documentoCompletoFirmado: true,
+                    contenidoOficialCoincide: true,
+                    certificadoVigente: true,
+                    certificadoConfiable: true,
+                    certificado: [
+                        'nombre' => 'Curador EPN de prueba',
+                        'tipo_firma' => 'ETSI.CAdES.detached',
+                    ],
+                );
+            }
+        });
 
         // 3. Resolver Handlers — ya usan las instancias In-Memory.
         $this->aprobarDocumentalHandler = $this->make(AprobarDocumentalmenteSolicitudHandler::class);
@@ -145,6 +180,8 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         $this->aprobarRecepcionHandler = $this->make(AprobarRecepcionLoteHandler::class);
         $this->rechazarRecepcionHandler = $this->make(RechazarRecepcionLoteHandler::class);
         $this->aceptarConObservacionesHandler = $this->make(AceptarRecepcionConObservacionesHandler::class);
+        $this->generarActaRecepcionHandler = $this->make(GenerarActaRecepcionHandler::class);
+        $this->subirActaFirmadaHandler = $this->make(SubirActaRecepcionFirmadaHandler::class);
     }
 
     // ── Helpers de fixture ───────────────────────────────────────────────────
@@ -233,7 +270,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         ($this->iniciarRecepcionHandler)(
             new IniciarRecepcionLoteInput(
                 solicitudId: (string) $this->solicitudEnCurso->id(),
-                curadorId: $this->curadorId,
+                curadorId: $this->receptorId,
             )
         );
 
@@ -258,7 +295,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         );
     }
 
-    #[Given('el curador accede a los datos de la solicitud a partir de su Código QR')]
+    #[Given('el receptor EPN accede a los datos de la solicitud a partir de su Código QR')]
     public function elCuradorAccedeALosDatosDeLaSolicitudAPartirDeSuCodigoQr(): void
     {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
@@ -319,7 +356,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         $this->itemsVerificacion = $items;
     }
 
-    #[When('el curador aprueba la recepción del lote')]
+    #[When('el receptor EPN constata la recepción del lote')]
     public function elCuradorApruebaLaRecepcionDelLote(): void
     {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
@@ -329,7 +366,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             $this->ultimaRespuesta = ($this->aprobarRecepcionHandler)(
                 new AprobarRecepcionLoteInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
-                    curadorId: $this->curadorId,
+                    curadorId: $this->receptorId,
                     itemsVerificacion: $this->itemsVerificacion,
                 )
             );
@@ -355,21 +392,54 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         );
     }
 
-    #[Then('se emite el "Acta Digital de Recepción"')]
-    public function seEmiteElActaDigitalDeRecepcion(): void
+    #[Then('el acta final queda pendiente de curaduría')]
+    public function elActaFinalQuedaPendienteDeCuraduria(): void
     {
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
-        Assert::assertTrue(
+        Assert::assertFalse(
             $this->ultimaRespuesta->actaDigitalRecepcionEmitida,
-            'Se esperaba que se emitiera el Acta Digital de Recepción'
+            'Recepción EPN no debe emitir el acta reservada a curaduría'
         );
 
         $lote = $this->recepcionRepo->buscarPorSolicitudId($this->solicitudEnCurso->id());
         Assert::assertNotNull($lote, 'No se encontró el lote de recepción en el repositorio');
-        Assert::assertTrue(
+        Assert::assertFalse(
             $lote->actaEmitida(),
-            'Se esperaba que el lote registrara el Acta Digital de Recepción emitida'
+            'El acta final debe seguir pendiente después de constatar el lote'
         );
+    }
+
+    #[Then('los especímenes todavía no ingresan a la colección')]
+    public function losEspecimenesTodaviaNoIngresanALaColeccion(): void
+    {
+        Assert::assertNull(
+            $this->fakeIngresoColeccion->estadoColeccionDe((string) $this->solicitudEnCurso?->id()),
+            'La verificación física no puede accesionar material sin el acta final firmada'
+        );
+    }
+
+    #[When('el curador genera y firma electrónicamente el acta final')]
+    public function elCuradorGeneraYFirmaElectronicamenteElActaFinal(): void
+    {
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+        $solicitudId = (string) $this->solicitudEnCurso->id();
+
+        ($this->generarActaRecepcionHandler)(new GenerarActaRecepcionInput(
+            solicitudId: $solicitudId,
+            curadorId: $this->curadorId,
+        ));
+        ($this->subirActaFirmadaHandler)(new SubirActaRecepcionFirmadaInput(
+            solicitudId: $solicitudId,
+            curadorId: $this->curadorId,
+            rutaRelativa: 'actas/recepcion-firmada/prueba-behat.pdf',
+            rutaAbsoluta: '/tmp/acta-firmada-prueba-behat.pdf',
+            rutaOriginalAbsoluta: '/tmp/acta-original-prueba-behat.pdf',
+        ));
+
+        $lote = $this->recepcionRepo->buscarPorSolicitudId($this->solicitudEnCurso->id());
+        Assert::assertNotNull($lote);
+        Assert::assertTrue($lote->actaFirmada(), 'El acta final no quedó firmada');
+        Assert::assertSame($this->curadorId, $lote->actaGeneradaPor());
     }
 
     #[Then('los especímenes asociados ingresan a la colección en estado :estado_coleccion')]
@@ -409,20 +479,18 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
     }
 
     /**
-     * Entrega a su listener los eventos de recepción verificada que se publicaron.
+     * Entrega al listener el evento del acta final firmada publicado por el caso de uso.
      *
      * El contexto usa un publicador falso —para poder inspeccionar los eventos— y por
      * eso los listeners registrados en la aplicación no se disparan solos. Se invocan
-     * aquí para poder comprobar el efecto completo: recepción aprobada → especímenes
-     * en la colección.
+     * aquí para comprobar: recepción constatada → acta firmada → accesión.
      */
     private function entregarEventosAlListener(): void
     {
         $listener = self::$app->make(IngresarLoteEnColeccionListener::class);
 
         foreach ($this->fakePublisher->publishedEvents() as $evento) {
-            if ($evento instanceof RecepcionLoteVerificadaFisicamente
-                || $evento instanceof RecepcionLoteVerificadaConObservaciones) {
+            if ($evento instanceof ActaRecepcionFirmada) {
                 $listener->handle($evento);
             }
         }
@@ -443,14 +511,14 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
     // anomalía es subsanable
     // =========================================================================
 
-    #[When('el curador registra el fallo de integridad subsanable :motivo_fallo')]
+    #[When('el receptor EPN registra el fallo de integridad subsanable :motivo_fallo')]
     public function elCuradorRegistraElFalloDeIntegridadSubsanable(string $motivo_fallo): void
     {
         Assert::assertNotSame('', trim($motivo_fallo), 'El motivo del fallo subsanable no puede estar vacío');
         $this->motivoFallo = $motivo_fallo;
     }
 
-    #[Then('el curador rechaza la recepción del lote')]
+    #[Then('el receptor EPN rechaza la recepción del lote')]
     public function elCuradorRechazaLaRecepcionDelLote(): void
     {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
@@ -460,7 +528,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             $this->ultimaRespuesta = ($this->rechazarRecepcionHandler)(
                 new RechazarRecepcionLoteInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
-                    curadorId: $this->curadorId,
+                    curadorId: $this->receptorId,
                     motivoFallo: $this->motivoFallo,
                 )
             );
@@ -515,7 +583,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         $this->itemsNoConformes = [$item_no_conforme];
     }
 
-    #[When('el curador acepta la recepción del lote con observaciones')]
+    #[When('el receptor EPN acepta la recepción del lote con observaciones')]
     public function elCuradorAceptaLaRecepcionDelLoteConObservaciones(): void
     {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
@@ -525,7 +593,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             $this->ultimaRespuesta = ($this->aceptarConObservacionesHandler)(
                 new AceptarRecepcionConObservacionesInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
-                    curadorId: $this->curadorId,
+                    curadorId: $this->receptorId,
                     itemsNoConformes: $this->itemsNoConformes,
                 )
             );
@@ -534,7 +602,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         }
     }
 
-    #[Then('las observaciones quedan registradas en el "Acta Digital de Recepción"')]
+    #[Then('las observaciones quedan registradas para el "Acta Digital de Recepción"')]
     public function lasObservacionesQuedanRegistradasEnElActa(): void
     {
         Assert::assertNull(
@@ -542,11 +610,6 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
         );
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
-        Assert::assertTrue(
-            $this->ultimaRespuesta->observacionesRegistradasEnActa,
-            'Se esperaba que las observaciones quedaran registradas en el Acta Digital de Recepción'
-        );
-
         $lote = $this->recepcionRepo->buscarPorSolicitudId($this->solicitudEnCurso->id());
         Assert::assertNotNull($lote, 'No se encontró el lote de recepción en el repositorio');
         Assert::assertNotEmpty(

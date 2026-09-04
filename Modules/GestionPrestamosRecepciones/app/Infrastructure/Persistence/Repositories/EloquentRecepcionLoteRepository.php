@@ -52,6 +52,12 @@ final class EloquentRecepcionLoteRepository implements RecepcionLoteRepositoryIn
                     : null,
                 'acta_firmada_ruta' => $lote->actaFirmadaRuta(),
                 'firmada_en' => $lote->firmadaEn()?->format('Y-m-d H:i:s'),
+                'recibido_por' => $lote->recibidoPor(),
+                'verificado_en' => $lote->verificadoEn()?->format('Y-m-d H:i:s'),
+                'suspendido_en' => $lote->suspendidoEn()?->format('Y-m-d H:i:s'),
+                'acta_generada_por' => $lote->actaGeneradaPor(),
+                'acta_generada_en' => $lote->actaGeneradaEn()?->format('Y-m-d H:i:s'),
+                'firma_metadata' => $lote->firmaMetadata(),
             ],
         );
     }
@@ -66,6 +72,15 @@ final class EloquentRecepcionLoteRepository implements RecepcionLoteRepositoryIn
     public function buscarPorSolicitudId(SolicitudDepositoId $solicitudId): ?RecepcionLote
     {
         $model = RecepcionLoteEloquentModel::where('solicitud_deposito_id', (string) $solicitudId)->first();
+
+        return $model !== null ? $this->reconstituir($model) : null;
+    }
+
+    public function buscarPorSolicitudIdParaActualizar(SolicitudDepositoId $solicitudId): ?RecepcionLote
+    {
+        $model = RecepcionLoteEloquentModel::where('solicitud_deposito_id', (string) $solicitudId)
+            ->lockForUpdate()
+            ->first();
 
         return $model !== null ? $this->reconstituir($model) : null;
     }
@@ -103,6 +118,12 @@ final class EloquentRecepcionLoteRepository implements RecepcionLoteRepositoryIn
             actaRecepcion: $acta !== null ? DocumentoAdjunto::of($acta['nombre'], $acta['ruta']) : null,
             actaFirmadaRuta: $model->acta_firmada_ruta,
             firmadaEn: $model->firmada_en?->toDateTimeImmutable(),
+            recibidoPor: $model->recibido_por,
+            actaGeneradaPor: $model->acta_generada_por,
+            firmaMetadata: $model->firma_metadata ?? [],
+            actaGeneradaEn: $model->acta_generada_en?->toDateTimeImmutable(),
+            verificadoEn: $model->verificado_en?->toDateTimeImmutable(),
+            suspendidoEn: $model->suspendido_en?->toDateTimeImmutable(),
         );
     }
 }

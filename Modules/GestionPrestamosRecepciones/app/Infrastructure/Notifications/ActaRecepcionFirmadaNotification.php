@@ -46,7 +46,7 @@ final class ActaRecepcionFirmadaNotification extends Notification
             'tipo' => 'acta_recepcion_firmada',
             'solicitudId' => $this->solicitudId,
             'numero' => $this->numero,
-            'mensaje' => 'El acta de recepción de tu depósito '.($this->numero ?? '').' fue firmada por el curador y ya puedes descargarla.',
+            'mensaje' => 'El acta de recepción de tu depósito '.($this->numero ?? '').' fue firmada y validada; el lote ya puede ingresar a la colección.',
             'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
             'icono' => 'shield-check',
         ];

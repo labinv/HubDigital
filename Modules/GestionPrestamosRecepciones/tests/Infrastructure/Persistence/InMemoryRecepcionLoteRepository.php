@@ -41,6 +41,12 @@ final class InMemoryRecepcionLoteRepository implements RecepcionLoteRepositoryIn
         return null;
     }
 
+    public function buscarPorSolicitudIdParaActualizar(SolicitudDepositoId $solicitudId): ?RecepcionLote
+    {
+        // El repositorio de pruebas es monohilo; conserva el contrato sin bloqueo real.
+        return $this->buscarPorSolicitudId($solicitudId);
+    }
+
     public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?RecepcionLote
     {
         foreach ($this->store as $lote) {

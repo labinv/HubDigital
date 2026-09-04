@@ -6,11 +6,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Listeners;
 
 use Illuminate\Support\Facades\Log;
 use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
-use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaConObservaciones;
-use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaFisicamente;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaRecepcionFirmada;
 
 /**
- * Traspasa a la colección los especímenes de un lote cuya recepción física se aprobó.
+ * Accesiona en la colección los especímenes de un lote cuyo acta final ya fue
+ * firmada y validada criptográficamente.
  *
  * Se ejecuta de forma síncrona, dentro de la misma petición que aprueba la recepción.
  *
@@ -34,7 +34,7 @@ final class IngresarLoteEnColeccionListener
         private readonly IngresoColeccionPort $ingresoColeccion,
     ) {}
 
-    public function handle(RecepcionLoteVerificadaFisicamente|RecepcionLoteVerificadaConObservaciones $event): void
+    public function handle(ActaRecepcionFirmada $event): void
     {
         $solicitudId = (string) $event->solicitudId;
 
@@ -43,7 +43,7 @@ final class IngresarLoteEnColeccionListener
             estadoColeccion: $event->estadoColeccion->value,
         );
 
-        Log::info('Lote depositado ingresado a la colección', [
+        Log::info('Lote depositado ingresado a la colección tras el acta firmada', [
             'solicitud_id' => $solicitudId,
             'estado_custodia' => $event->estadoColeccion->value,
             'especimenes_creados' => $resultado->especimenesCreados,

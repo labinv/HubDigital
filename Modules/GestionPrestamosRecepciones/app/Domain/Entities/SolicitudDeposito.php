@@ -273,6 +273,16 @@ final class SolicitudDeposito
             $this->nombreInvestigadorDocumento = $datos->nombreInvestigador;
         }
 
+        if ($datos->nroIndividuos !== null) {
+            $this->nroIndividuos = $datos->nroIndividuos;
+        }
+        if ($datos->nroMorfoespecies !== null) {
+            $this->nroMorfoespecies = $datos->nroMorfoespecies;
+        }
+        if ($datos->nroLotes !== null) {
+            $this->nroLotes = $datos->nroLotes;
+        }
+
         if ($this->nroIndividuos === null) {
             $this->marcarDatoComoFaltante('N.º Individuos');
         }

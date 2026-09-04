@@ -27,10 +27,10 @@
     }"
 >
 
-    <div>
-        <flux:heading size="lg" level="2" class="font-display">Origen de los especímenes</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Declara la procedencia de los especímenes y tu situación regulatoria actual.
+    <div class="border-b border-blue-navy/10 pb-5">
+        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Origen de los especímenes</flux:heading>
+        <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
+            Declara la procedencia y situación regulatoria. Con estas respuestas determinaremos los documentos que debes adjuntar.
         </flux:text>
     </div>
 
@@ -44,7 +44,12 @@
                 titulo="Nacional (Ecuador)"
                 grupo="origenRecoleccion"
                 descripcion="Especímenes recolectados dentro del territorio ecuatoriano."
+                role="radio"
+                x-bind:aria-checked="active"
+                tabindex="0"
                 x-on:click="seleccionarOrigen('Nacional (Ecuador)')"
+                x-on:keydown.enter.prevent="seleccionarOrigen('Nacional (Ecuador)')"
+                x-on:keydown.space.prevent="seleccionarOrigen('Nacional (Ecuador)')"
             >
                 <x-slot:icono>
                     <flux:icon name="flag" class="size-5 text-science-blue" />
@@ -56,7 +61,12 @@
                 titulo="Exterior (Extranjero)"
                 grupo="origenRecoleccion"
                 descripcion="Provenientes de una colección o expedición fuera del país."
+                role="radio"
+                x-bind:aria-checked="active"
+                tabindex="0"
                 x-on:click="seleccionarOrigen('Exterior (Extranjero)')"
+                x-on:keydown.enter.prevent="seleccionarOrigen('Exterior (Extranjero)')"
+                x-on:keydown.space.prevent="seleccionarOrigen('Exterior (Extranjero)')"
             >
                 <x-slot:icono>
                     <flux:icon name="globe-alt" class="size-5 text-science-blue" />
@@ -77,7 +87,12 @@
                     titulo="Posee permisos del MAE"
                     grupo="situacionRegulatoria"
                     descripcion="Cuenta con autorización vigente de recolección y permiso de movilización emitidos por el MAE."
+                    role="radio"
+                    x-bind:aria-checked="active"
+                    tabindex="0"
                     x-on:click="seleccionarSituacion('Posee permisos del MAE')"
+                    x-on:keydown.enter.prevent="seleccionarSituacion('Posee permisos del MAE')"
+                    x-on:keydown.space.prevent="seleccionarSituacion('Posee permisos del MAE')"
                 >
                     <x-slot:icono>
                         <flux:icon name="document-check" class="size-5 text-bio-green" />
@@ -89,7 +104,12 @@
                     titulo="Sin permisos del MAE"
                     grupo="situacionRegulatoria"
                     descripcion="Solo dispone de carta de justificación institucional o personal que explica la ausencia de permisos."
+                    role="radio"
+                    x-bind:aria-checked="active"
+                    tabindex="0"
                     x-on:click="seleccionarSituacion('Sin permisos del MAE')"
+                    x-on:keydown.enter.prevent="seleccionarSituacion('Sin permisos del MAE')"
+                    x-on:keydown.space.prevent="seleccionarSituacion('Sin permisos del MAE')"
                 >
                     <x-slot:icono>
                         <flux:icon name="exclamation-triangle" class="size-5 text-warning" />
@@ -108,7 +128,12 @@
                     titulo="Dentro de Pichincha"
                     grupo="provincia"
                     descripcion="Los especímenes fueron recolectados en la provincia de Pichincha."
+                    role="radio"
+                    x-bind:aria-checked="active"
+                    tabindex="0"
                     x-on:click="seleccionarZona('Dentro de Pichincha', 'Pichincha')"
+                    x-on:keydown.enter.prevent="seleccionarZona('Dentro de Pichincha', 'Pichincha')"
+                    x-on:keydown.space.prevent="seleccionarZona('Dentro de Pichincha', 'Pichincha')"
                 >
                     <x-slot:icono>
                         <flux:icon name="map-pin" class="size-5 text-bio-green" />
@@ -120,7 +145,12 @@
                     titulo="Fuera de Pichincha"
                     grupo="provincia"
                     descripcion="Los especímenes provienen de otra provincia del Ecuador."
+                    role="radio"
+                    x-bind:aria-checked="active"
+                    tabindex="0"
                     x-on:click="seleccionarZona('Fuera de Pichincha', 'Fuera de Pichincha')"
+                    x-on:keydown.enter.prevent="seleccionarZona('Fuera de Pichincha', 'Fuera de Pichincha')"
+                    x-on:keydown.space.prevent="seleccionarZona('Fuera de Pichincha', 'Fuera de Pichincha')"
                 >
                     <x-slot:icono>
                         <flux:icon name="map" class="size-5 text-science-blue" />

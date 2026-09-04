@@ -7,6 +7,7 @@ enum RolUsuario: string
     case PRESTAMISTA = 'PRESTAMISTA';
     case DEPOSITANTE = 'DEPOSITANTE';
     case CURADOR = 'CURADOR';
+    case RECEPTOR = 'RECEPTOR';
 
     /**
      * Nombre legible por humanos del rol (para la interfaz).
@@ -17,6 +18,7 @@ enum RolUsuario: string
             self::PRESTAMISTA => 'Solicitante',
             self::DEPOSITANTE => 'Depositante',
             self::CURADOR => 'Curador',
+            self::RECEPTOR => 'Recepción EPN',
         };
     }
 }

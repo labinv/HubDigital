@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicit
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\SolicitudFirmadaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
@@ -30,6 +31,7 @@ final class EnviarSolicitudDepositoHandler
         private TransactionManagerPort $transactionManager,
         private EventPublisherPort $eventPublisher,
         private NotificacionCuratoriaPort $notificacionCuratoria,
+        private SolicitudFirmadaPort $solicitudFirmada,
     ) {}
 
     /**
@@ -47,6 +49,12 @@ final class EnviarSolicitudDepositoHandler
 
         if ($solicitud === null) {
             throw SolicitudNoEncontradaException::conId($input->solicitudId);
+        }
+
+        if (! $this->solicitudFirmada->estaFirmada($input->solicitudId)) {
+            throw new \DomainException(
+                'Debes generar y firmar electrónicamente la solicitud oficial antes de enviarla.'
+            );
         }
 
         $solicitud->avanzarARevisionCuraduria();

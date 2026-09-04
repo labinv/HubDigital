@@ -10,8 +10,8 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 /**
  * Evento de dominio emitido cuando el curador acepta la recepción con observaciones
- * (derivadas de los ítems no conformes del checklist): las observaciones quedan
- * registradas y los especímenes ingresan a la colección en el estado dado.
+ * (derivadas de los ítems no conformes del checklist): las observaciones y el
+ * régimen propuesto quedan listos para el acta final, todavía sin accesionar el lote.
  */
 final readonly class RecepcionLoteVerificadaConObservaciones
 {
