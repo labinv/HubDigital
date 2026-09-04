@@ -139,6 +139,25 @@ final class RegistroEspecimen
     }
 
     /**
+     * Confirma que el nombre declarado fue encontrado sin ambigüedad en el
+     * catálogo taxonómico. Nunca oculta un hallazgo no catalogado.
+     */
+    public function validarTecnicamente(): void
+    {
+        if (! $this->estado->equals(EstadoRegistroEspecimen::Pendiente)) {
+            return;
+        }
+
+        if ($this->noCatalogado) {
+            throw new \DomainException(
+                'Un registro no catalogado requiere justificación antes de considerarse completo'
+            );
+        }
+
+        $this->estado = EstadoRegistroEspecimen::ValidadoTecnicamente;
+    }
+
+    /**
      * Revierte una corrección previamente aceptada, devolviendo el registro a Pendiente.
      *
      * @throws \DomainException Si el registro no había sido corregido por sugerencia.

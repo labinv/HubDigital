@@ -29,7 +29,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacio
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacionInicial\ValidarDocumentacionInicialInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudInput;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoDocumental;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
@@ -40,6 +42,7 @@ use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificac
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeSolicitudFirmadaAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryMatrizEspeciesRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudDepositoRepository;
 use PHPUnit\Framework\Assert;
 
@@ -54,6 +57,8 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     // ── Repositorios In-Memory (acceso directo para @Given y @Then) ──────────
 
     private InMemorySolicitudDepositoRepository $repo;
+
+    private InMemoryMatrizEspeciesRepository $matrizRepo;
 
     private FakeEventPublisherAdapter $fakePublisher;
 
@@ -106,10 +111,12 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
         // 1. Crear instancias In-Memory fresh para este escenario
         $this->repo = new InMemorySolicitudDepositoRepository;
+        $this->matrizRepo = new InMemoryMatrizEspeciesRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
 
         // 2. Interceptar el container para que los Handlers reciban estas instancias
         self::$app->instance(SolicitudDepositoRepositoryInterface::class, $this->repo);
+        self::$app->instance(MatrizEspeciesRepositoryInterface::class, $this->matrizRepo);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(ExtraccionDatosDocumentoPort::class, new FakeExtraccionDatosDocumentoAdapter);
@@ -181,6 +188,25 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     private function slugify(string $texto): string
     {
         return strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $texto) ?? '');
+    }
+
+    private function asegurarMatrizCompleta(SolicitudDeposito $solicitud): void
+    {
+        if ($this->matrizRepo->buscarPorSolicitudId((string) $solicitud->id()) !== null) {
+            return;
+        }
+
+        $matriz = MatrizEspecies::crear(
+            id: $this->matrizRepo->nextIdentity(),
+            solicitudId: (string) $solicitud->id(),
+            camposDwCPresentes: ['scientificName' => true],
+            tipoTramite: $solicitud->tipoTramite(),
+        );
+        $registroId = $matriz->agregarRegistroEspecimen('Danaus plexippus');
+        if ($solicitud->tipoTramite() !== 'Donación') {
+            $matriz->validarRegistroCatalogado($registroId);
+        }
+        $this->matrizRepo->guardar($matriz);
     }
 
     // =========================================================================
@@ -728,6 +754,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     public function elInvestigadorEnviaLaSolicitud(): void
     {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+        $this->asegurarMatrizCompleta($this->solicitudEnCurso);
 
         try {
             $this->ultimaRespuesta = ($this->enviarSolicitudHandler)(

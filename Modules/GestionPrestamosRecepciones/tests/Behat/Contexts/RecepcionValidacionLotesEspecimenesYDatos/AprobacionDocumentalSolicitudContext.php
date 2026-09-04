@@ -26,6 +26,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalm
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalmenteSolicitud\RechazarDocumentalmenteSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasInput;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaTransferenciaDominioGenerada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\CodigoQRAsignado;
@@ -59,6 +60,8 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
     // ── Repositorios In-Memory (acceso directo para @Given y @Then) ──────────
 
     private InMemorySolicitudDepositoRepository $repo;
+
+    private InMemoryMatrizEspeciesRepository $matrizRepo;
 
     private FakeEventPublisherAdapter $fakePublisher;
 
@@ -108,6 +111,7 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
 
         // 1. Crear instancias In-Memory fresh para este escenario
         $this->repo = new InMemorySolicitudDepositoRepository;
+        $this->matrizRepo = new InMemoryMatrizEspeciesRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
         $this->fakeNotificacionCuratoria = new FakeNotificacionCuratoriaAdapter;
 
@@ -116,7 +120,7 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         // Los handlers de aprobación consultan la matriz para avisar de las correcciones
         // de curaduría: sin este binding resolverían el repositorio Eloquent y el escenario
         // dejaría de ser 100% en memoria.
-        self::$app->instance(MatrizEspeciesRepositoryInterface::class, new InMemoryMatrizEspeciesRepository);
+        self::$app->instance(MatrizEspeciesRepositoryInterface::class, $this->matrizRepo);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(NotificacionCuratoriaPort::class, $this->fakeNotificacionCuratoria);
@@ -153,6 +157,18 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         $solicitud->adjuntarDocumento('Matriz Darwin Core', 'documentos/matriz-darwin-core-test.csv');
 
         $this->repo->guardar($solicitud);
+
+        $matriz = MatrizEspecies::crear(
+            id: $this->matrizRepo->nextIdentity(),
+            solicitudId: (string) $solicitud->id(),
+            camposDwCPresentes: ['scientificName' => true],
+            tipoTramite: $solicitud->tipoTramite(),
+        );
+        $registroId = $matriz->agregarRegistroEspecimen('Danaus plexippus');
+        if ($solicitud->tipoTramite() !== 'Donación') {
+            $matriz->validarRegistroCatalogado($registroId);
+        }
+        $this->matrizRepo->guardar($matriz);
 
         // Aserción de integridad: la entidad quedó persistida y es del investigador dueño.
         $persistida = $this->repo->buscarPorId($solicitud->id());

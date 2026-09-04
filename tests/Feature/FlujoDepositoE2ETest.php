@@ -22,6 +22,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLot
 use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaInput;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaRecepcionFirmada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
@@ -77,11 +78,12 @@ test('flujo integral separa depositante receptor y curador hasta el acta final f
 
     $solicitudes = new InMemorySolicitudDepositoRepository;
     $recepciones = new InMemoryRecepcionLoteRepository;
+    $matrices = new InMemoryMatrizEspeciesRepository;
     $eventos = new FakeEventPublisherAdapter;
 
     app()->instance(SolicitudDepositoRepositoryInterface::class, $solicitudes);
     app()->instance(RecepcionLoteRepositoryInterface::class, $recepciones);
-    app()->instance(MatrizEspeciesRepositoryInterface::class, new InMemoryMatrizEspeciesRepository);
+    app()->instance(MatrizEspeciesRepositoryInterface::class, $matrices);
     app()->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
     app()->instance(EventPublisherPort::class, $eventos);
     app()->instance(NotificacionInvestigadorPort::class, new FakeNotificacionInvestigadorAdapter);
@@ -127,6 +129,16 @@ test('flujo integral separa depositante receptor y curador hasta el acta final f
         tipoTramite: 'Depósito',
     );
     $solicitudes->guardar($solicitud);
+
+    $matriz = MatrizEspecies::crear(
+        id: $matrices->nextIdentity(),
+        solicitudId: (string) $solicitud->id(),
+        camposDwCPresentes: ['scientificName' => true],
+        tipoTramite: $solicitud->tipoTramite(),
+    );
+    $registroId = $matriz->agregarRegistroEspecimen('Danaus plexippus');
+    $matriz->validarRegistroCatalogado($registroId);
+    $matrices->guardar($matriz);
 
     app(EnviarSolicitudDepositoHandler::class)(new EnviarSolicitudDepositoInput(
         solicitudId: (string) $solicitud->id(),

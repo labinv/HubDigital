@@ -7,7 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
-/** Valida que se reciban documentos adjuntos (array<nombre, ruta>) para cargar documentación oficial de una SolicitudDeposito. */
+/** Valida cargas multipart reales; nunca acepta rutas o claves aportadas por el cliente. */
 final class CargarDocumentacionOficialRequest extends FormRequest
 {
     public function authorize(): bool
@@ -19,15 +19,23 @@ final class CargarDocumentacionOficialRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'documentos' => ['required', 'array', 'min:1'],
-            'documentos.*' => ['string', 'max:500'],
+            'documentos' => ['required', 'array', 'min:1', 'max:10'],
+            'documentos.*' => ['required', 'file', 'mimes:pdf', 'max:20480'],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v): void {
-            foreach (array_keys($this->input('documentos', [])) as $nombre) {
+            $documentos = $this->allFiles()['documentos'] ?? $this->input('documentos', []);
+            foreach (array_keys(is_array($documentos) ? $documentos : []) as $nombre) {
+                if (is_string($nombre)
+                    && (mb_strlen($nombre) > 160 || preg_match('/[\x00-\x1F\x7F]/u', $nombre) === 1)
+                ) {
+                    $v->errors()->add('documentos', 'Cada nombre lógico debe tener hasta 160 caracteres y no incluir controles.');
+                    break;
+                }
+
                 if (! is_string($nombre) || trim((string) $nombre) === '') {
                     $v->errors()->add('documentos', 'Cada clave del array documentos debe ser un string no vacío.');
                     break;

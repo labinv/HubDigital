@@ -36,8 +36,8 @@ final class CargarDocumentacionOficialHandler
             nombresDocumentos: array_keys($input->documentos),
         );
 
-        if (! $solicitud->tieneDatosFaltantes() && $solicitud->estaEnBorrador()) {
-            $solicitud->avanzarARevisionCuraduria();
+        foreach ($input->documentosAlmacenados as $nombre => $ruta) {
+            $solicitud->adjuntarDocumento($nombre, $ruta);
         }
 
         $this->transactionManager->executeTransactional(function () use ($solicitud): void {

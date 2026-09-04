@@ -57,6 +57,9 @@ final class FinalizarEnvioSolicitudDepositoHandler
         if ($matriz === null) {
             throw MatrizEspeciesRequeridaException::paraFinalizar();
         }
+        if (! $matriz->estaCompletaParaEnvio()) {
+            throw MatrizEspeciesRequeridaException::incompletaParaFinalizar();
+        }
 
         $alertasDerivadasACuraduria = $matriz->estado()->equals(EstadoMatrizEspecies::CargadaConAlertas)
             && $matriz->todosLosHallazgosJustificados();

@@ -1656,6 +1656,14 @@ final class RegistroSolicitudDeposito extends Component
 
                 $esNoCatalogado = $validacion['estado'] === 'no_catalogado';
 
+                // La validación exacta debe quedar en el agregado, no solo en el
+                // estado visual de Livewire: el envío vuelve a comprobar la matriz
+                // desde persistencia para impedir saltarse este paso.
+                if ($validacion['estado'] === 'catalogado') {
+                    $matriz->validarRegistroCatalogado($id);
+                    $huboActualizacionEntidad = true;
+                }
+
                 // Sincronizar el flag noCatalogado en la entidad para que el guard
                 // de justificar() funcione correctamente.
                 if ($esNoCatalogado && ! $registro->esNoCatalogado()) {
@@ -1926,7 +1934,7 @@ final class RegistroSolicitudDeposito extends Component
 
         $pendientes = array_filter(
             $this->estadosRegistros,
-            fn (array $r) => $r['estado'] === 'Pendiente'
+            fn (array $r) => in_array($r['estado'], ['Pendiente', 'No Verificado'], true)
         );
 
         if (! empty($pendientes)) {

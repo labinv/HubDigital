@@ -9,6 +9,8 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\SolicitudFirmadaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\MatrizEspeciesRequeridaException;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
@@ -32,6 +34,7 @@ final class EnviarSolicitudDepositoHandler
         private EventPublisherPort $eventPublisher,
         private NotificacionCuratoriaPort $notificacionCuratoria,
         private SolicitudFirmadaPort $solicitudFirmada,
+        private MatrizEspeciesRepositoryInterface $matrizRepo,
     ) {}
 
     /**
@@ -55,6 +58,14 @@ final class EnviarSolicitudDepositoHandler
             throw new \DomainException(
                 'Debes generar y firmar electrónicamente la solicitud oficial antes de enviarla.'
             );
+        }
+
+        $matriz = $this->matrizRepo->buscarPorSolicitudId($input->solicitudId);
+        if ($matriz === null) {
+            throw MatrizEspeciesRequeridaException::paraFinalizar();
+        }
+        if (! $matriz->estaCompletaParaEnvio()) {
+            throw MatrizEspeciesRequeridaException::incompletaParaFinalizar();
         }
 
         $solicitud->avanzarARevisionCuraduria();

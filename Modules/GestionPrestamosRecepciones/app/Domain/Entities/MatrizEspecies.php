@@ -275,6 +275,14 @@ final class MatrizEspecies
         $registro->marcarComoNoCatalogado();
     }
 
+    /** Confirma en el agregado el resultado exacto de la validación taxonómica. */
+    public function validarRegistroCatalogado(string $registroId): void
+    {
+        $registro = $this->obtenerRegistroOFallar($registroId);
+        $registro->validarTecnicamente();
+        $this->recalcularEstadoMatriz();
+    }
+
     /**
      * Revierte una sugerencia de corrección tipográfica previamente aceptada.
      * Solo aplica a solicitudes de tipo Depósito.
@@ -387,6 +395,34 @@ final class MatrizEspecies
     public function todosLosHallazgosJustificados(): bool
     {
         return empty($this->registrosPendientesDeJustificacion());
+    }
+
+    /**
+     * Invariante de envío: debe existir al menos un espécimen y todos los
+     * registros deben estar resueltos técnica o curatorialmente.
+     */
+    public function estaCompletaParaEnvio(): bool
+    {
+        if ($this->registros === []) {
+            return false;
+        }
+
+        foreach ($this->registros as $registro) {
+            $resuelto = $registro->estado()->equals(EstadoRegistroEspecimen::ValidadoTecnicamente)
+                || $registro->estado()->equals(EstadoRegistroEspecimen::ValidacionManualPorCuraduria);
+
+            if (! $resuelto) {
+                return false;
+            }
+
+            if ($registro->estado()->equals(EstadoRegistroEspecimen::ValidacionManualPorCuraduria)
+                && $registro->motivoJustificacion() === null
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function identificacionOriginalConservada(): bool

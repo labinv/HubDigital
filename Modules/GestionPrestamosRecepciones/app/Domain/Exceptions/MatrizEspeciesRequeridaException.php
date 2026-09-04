@@ -16,4 +16,11 @@ final class MatrizEspeciesRequeridaException extends \DomainException
             'No se puede finalizar el envío de la solicitud sin una matriz de especímenes asociada'
         );
     }
+
+    public static function incompletaParaFinalizar(): self
+    {
+        return new self(
+            'No se puede finalizar el envío: la matriz debe contener especímenes y todos sus registros deben estar resueltos'
+        );
+    }
 }

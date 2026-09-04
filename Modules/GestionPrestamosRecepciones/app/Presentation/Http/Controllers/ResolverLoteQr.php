@@ -10,8 +10,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ResolverLotePorCodi
 
 /**
  * Punto de entrada del Código QR del lote. Resuelve la solicitud a partir del código
- * escaneado y redirige de forma inteligente según el actor autenticado: el curador va
- * a la recepción física, el depositante dueño al detalle de su depósito.
+ * escaneado y redirige de forma inteligente según el actor autenticado: recepción EPN
+ * constata el lote, curaduría revisa el expediente y el depositante dueño consulta su
+ * trámite.
  */
 final class ResolverLoteQr
 {
@@ -23,8 +24,12 @@ final class ResolverLoteQr
 
         $user = auth()->user();
 
+        if ($user?->esReceptor()) {
+            return redirect()->route('prestamos.receptor.deposito.recepcion', $lote->solicitudId);
+        }
+
         if ($user?->esCurador()) {
-            return redirect()->route('prestamos.curador.deposito.recepcion', $lote->solicitudId);
+            return redirect()->route('prestamos.curador.deposito.revisar', $lote->solicitudId);
         }
 
         if ($user?->esDepositante() && (string) $user->id === $lote->investigadorId) {
