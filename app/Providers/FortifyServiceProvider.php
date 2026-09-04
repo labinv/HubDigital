@@ -52,7 +52,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureAuthentication();
 
         $minutes = (int) config('auth.remember_lifetime', 60 * 24 * 30);
-        if ($minutes > 0 && method_exists(Auth::guard('web'), 'setRememberDuration')) {
+        if (filled(config('app.key')) && $minutes > 0 && method_exists(Auth::guard('web'), 'setRememberDuration')) {
             Auth::guard('web')->setRememberDuration($minutes);
         }
     }

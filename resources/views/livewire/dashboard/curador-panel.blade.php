@@ -77,6 +77,17 @@
                 icon="table-cells" tone="blue"
                 hint="Filas validadas contra Darwin Core" />
         </div>
+
+        <div class="grid gap-4 pt-1 lg:grid-cols-2">
+            <x-bar-chart
+                titulo="Tendencia de solicitudes"
+                subtitulo="Depósitos y donaciones enviados durante los últimos 12 meses"
+                :filas="$graficoDepositosPorMes" />
+            <x-bar-chart
+                titulo="Estado de los depósitos"
+                subtitulo="Distribución actual del trabajo documental y curatorial"
+                :filas="$graficoEstadosDepositos" />
+        </div>
     </section>
 
     {{-- ── Préstamos ──────────────────────────────────────────────── --}}

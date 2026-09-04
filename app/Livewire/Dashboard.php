@@ -42,6 +42,8 @@ class Dashboard extends Component
                 ...$this->resumenSeguimientoFisico($cajasHandler, $alertasHandler),
                 'graficoFamilias' => $this->graficoFamilias(),
                 'graficoDeterminacion' => $this->graficoDeterminacion(),
+                'graficoDepositosPorMes' => $this->graficoDepositosPorMes(),
+                'graficoEstadosDepositos' => $this->graficoEstadosDepositos(),
             ]),
             RolUsuario::RECEPTOR => view('livewire.dashboard.receptor-panel', [
                 'pendientesRecepcion' => SolicitudDepositoEloquentModel::query()
@@ -179,11 +181,60 @@ class Dashboard extends Component
         return $filas;
     }
 
-    /**
-     * Métricas del investigador solicitante.
-     *
-     * @return array<string, int>
-     */
+    /** @return list<array{etiqueta: string, valor: int}> */
+    private function graficoDepositosPorMes(): array
+    {
+        $inicio = now()->startOfMonth()->subMonths(11);
+        $conteos = SolicitudDepositoEloquentModel::query()
+            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
+            ->where('created_at', '>=', $inicio)
+            ->selectRaw("TO_CHAR(created_at, 'YYYY-MM') AS periodo, COUNT(*) AS total")
+            ->groupByRaw("TO_CHAR(created_at, 'YYYY-MM')")
+            ->pluck('total', 'periodo');
+
+        $meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+        $filas = [];
+
+        for ($desplazamiento = 0; $desplazamiento < 12; $desplazamiento++) {
+            $mes = $inicio->copy()->addMonths($desplazamiento);
+            $filas[] = [
+                'etiqueta' => $meses[$mes->month - 1].' '.$mes->format('y'),
+                'valor' => (int) ($conteos[$mes->format('Y-m')] ?? 0),
+            ];
+        }
+
+        return $filas;
+    }
+
+    /** @return list<array{etiqueta: string, valor: int}> */
+    private function graficoEstadosDepositos(): array
+    {
+        $conteos = SolicitudDepositoEloquentModel::query()
+            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
+            ->selectRaw('estado, COUNT(*) AS total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        $estados = [
+            EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value => 'Por revisar',
+            EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value => 'En asesoría',
+            EstadoSolicitudDeposito::RequiereCorreccion->value => 'Por corregir',
+            EstadoSolicitudDeposito::AprobadaDocumentalmente->value => 'Aprobadas',
+            EstadoSolicitudDeposito::Rechazada->value => 'Rechazadas',
+            EstadoSolicitudDeposito::RechazoPermanente->value => 'Rechazo final',
+            EstadoSolicitudDeposito::Devuelta->value => 'Devueltas',
+        ];
+
+        return collect($estados)
+            ->map(fn (string $etiqueta, string $estado): array => [
+                'etiqueta' => $etiqueta,
+                'valor' => (int) ($conteos[$estado] ?? 0),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** @return array<string, int> */
     private function estadisticasPrestamista(string $investigadorId): array
     {
         $solicitudes = SolicitudPrestamoModel::query()
