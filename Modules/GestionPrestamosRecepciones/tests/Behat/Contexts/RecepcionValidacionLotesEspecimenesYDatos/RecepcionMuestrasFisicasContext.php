@@ -200,9 +200,8 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             tipoTramite: $tipoTramite,
         );
 
-        // Documentación oficial + matriz Darwin Core (información completa exigida).
-        $solicitud->adjuntarDocumento('Formato de Solicitud', 'documentos/formato-solicitud-test.pdf');
-        $solicitud->adjuntarDocumento('Matriz Darwin Core', 'documentos/matriz-darwin-core-test.csv');
+        // Los formularios y la matriz se construyen con los datos capturados por el
+        // sistema; no se simula una carga manual de esos archivos institucionales.
         $solicitud->avanzarARevisionCuraduria();
         $this->solicitudRepo->guardar($solicitud);
 
@@ -423,18 +422,30 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
     {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
         $solicitudId = (string) $this->solicitudEnCurso->id();
+        $rutaActaFirmada = tempnam(sys_get_temp_dir(), 'acta-firmada-behat-');
+        $rutaActaOriginal = tempnam(sys_get_temp_dir(), 'acta-original-behat-');
 
-        ($this->generarActaRecepcionHandler)(new GenerarActaRecepcionInput(
-            solicitudId: $solicitudId,
-            curadorId: $this->curadorId,
-        ));
-        ($this->subirActaFirmadaHandler)(new SubirActaRecepcionFirmadaInput(
-            solicitudId: $solicitudId,
-            curadorId: $this->curadorId,
-            rutaRelativa: 'actas/recepcion-firmada/prueba-behat.pdf',
-            rutaAbsoluta: '/tmp/acta-firmada-prueba-behat.pdf',
-            rutaOriginalAbsoluta: '/tmp/acta-original-prueba-behat.pdf',
-        ));
+        Assert::assertNotFalse($rutaActaFirmada, 'No se pudo crear el PDF firmado temporal de prueba');
+        Assert::assertNotFalse($rutaActaOriginal, 'No se pudo crear el PDF original temporal de prueba');
+        file_put_contents($rutaActaFirmada, "%PDF-1.7\n% acta firmada Behat\n");
+        file_put_contents($rutaActaOriginal, "%PDF-1.7\n% acta original Behat\n");
+
+        try {
+            ($this->generarActaRecepcionHandler)(new GenerarActaRecepcionInput(
+                solicitudId: $solicitudId,
+                curadorId: $this->curadorId,
+            ));
+            ($this->subirActaFirmadaHandler)(new SubirActaRecepcionFirmadaInput(
+                solicitudId: $solicitudId,
+                curadorId: $this->curadorId,
+                rutaRelativa: 'actas/recepcion-firmada/prueba-behat.pdf',
+                rutaAbsoluta: $rutaActaFirmada,
+                rutaOriginalAbsoluta: $rutaActaOriginal,
+            ));
+        } finally {
+            @unlink($rutaActaFirmada);
+            @unlink($rutaActaOriginal);
+        }
 
         $lote = $this->recepcionRepo->buscarPorSolicitudId($this->solicitudEnCurso->id());
         Assert::assertNotNull($lote);

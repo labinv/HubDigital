@@ -3,7 +3,7 @@
 @listo
 Característica: Registro de solicitud de depósito
     Como investigador
-    Quiero registrar una nueva solicitud de depósito con la documentación oficial
+    Quiero registrar una nueva solicitud de depósito con datos guiados y documentación de respaldo
     Para iniciar el trámite de entrega de especímenes entomológicos a la colección
 
     Antecedentes:
@@ -32,9 +32,9 @@ Característica: Registro de solicitud de depósito
 
         Ejemplos:
             | origen_recoleccion    | situacion_regulatoria           | documento_requerido                                                                                                        |
-            | Nacional (Ecuador)    | Posee permisos del MAE        | Formato solicitud depósito y Copia de la autorización de recolección (MAE) y Copia del permiso de movilización           |
-            | Nacional (Ecuador)    | Sin permisos del MAE          | Formato solicitud depósito y Documento de explicación de motivos y/o carta de justificación (institucional o personal)     |
-            | Exterior (Extranjero) | Proviene de colección foránea   | Formato solicitud depósito y Documento de procedencia de los especimenes                                                   |
+            | Nacional (Ecuador)    | Posee permisos del MAE          | Copia de la autorización de recolección (MAE) y Copia del permiso de movilización                                      |
+            | Nacional (Ecuador)    | Sin permisos del MAE            | Documento de explicación de motivos y/o carta de justificación (institucional o personal)                              |
+            | Exterior (Extranjero) | Proviene de colección foránea   | Documento de procedencia de los especimenes                                                                            |
 
     @deposito @excepcion
     Escenario: Escalabilidad de la solicitud por falta total de documentación
@@ -61,7 +61,6 @@ Característica: Registro de solicitud de depósito
         Dado que el investigador seleccionó el trámite de "Depósito"
         Cuando el investigador carga los siguientes documentos:
             | Documento Oficial                               |
-            | Formato solicitud depósito                      |
             | Copia de la autorización de recolección (MAE) |
             | Copia del permiso de movilización               |
         Entonces la solicitud incorpora automáticamente la siguiente información:
@@ -77,7 +76,6 @@ Característica: Registro de solicitud de depósito
         Dado que el investigador seleccionó el trámite de "Donación"
         Cuando el investigador carga los siguientes documentos obligatorios:
             | Documento Oficial                               |
-            | Formato solicitud donación                      |
             | Carta de cesión de derechos / origen lícito     |
         Entonces la solicitud registra el origen de la donación
 
@@ -96,8 +94,8 @@ Característica: Registro de solicitud de depósito
         Entonces la solicitud se registra exitosamente
         Y pasa a estar "Pendiente de Revisión por Curaduría"
 
-    Esquema del escenario: Validación de identidad mediante el Formato de Solicitud
-        Dado que el investigador ha cargado el "Formato solicitud depósito"
+    Esquema del escenario: Validación de identidad mediante el Formato de Solicitud generado
+        Dado que el sistema ha generado el "Formato solicitud depósito"
         Y su perfil de usuario está registrado como "<nombre_perfil>"
         Cuando se compara el perfil del investigador con el nombre "<nombre_en_documento>" del formulario
         Entonces el resultado de la validación es "<resultado>"

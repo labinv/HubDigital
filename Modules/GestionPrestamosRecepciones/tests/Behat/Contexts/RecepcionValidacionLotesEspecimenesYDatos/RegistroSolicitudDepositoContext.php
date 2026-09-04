@@ -667,7 +667,6 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
 
         $documentos = [
-            'Formato solicitud donación' => 'documentos/formato-solicitud-donacion-test.pdf',
             'Carta de cesión de derechos / origen lícito' => 'documentos/carta-de-cesion-de-derechos-origen-licito-test.pdf',
         ];
 
@@ -830,25 +829,17 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     // ESQUEMA DE ESCENARIO: Validación de identidad mediante Formato de Solicitud
     // =========================================================================
 
-    #[Given('que el investigador ha cargado el :nombreFormulario')]
-    public function queElInvestigadorHaCargadoEl(string $nombreFormulario): void
+    #[Given('que el sistema ha generado el :nombreFormulario')]
+    public function queElSistemaHaGeneradoEl(string $nombreFormulario): void
     {
         Assert::assertNotEmpty($nombreFormulario, 'El nombre del formulario no puede estar vacío');
 
         $solicitud = $this->sembrarSolicitudDepositoBase();
-        $solicitud->adjuntarDocumento(
-            nombre: $nombreFormulario,
-            ruta: "documentos/{$this->slugify($nombreFormulario)}-test.pdf",
-        );
-        $this->repo->guardar($solicitud);
 
-        // Aserción de precondición
+        // El formulario se genera desde el expediente. No se adjunta un PDF creado
+        // fuera de HubDigital para habilitar la validación de identidad.
         $persistida = $this->repo->buscarPorId($solicitud->id());
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada tras adjuntar el formulario');
-        Assert::assertTrue(
-            $persistida->tieneDocumentoAdjunto($nombreFormulario),
-            "Se esperaba que '{$nombreFormulario}' estuviera adjunto"
-        );
+        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada al generar el formulario');
     }
 
     #[Given('su perfil de usuario está registrado como :nombrePerfil')]

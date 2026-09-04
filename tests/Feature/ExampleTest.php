@@ -1,7 +1,10 @@
 <?php
 
-test('the root redirects to the public portal', function () {
+test('la raiz muestra el portal publico del laboratorio', function (): void {
     $response = $this->get(route('home'));
 
-    $response->assertRedirect('/portal');
+    $response
+        ->assertOk()
+        ->assertSee('Ciencia, colecciones y biodiversidad del Ecuador')
+        ->assertSee('Laboratorio de Invertebrados');
 });

@@ -3,7 +3,8 @@
 test('el portal de depósitos es público', function (): void {
     $this->get('/depositos')
         ->assertOk()
-        ->assertSee('Depósito de colecciones biológicas')
+        ->assertSee('Depósito de colecciones')
+        ->assertSee('biológicas')
         ->assertSee('Iniciar una solicitud');
 });
 

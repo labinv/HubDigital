@@ -5,6 +5,9 @@ declare(strict_types=1);
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\R2S3Client;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 test('firma una operacion R2 con SigV4, ruta RFC3986 y payload SHA-256', function (): void {
     Http::fake(['*' => Http::response('', 200)]);

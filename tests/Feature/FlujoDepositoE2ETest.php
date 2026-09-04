@@ -45,6 +45,18 @@ use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemor
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudDepositoRepository;
 
 test('flujo integral separa depositante receptor y curador hasta el acta final firmada', function (): void {
+    $rutaActaFirmada = tempnam(sys_get_temp_dir(), 'acta-firmada-');
+    $rutaActaOriginal = tempnam(sys_get_temp_dir(), 'acta-original-');
+    $rutaSegundoIntento = tempnam(sys_get_temp_dir(), 'acta-segundo-');
+
+    expect($rutaActaFirmada)->not->toBeFalse()
+        ->and($rutaActaOriginal)->not->toBeFalse()
+        ->and($rutaSegundoIntento)->not->toBeFalse();
+
+    file_put_contents($rutaActaFirmada, "%PDF-1.7\n% acta firmada de prueba\n");
+    file_put_contents($rutaActaOriginal, "%PDF-1.7\n% acta original de prueba\n");
+    file_put_contents($rutaSegundoIntento, "%PDF-1.7\n% segundo intento de prueba\n");
+
     $depositante = User::factory()->depositante()->create([
         'first_name' => 'Consultora',
         'last_name' => 'MEPN Prueba',
@@ -114,8 +126,6 @@ test('flujo integral separa depositante receptor y curador hasta el acta final f
         investigadorId: (string) $depositante->id,
         tipoTramite: 'Depósito',
     );
-    $solicitud->adjuntarDocumento('Formato de Solicitud', 'private/solicitud-firmada.pdf');
-    $solicitud->adjuntarDocumento('Matriz Darwin Core', 'private/detalle-biologico.json');
     $solicitudes->guardar($solicitud);
 
     app(EnviarSolicitudDepositoHandler::class)(new EnviarSolicitudDepositoInput(
@@ -162,8 +172,8 @@ test('flujo integral separa depositante receptor y curador hasta el acta final f
         solicitudId: (string) $solicitud->id(),
         curadorId: (string) $curador->id,
         rutaRelativa: 'actas/recepcion-firmada/prueba.pdf',
-        rutaAbsoluta: '/tmp/acta-firmada-prueba.pdf',
-        rutaOriginalAbsoluta: '/tmp/acta-original-prueba.pdf',
+        rutaAbsoluta: $rutaActaFirmada,
+        rutaOriginalAbsoluta: $rutaActaOriginal,
     ));
 
     $listener = app(IngresarLoteEnColeccionListener::class);
@@ -188,12 +198,16 @@ test('flujo integral separa depositante receptor y curador hasta el acta final f
         solicitudId: (string) $solicitud->id(),
         curadorId: (string) $curador->id,
         rutaRelativa: 'actas/recepcion-firmada/intento-segundo.pdf',
-        rutaAbsoluta: '/tmp/acta-firmada-intento-segundo.pdf',
-        rutaOriginalAbsoluta: '/tmp/acta-original-prueba.pdf',
+        rutaAbsoluta: $rutaSegundoIntento,
+        rutaOriginalAbsoluta: $rutaActaOriginal,
     )))->toThrow(\DomainException::class, 'El acta ya fue firmada');
 
     expect($recepciones->buscarPorSolicitudId($solicitud->id())?->actaFirmadaRuta())
         ->toBe('actas/recepcion-firmada/prueba.pdf');
+
+    @unlink($rutaActaFirmada);
+    @unlink($rutaActaOriginal);
+    @unlink($rutaSegundoIntento);
 });
 
 test('proyecta exactamente las quince columnas de Datos deposito material MEPN', function (): void {
