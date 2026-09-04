@@ -52,6 +52,8 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
             $tipoEsperado = $this->analizador->tipoEsperadoParaNombre($nombre);
             $contenidoCompatible = $tipoEsperado === null
                 || ($analisis['tipo_detectado'] ?? null) === $tipoEsperado;
+            $contenidoAutocompletable = $contenidoCompatible
+                && ($analisis['autocompletado_habilitado'] ?? false) === true;
             $metadata['documentos'][$nombre] = [
                 'motor' => $motor,
                 'caracteres' => mb_strlen($texto),
@@ -59,6 +61,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                 'procesado_localmente' => true,
                 'modelo_ocr' => str_starts_with($motor, 'tesseract') ? 'Tesseract 5 spa+eng' : null,
                 'contenido_compatible_con_casilla' => $contenidoCompatible,
+                'contenido_autocompletable' => $contenidoAutocompletable,
                 'analisis' => $analisis,
             ];
 
@@ -80,26 +83,31 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
             ];
 
             foreach ($estructurados as $campo => $valor) {
-                if (! $contenidoCompatible) {
+                if (! $contenidoAutocompletable) {
                     continue;
                 }
                 if (($valores[$campo] ?? null) === null && is_string($valor) && trim($valor) !== '') {
                     $campoAnalisis = match ($campo) {
                         'nroPermisoRecoleccion' => 'numero_autorizacion',
                         'nroPermisoMovilizacion' => 'numero_documento',
+                        'grupoAnimal' => 'grupos_biologicos',
                         'localidad' => 'origen',
                         'nombreInvestigador' => 'titular',
+                        'nroIndividuos' => 'numero_individuos',
+                        'nroMorfoespecies' => 'numero_morfoespecies',
+                        'nroLotes' => 'numero_lotes',
                         default => null,
                     };
+                    if ($campoAnalisis === null || ! $this->analizador->campoTieneEvidenciaSuficiente($analisis, $campoAnalisis)) {
+                        continue;
+                    }
                     $valores[$campo] = trim($valor);
                     $metadata['campos'][$campo] = [
-                        'confianza' => $analisis['confianza'] ?? 0.0,
+                        'confianza' => $analisis['confianzas_campos'][$campoAnalisis] ?? 0.0,
                         'fuente' => $nombre,
                         'motor' => $motor,
                         'metodo' => 'clasificador_ambiental',
-                        'evidencia' => $campoAnalisis !== null
-                            ? ($analisis['evidencias_campos'][$campoAnalisis] ?? null)
-                            : null,
+                        'evidencia' => $analisis['evidencias_campos'][$campoAnalisis] ?? null,
                         'requiere_confirmacion_humana' => true,
                     ];
                 }
@@ -119,7 +127,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                 }
             }
 
-            foreach (($analisis['codigos_muestra'] ?? []) as $codigo) {
+            foreach ($contenidoAutocompletable ? ($analisis['codigos_muestra'] ?? []) : [] as $codigo) {
                 $metadata['registros_sugeridos'][] = [
                     'recordNumber' => $codigo,
                     'researchPermit' => $analisis['numero_autorizacion'] ?? null,

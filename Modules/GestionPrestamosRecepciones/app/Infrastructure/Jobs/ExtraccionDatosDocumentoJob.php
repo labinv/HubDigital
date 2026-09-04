@@ -144,11 +144,22 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 
             $validacionContenido = $analizadorDocumento->validarExpediente($documentosAnalizados);
             $metadatosExtraccion['validacion_contenido'] = $validacionContenido;
+            if (($validacionContenido['autocompletado_habilitado'] ?? false) !== true) {
+                foreach ($metadatosExtraccion['campos'] as $campo => &$detalleCampo) {
+                    if (($detalleCampo['metodo'] ?? null) !== 'clasificador_ambiental') {
+                        continue;
+                    }
+                    $acumulado[$campo] = null;
+                    $detalleCampo['bloqueado_por_expediente'] = true;
+                    $detalleCampo['motivo_bloqueo'] = 'La validación cruzada del expediente detectó faltantes, ambigüedad o contradicciones.';
+                }
+                unset($detalleCampo);
+            }
 
             // Los códigos de muestra son el vínculo entre la guía y cada fila de la
             // matriz. Se conservan sin fabricar una identificación taxonómica.
             $registrosSugeridos = [];
-            foreach ($metadatosExtraccion['documentos'] as $detalle) {
+            foreach (($validacionContenido['autocompletado_habilitado'] ?? false) === true ? $metadatosExtraccion['documentos'] : [] as $detalle) {
                 $analisis = $detalle['analisis'] ?? [];
                 foreach (($analisis['codigos_muestra'] ?? []) as $codigo) {
                     $registrosSugeridos[$codigo] = [
