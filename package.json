@@ -5,7 +5,8 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:signer": "node tests/js/firmador-smoke.mjs"
+        "test:signer": "node tests/js/firmador-smoke.mjs",
+        "test:signer:p12-local": "node tests/js/firmador-p12-local.mjs"
     },
     "dependencies": {
         "@signpdf/placeholder-pdf-lib": "^3.3.0",
