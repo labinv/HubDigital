@@ -37,7 +37,7 @@ class Dashboard extends Component
         $user = Auth::user();
 
         return match ($user->rolActivo()) {
-            RolUsuario::CURADOR => view('livewire.dashboard.curador-panel', [
+            RolUsuario::CURADOR, RolUsuario::ADMIN => view('livewire.dashboard.curador-panel', [
                 ...$this->resumenCuraduria(),
                 ...$this->resumenSeguimientoFisico($cajasHandler, $alertasHandler),
                 'graficoFamilias' => $this->graficoFamilias(),

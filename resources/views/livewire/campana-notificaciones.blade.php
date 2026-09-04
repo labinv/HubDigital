@@ -5,6 +5,8 @@
     data-hub-notification-url="{{ $ultimaNoLeida?->data['url'] ?? '' }}"
     x-data="{
         open: false,
+        pwaStatus: 'checking',
+        pwaMessage: '',
         coords: { left: 0, top: 0 },
         toggle() {
             this.open = ! this.open;
@@ -24,6 +26,7 @@
     x-on:resize.window="open && reposition()"
     x-on:scroll.window.capture="open && reposition()"
     x-on:keydown.escape.window="open = false"
+    x-on:hub-pwa-status.window="pwaStatus = $event.detail.status; pwaMessage = $event.detail.message || ''"
     class="relative">
 
     <button type="button" x-ref="trigger" x-on:click="toggle()"
@@ -53,11 +56,18 @@
         </div>
 
         <div class="border-b border-border bg-bg-main px-4 py-2.5" data-hub-notification-opt-in>
-            <button type="button" x-on:click="window.hubPwaNotifications?.enable()"
+            <button type="button" x-show="pwaStatus !== 'enabled'" x-on:click="window.hubPwaNotifications?.enable()"
                 class="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-science-blue hover:underline">
                 <flux:icon name="device-phone-mobile" class="size-3.5" />
                 Activar avisos en este dispositivo
             </button>
+            <button type="button" x-show="pwaStatus === 'enabled'" x-on:click="window.hubPwaNotifications?.disable()"
+                class="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-bio-green hover:underline">
+                <flux:icon name="check-circle" class="size-3.5" />
+                Avisos activos · Desactivar
+            </button>
+            <p x-show="pwaMessage" x-text="pwaMessage" aria-live="polite"
+                class="mt-1.5 text-center text-[11px] text-text-secondary"></p>
         </div>
 
         <div class="max-h-96 overflow-y-auto divide-y divide-border">

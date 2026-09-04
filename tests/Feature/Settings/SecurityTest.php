@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
+use PragmaRX\Google2FA\Google2FA;
 
 beforeEach(function () {
     $this->skipUnlessFortifyFeature(Features::twoFactorAuthentication());
@@ -70,8 +72,20 @@ test('two factor authentication disabled when confirmation abandoned between req
 });
 
 test('password can be updated', function () {
+    config(['session.driver' => 'database']);
+
     $user = User::factory()->create([
         'password' => Hash::make('password'),
+    ]);
+
+    $user->createToken('antes-del-cambio');
+    DB::table('sessions')->insert([
+        'id' => 'sesion-anterior-password',
+        'user_id' => $user->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'Pest',
+        'payload' => '',
+        'last_activity' => time(),
     ]);
 
     $this->actingAs($user);
@@ -84,7 +98,81 @@ test('password can be updated', function () {
 
     $response->assertHasNoErrors();
 
-    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
+    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue()
+        ->and($user->tokens()->count())->toBe(0);
+
+    $this->assertDatabaseMissing('sessions', [
+        'id' => 'sesion-anterior-password',
+    ]);
+    $this->assertAuthenticatedAs($user);
+});
+
+test('disabling two factor authentication revokes previous tokens and sessions', function () {
+    config(['session.driver' => 'database']);
+
+    $user = User::factory()->withTwoFactor()->create();
+    $user->createToken('antes-de-desactivar-2fa');
+
+    DB::table('sessions')->insert([
+        'id' => 'sesion-anterior-2fa',
+        'user_id' => $user->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'Pest',
+        'payload' => '',
+        'last_activity' => time(),
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.security')
+        ->call('disable')
+        ->assertHasNoErrors();
+
+    $user->refresh();
+
+    expect($user->hasEnabledTwoFactorAuthentication())->toBeFalse()
+        ->and($user->tokens()->count())->toBe(0);
+
+    $this->assertDatabaseMissing('sessions', ['id' => 'sesion-anterior-2fa']);
+    $this->assertAuthenticatedAs($user);
+});
+
+test('confirming two factor authentication revokes tokens and prior sessions', function () {
+    config(['session.driver' => 'database']);
+
+    $secret = (new Google2FA)->generateSecretKey();
+    $user = User::factory()->create();
+    $user->forceFill([
+        'two_factor_secret' => encrypt($secret),
+        'two_factor_recovery_codes' => encrypt(json_encode(['recovery-code'])),
+        'two_factor_confirmed_at' => null,
+    ])->save();
+    $user->createToken('antes-de-activar-2fa');
+
+    DB::table('sessions')->insert([
+        'id' => 'sesion-anterior-activar-2fa',
+        'user_id' => $user->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'Pest',
+        'payload' => '',
+        'last_activity' => time(),
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.two-factor-setup-modal', [
+        'requiresConfirmation' => true,
+    ])->set('code', (new Google2FA)->getCurrentOtp($secret))
+        ->call('confirmTwoFactor')
+        ->assertHasNoErrors();
+
+    $user->refresh();
+
+    expect($user->hasEnabledTwoFactorAuthentication())->toBeTrue()
+        ->and($user->tokens()->count())->toBe(0);
+
+    $this->assertDatabaseMissing('sessions', ['id' => 'sesion-anterior-activar-2fa']);
+    $this->assertAuthenticatedAs($user);
 });
 
 test('correct password must be provided to update password', function () {

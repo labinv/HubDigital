@@ -8,14 +8,18 @@ function readPushPayload(data) {
     }
 }
 
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
 self.addEventListener('push', (event) => {
     const payload = readPushPayload(event.data);
     event.waitUntil(self.registration.showNotification(payload.title ?? 'HubDigital', {
         body: payload.body ?? 'Tienes una nueva notificación.',
-        icon: '/images/hub-icon.png',
-        badge: '/images/hub-icon.png',
+        icon: payload.icon ?? '/images/hub-icon.png',
+        badge: payload.badge ?? '/images/hub-icon.png',
         tag: payload.tag ?? 'hubdigital',
-        data: { url: payload.url ?? '/dashboard' },
+        renotify: true,
+        data: { url: payload.data?.url ?? payload.url ?? '/dashboard' },
     }));
 });
 

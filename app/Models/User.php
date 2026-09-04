@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RolUsuario;
+use App\Notifications\Auth\QueuedResetPassword;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -17,13 +18,14 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 #[Fillable(['first_name', 'last_name', 'email', 'password', 'rol', 'cargo', 'institucion'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable;
+    use HasApiTokens, HasFactory, HasPushSubscriptions, HasUuids, Notifiable, TwoFactorAuthenticatable;
 
     protected $table = 'usuarios.users';
 
@@ -47,6 +49,34 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function name(): Attribute
     {
         return Attribute::get(fn () => trim($this->first_name.' '.$this->last_name));
+    }
+
+    /**
+     * Una cuenta tiene una sola identidad de correo, sin diferencias por
+     * mayúsculas o espacios accidentales. La segunda columna está protegida
+     * por un índice único en base de datos para cubrir también condiciones de
+     * carrera entre dos registros simultáneos.
+     */
+    protected function email(): Attribute
+    {
+        return Attribute::set(function (mixed $value): array {
+            $normalizado = self::normalizarEmail((string) $value);
+
+            return [
+                'email' => $normalizado,
+                'email_normalizado' => $normalizado,
+            ];
+        });
+    }
+
+    public static function normalizarEmail(string $email): string
+    {
+        return Str::lower(trim($email));
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new QueuedResetPassword((string) $token));
     }
 
     /**
@@ -142,9 +172,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
         $asignados = $this->rolesAsignados();
 
-        $esRolInterno = in_array($rol, [RolUsuario::CURADOR, RolUsuario::RECEPTOR], true);
+        $esRolInterno = in_array($rol, RolUsuario::rolesInternos(), true);
         $tieneRolInterno = $asignados->contains(
-            fn (RolUsuario $asignado): bool => in_array($asignado, [RolUsuario::CURADOR, RolUsuario::RECEPTOR], true)
+            fn (RolUsuario $asignado): bool => in_array($asignado, RolUsuario::rolesInternos(), true)
         );
 
         if ($esRolInterno && $asignados->isNotEmpty()) {
@@ -177,5 +207,41 @@ class User extends Authenticatable implements MustVerifyEmail
     public function esPrestamista(): bool
     {
         return $this->tieneRol(RolUsuario::PRESTAMISTA);
+    }
+
+    public function esAdministrador(): bool
+    {
+        return $this->tieneRol(RolUsuario::ADMIN);
+    }
+
+    public function esUsuarioInterno(): bool
+    {
+        return $this->tieneAlgunRol(...RolUsuario::rolesInternos());
+    }
+
+    /**
+     * Capacidades mínimas de un token emitido por el inicio de sesión API.
+     * Nunca incluye `*` ni `esp32`; los dispositivos se aprovisionan aparte.
+     *
+     * @return list<string>
+     */
+    public function habilidadesApiInteractiva(): array
+    {
+        $habilidades = [];
+
+        if ($this->esDepositante() || $this->esAdministrador()) {
+            $habilidades[] = 'depositos:gestionar';
+        }
+        if ($this->esPrestamista() || $this->esAdministrador()) {
+            $habilidades[] = 'prestamos:gestionar';
+        }
+        if ($this->esCurador() || $this->esAdministrador()) {
+            $habilidades[] = 'curaduria:gestionar';
+        }
+        if ($this->esReceptor() || $this->esAdministrador()) {
+            $habilidades[] = 'recepcion:gestionar';
+        }
+
+        return array_values(array_unique($habilidades));
     }
 }

@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\User;
+use App\Notifications\Auth\QueuedResetPassword;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 
@@ -21,6 +24,44 @@ test('reset password link can be requested', function () {
     $user = User::factory()->create();
 
     $this->post(route('password.request'), ['email' => $user->email]);
+
+    Notification::assertSentTo($user, ResetPassword::class);
+});
+
+test('password reset email is queued to reduce account enumeration timing', function () {
+    Notification::fake();
+
+    $user = User::factory()->create();
+
+    $this->post(route('password.request'), ['email' => $user->email]);
+
+    Notification::assertSentTo($user, QueuedResetPassword::class, function ($notification) {
+        expect($notification)->toBeInstanceOf(ShouldQueue::class);
+
+        return true;
+    });
+});
+
+test('password recovery does not reveal whether an account exists', function () {
+    Notification::fake();
+    $user = User::factory()->create(['email' => 'existente@example.com']);
+
+    $existing = $this->post(route('password.email'), ['email' => $user->email]);
+    $existing->assertSessionHas('status');
+    $genericMessage = session('status');
+
+    $missing = $this->post(route('password.email'), ['email' => 'no-existe@example.com']);
+    $missing->assertSessionHas('status', $genericMessage);
+
+    Notification::assertSentTo($user, ResetPassword::class);
+});
+
+test('password recovery recognizes a canonicalized email', function () {
+    Notification::fake();
+    $user = User::factory()->create(['email' => 'recuperar@example.com']);
+
+    $this->post(route('password.email'), ['email' => ' RECUPERAR@EXAMPLE.COM '])
+        ->assertSessionHasNoErrors();
 
     Notification::assertSentTo($user, ResetPassword::class);
 });
@@ -45,6 +86,15 @@ test('password can be reset with valid token', function () {
     Notification::fake();
 
     $user = User::factory()->create();
+    $user->createToken('antes-de-recuperar-clave');
+    DB::table('sessions')->insert([
+        'id' => 'sesion-anterior-reset',
+        'user_id' => $user->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'Pest',
+        'payload' => '',
+        'last_activity' => time(),
+    ]);
 
     $this->post(route('password.request'), ['email' => $user->email]);
 
@@ -59,6 +109,9 @@ test('password can be reset with valid token', function () {
         $response
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('login', absolute: false));
+
+        expect($user->tokens()->count())->toBe(0);
+        $this->assertDatabaseMissing('sessions', ['id' => 'sesion-anterior-reset']);
 
         return true;
     });

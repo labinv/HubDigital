@@ -8,6 +8,11 @@ use Illuminate\Validation\Rule;
 
 class RegistroUsuarioRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['email' => User::normalizarEmail((string) $this->input('email'))]);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -17,7 +22,7 @@ class RegistroUsuarioRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email_normalizado')],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
     }

@@ -3,11 +3,21 @@
     "short_name": "HubDigital EPN",
     "description": "Gestión de depósitos y colecciones biológicas del MEPN.",
     "lang": "es-EC",
-    "start_url": "/dashboard",
+    "id": "/",
+    "start_url": "/",
     "scope": "/",
     "display": "standalone",
     "background_color": "#f5f7fa",
     "theme_color": "#17375e",
+    "categories": ["education", "science", "productivity"],
+    "shortcuts": [
+        {
+            "name": "Depósitos biológicos",
+            "short_name": "Depósitos",
+            "url": "/depositos",
+            "icons": [{ "src": "/images/hub-icon.png", "sizes": "512x512", "type": "image/png" }]
+        }
+    ],
     "icons": [
         { "src": "/images/hub-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
         { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }

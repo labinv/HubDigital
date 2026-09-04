@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\NormalizeAuthenticationEmail;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -8,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Middleware\EnsureOwnsDepositRequest;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,8 +19,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            NormalizeAuthenticationEmail::class,
+        ]);
+
         $middleware->alias([
             'role' => CheckRole::class,
+            'deposit.owner' => EnsureOwnsDepositRequest::class,
             'ability' => CheckAbilities::class,
             'abilities' => CheckForAnyAbility::class,
         ]);

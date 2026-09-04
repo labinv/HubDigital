@@ -24,7 +24,10 @@ final class CheckRole
             $roles,
         );
 
-        if (! $user->tieneAlgunRol(...$esperados)) {
+        // Administración es un rol interno asignado fuera del registro público
+        // y puede operar todas las áreas. El resto se autoriza por membresía
+        // persistida, nunca por un valor enviado por el navegador.
+        if (! $user->esAdministrador() && ! $user->tieneAlgunRol(...$esperados)) {
             abort(403, 'No tienes permiso para acceder a esta sección.');
         }
 

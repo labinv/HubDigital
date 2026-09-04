@@ -145,4 +145,15 @@ return [
 
     'remember_lifetime' => (int) env('AUTH_REMEMBER_LIFETIME', 60 * 24 * 30),
 
+    // Solo tokens emitidos por el login interactivo. Los tokens de dispositivos
+    // (por ejemplo ESP32) se aprovisionan por separado y no heredan este plazo.
+    'api_token_lifetime' => (int) env('AUTH_API_TOKEN_LIFETIME', 480),
+
+    // Solo estos dominios pueden recibir roles internos mediante el comando
+    // administrativo. El registro web continúa reservado a roles públicos.
+    'internal_email_domains' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('AUTH_INTERNAL_EMAIL_DOMAINS', 'epn.edu.ec')),
+    ))),
+
 ];

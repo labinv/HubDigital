@@ -6,11 +6,13 @@
         <p class="text-sm text-text-secondary">Únete al Hub Digital y gestiona tus especímenes de forma eficiente.</p>
     </div>
 
-    {{-- Role selector — Alpine maneja el toggle visual sin round-trips al servidor --}}
-    <div
-        x-data="{ role: $wire.entangle('role') }"
-        class="flex flex-col gap-2"
-    >
+    {{-- Fortify centraliza validación, normalización, hash y evento Registered. --}}
+    <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-4" novalidate
+        x-data="{ role: @js(strtolower(old('rol', 'PRESTAMISTA'))) }">
+        @csrf
+
+        {{-- Selector de rol público. Los roles internos nunca se aceptan aquí. --}}
+        <div class="flex flex-col gap-2">
         <p class="text-sm font-medium text-text-primary">¿Cuál es tu propósito?</p>
 
         <div class="grid grid-cols-2 gap-3">
@@ -73,23 +75,22 @@
 
         </div>
 
-        @error('role')
+        @error('rol')
             <p class="flex items-center gap-1 text-xs text-error">
                 <flux:icon name="exclamation-circle" variant="outline" class="size-3.5 shrink-0" />
                 {{ $message }}
             </p>
         @enderror
-    </div>
-
-    {{-- Form --}}
-    <form wire:submit="submit" class="flex flex-col gap-4" novalidate>
+            <input type="hidden" name="rol" x-bind:value="role.toUpperCase()">
+        </div>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <flux:field>
                 <flux:label class="font-medium text-text-primary">Nombre</flux:label>
                 <flux:input
-                    wire:model="first_name"
+                    name="first_name"
                     type="text"
+                    value="{{ old('first_name') }}"
                     placeholder="Tu nombre"
                     autocomplete="given-name"
                     autofocus
@@ -100,8 +101,9 @@
             <flux:field>
                 <flux:label class="font-medium text-text-primary">Apellido</flux:label>
                 <flux:input
-                    wire:model="last_name"
+                    name="last_name"
                     type="text"
+                    value="{{ old('last_name') }}"
                     placeholder="Tu apellido"
                     autocomplete="family-name"
                 />
@@ -112,8 +114,9 @@
         <flux:field>
             <flux:label class="font-medium text-text-primary">Correo electrónico</flux:label>
             <flux:input
-                wire:model="email"
+                name="email"
                 type="email"
+                value="{{ old('email') }}"
                 placeholder="tu@email.com"
                 autocomplete="email"
             />
@@ -123,15 +126,16 @@
         {{-- Datos del depositante: solo cuando el propósito es depositar material biológico.
              Alimentan el Acta recepción-depósito oficial (MEPN). --}}
         <div
-            x-show="$wire.role === 'depositante'"
+            x-show="role === 'depositante'"
             x-collapse
             class="flex flex-col gap-4"
         >
             <flux:field>
                 <flux:label class="font-medium text-text-primary">Cargo o posición</flux:label>
                 <flux:input
-                    wire:model="cargo"
+                    name="cargo"
                     type="text"
+                    value="{{ old('cargo') }}"
                     placeholder="Ej. Coordinador Técnico de Proyectos"
                     autocomplete="organization-title"
                 />
@@ -141,8 +145,9 @@
             <flux:field>
                 <flux:label class="font-medium text-text-primary">Institución o empresa</flux:label>
                 <flux:input
-                    wire:model="institucion"
+                    name="institucion"
                     type="text"
+                    value="{{ old('institucion') }}"
                     placeholder="Ej. EcoSambito C. Ltda"
                     autocomplete="organization"
                 />
@@ -153,7 +158,7 @@
         <flux:field>
             <flux:label class="font-medium text-text-primary">Contraseña</flux:label>
             <flux:input
-                wire:model="password"
+                name="password"
                 type="password"
                 placeholder="Mínimo 8 caracteres"
                 autocomplete="new-password"
@@ -165,7 +170,7 @@
         <flux:field>
             <flux:label class="font-medium text-text-primary">Confirmar contraseña</flux:label>
             <flux:input
-                wire:model="password_confirmation"
+                name="password_confirmation"
                 type="password"
                 placeholder="Repite tu contraseña"
                 autocomplete="new-password"
@@ -185,14 +190,9 @@
             type="submit"
             variant="primary"
             class="mt-1 w-full bg-bio-green! border-bio-green! hover:bg-bio-green/90! text-white! font-semibold"
-            wire:loading.attr="disabled"
         >
-            <span wire:loading.remove class="flex items-center justify-center gap-2">
+            <span class="flex items-center justify-center gap-2">
                 Crear cuenta
-            </span>
-            <span wire:loading class="flex items-center justify-center gap-2">
-                <flux:icon name="arrow-path" variant="outline" class="size-4 animate-spin" />
-                Creando cuenta…
             </span>
         </flux:button>
 

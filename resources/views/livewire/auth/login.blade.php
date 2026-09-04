@@ -7,13 +7,20 @@
     </div>
 
     {{-- Form --}}
-    <form wire:submit="submit" class="flex flex-col gap-4" novalidate>
+    {{--
+        El POST lo procesa Laravel Fortify. Esto es importante: el pipeline de
+        Fortify regenera la sesión, aplica el rate limit y desvía al reto TOTP
+        cuando la cuenta tiene 2FA. No autenticar desde un método Livewire.
+    --}}
+    <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-4" novalidate>
+        @csrf
 
         <flux:field>
             <flux:label class="text-text-primary font-medium">Correo electrónico</flux:label>
             <flux:input
-                wire:model="email"
+                name="email"
                 type="email"
+                value="{{ old('email') }}"
                 placeholder="tu@email.com"
                 autocomplete="email"
                 autofocus
@@ -32,7 +39,7 @@
                 @endif
             </div>
             <flux:input
-                wire:model="password"
+                name="password"
                 type="password"
                 placeholder="••••••••"
                 autocomplete="current-password"
@@ -42,7 +49,7 @@
         </flux:field>
 
         <div class="flex flex-col gap-1.5">
-            <flux:checkbox wire:model="remember" label="Recordarme en este dispositivo" />
+            <flux:checkbox name="remember" value="1" :checked="old('remember')" label="Recordarme en este dispositivo" />
             <p class="flex items-start gap-1 text-xs text-text-secondary">
                 <flux:icon name="shield-check" variant="outline" class="mt-px size-3.5 shrink-0" />
                 Mantiene tu sesión iniciada en este dispositivo. Úsalo solo en equipos personales y de confianza.
@@ -53,14 +60,9 @@
             type="submit"
             variant="primary"
             class="mt-1 w-full bg-bio-green! border-bio-green! hover:bg-bio-green/90! text-white! font-semibold"
-            wire:loading.attr="disabled"
         >
-            <span wire:loading.remove class="flex items-center justify-center gap-2">
+            <span class="flex items-center justify-center gap-2">
                 Iniciar Sesión
-            </span>
-            <span wire:loading class="flex items-center justify-center gap-2">
-                <flux:icon name="arrow-path" class="size-4 animate-spin" />
-                Iniciando sesión…
             </span>
         </flux:button>
 

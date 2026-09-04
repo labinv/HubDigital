@@ -1,7 +1,9 @@
 <?php
 
+use App\Services\Security\InvalidateUserAccess;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Validate;
@@ -65,7 +67,7 @@ new class extends Component {
     /**
      * Show the two-factor verification step if necessary.
      */
-    public function showVerificationIfNecessary(): void
+    public function showVerificationIfNecessary(InvalidateUserAccess $invalidateUserAccess): void
     {
         if ($this->requiresConfirmation) {
             $this->showVerificationStep = true;
@@ -75,6 +77,7 @@ new class extends Component {
             return;
         }
 
+        $invalidateUserAccess->keepingCurrentRequest(auth()->user());
         $this->closeModal();
         $this->dispatch('two-factor-enabled');
     }
@@ -82,11 +85,27 @@ new class extends Component {
     /**
      * Confirm two-factor authentication for the user.
      */
-    public function confirmTwoFactor(ConfirmTwoFactorAuthentication $confirmTwoFactorAuthentication): void
+    public function confirmTwoFactor(
+        ConfirmTwoFactorAuthentication $confirmTwoFactorAuthentication,
+        InvalidateUserAccess $invalidateUserAccess,
+    ): void
     {
         $this->validate();
 
+        $key = 'two-factor-setup:'.auth()->id();
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $this->addError('code', __('Demasiados intentos. Espera :seconds segundos.', [
+                'seconds' => RateLimiter::availableIn($key),
+            ]));
+
+            return;
+        }
+
+        RateLimiter::hit($key, 60);
+
         $confirmTwoFactorAuthentication(auth()->user(), $this->code);
+        RateLimiter::clear($key);
+        $invalidateUserAccess->keepingCurrentRequest(auth()->user());
 
         $this->setupComplete = true;
 

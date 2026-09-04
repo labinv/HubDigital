@@ -4,13 +4,20 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Responses\GenericPasswordResetLinkResponse;
+use App\Models\User;
+use App\Services\Security\DummyPasswordHash;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
+use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -20,7 +27,17 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Una solicitud de recuperación siempre responde igual, exista o no la
+        // cuenta. El enlace real solo se envía cuando el broker encuentra al usuario.
+        $this->app->singleton(GenericPasswordResetLinkResponse::class);
+        $this->app->singleton(
+            FailedPasswordResetLinkRequestResponse::class,
+            fn ($app) => $app->make(GenericPasswordResetLinkResponse::class),
+        );
+        $this->app->singleton(
+            SuccessfulPasswordResetLinkRequestResponse::class,
+            fn ($app) => $app->make(GenericPasswordResetLinkResponse::class),
+        );
     }
 
     /**
@@ -32,6 +49,12 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureViews();
         $this->configureEmailVerification();
         $this->configureRateLimiting();
+        $this->configureAuthentication();
+
+        $minutes = (int) config('auth.remember_lifetime', 60 * 24 * 30);
+        if ($minutes > 0 && method_exists(Auth::guard('web'), 'setRememberDuration')) {
+            Auth::guard('web')->setRememberDuration($minutes);
+        }
     }
 
     /**
@@ -88,9 +111,38 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $throttleKey = Str::transliterate(User::normalizarEmail((string) $request->input(Fortify::username())).'|'.$request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);
+        });
+    }
+
+    /**
+     * Autenticación canónica por correo. Fortify conserva el resto de su
+     * pipeline (throttle, regeneración de sesión y reto 2FA).
+     */
+    private function configureAuthentication(): void
+    {
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $email = User::normalizarEmail((string) $request->input(Fortify::username()));
+            $request->merge([Fortify::username() => $email]);
+
+            $user = User::query()->where('email_normalizado', $email)->first();
+            $dummyHash = app(DummyPasswordHash::class)->value();
+
+            // Verificar también un hash válido cuando el usuario no existe
+            // reduce diferencias de tiempo que facilitarían enumerar cuentas.
+            $hash = $user?->password ?? $dummyHash;
+
+            if (! Hash::check((string) $request->input('password'), $hash) || ! $user) {
+                return null;
+            }
+
+            if (Hash::needsRehash($user->password)) {
+                $user->forceFill(['password' => Hash::make((string) $request->input('password'))])->save();
+            }
+
+            return $user;
         });
     }
 }

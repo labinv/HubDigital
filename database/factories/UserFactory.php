@@ -106,6 +106,15 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function administrador(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'rol' => RolUsuario::ADMIN->value,
+            'cargo' => 'Administrador de HubDigital',
+            'institucion' => 'Escuela Politécnica Nacional',
+        ]);
+    }
+
     /**
      * Cuenta con varios roles asignados. El primero es el rol primario/activo.
      */

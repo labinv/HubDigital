@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Notifications;
 
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushChannel;
+use NotificationChannels\WebPush\WebPushMessage;
 
 /** Alerta accionable para que curaduría genere y firme el acta final. */
-final class LoteRecibidoParaActaNotification extends Notification
+final class LoteRecibidoParaActaNotification extends Notification implements ShouldQueue
 {
+    use Queueable;
+
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
@@ -21,7 +27,17 @@ final class LoteRecibidoParaActaNotification extends Notification
     /** @return list<string> */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        $channels = ['mail', 'database'];
+
+        if (filled(config('webpush.vapid.subject'))
+            && filled(config('webpush.vapid.public_key'))
+            && filled(config('webpush.vapid.private_key'))
+            && method_exists($notifiable, 'pushSubscriptions')
+            && $notifiable->pushSubscriptions()->exists()) {
+            $channels[] = WebPushChannel::class;
+        }
+
+        return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -53,5 +69,21 @@ final class LoteRecibidoParaActaNotification extends Notification
             'prioridad' => 'alta',
             'accion' => 'Generar y firmar acta',
         ];
+    }
+
+    public function toWebPush(object $notifiable): WebPushMessage
+    {
+        // El contenido visible en la pantalla bloqueada es deliberadamente
+        // genérico; el detalle sensible permanece tras autenticación.
+        return (new WebPushMessage)
+            ->title('Acción pendiente en HubDigital')
+            ->body('Un depósito recibido requiere revisión curatorial y firma del acta.')
+            ->icon('/images/hub-icon.png')
+            ->badge('/images/hub-icon.png')
+            ->tag('deposito-acta-'.$this->solicitudId)
+            ->data([
+                'url' => route('prestamos.curador.deposito.acta', $this->solicitudId),
+            ])
+            ->options(['TTL' => 86400, 'urgency' => 'high']);
     }
 }

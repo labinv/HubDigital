@@ -42,6 +42,14 @@ test('los helpers de rol reflejan la membresía', function () {
     expect($user->esCurador())->toBeFalse();
 });
 
+test('administracion es un rol interno reconocido por los helpers', function () {
+    $user = usuarioConRoles(RolUsuario::ADMIN);
+
+    expect($user->esAdministrador())->toBeTrue();
+    expect($user->esUsuarioInterno())->toBeTrue();
+    expect(RolUsuario::rolesInternos())->toContain(RolUsuario::ADMIN);
+});
+
 test('asignarRol impide combinar CURADOR con roles auto-servicio', function () {
     $user = usuarioConRoles(RolUsuario::PRESTAMISTA);
 

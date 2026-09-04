@@ -3,6 +3,7 @@
 use App\Concerns\ProfileValidationRules;
 use App\Enums\RolUsuario;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
@@ -46,6 +47,9 @@ new #[Title('Configuración de perfil')] class extends Component {
     public function updateProfileInformation(): void
     {
         $user = Auth::user();
+        $this->email = \App\Models\User::normalizarEmail($this->email);
+        $this->first_name = trim($this->first_name);
+        $this->last_name = trim($this->last_name);
 
         $reglas = $this->profileRules($user->id);
 
@@ -58,11 +62,25 @@ new #[Title('Configuración de perfil')] class extends Component {
 
         $user->fill($validated);
 
-        if ($user->isDirty('email')) {
+        $correoCambio = $user->isDirty('email');
+
+        if ($correoCambio) {
             $user->email_verified_at = null;
         }
 
-        $user->save();
+        try {
+            $user->save();
+        } catch (UniqueConstraintViolationException) {
+            // La restricción única en base de datos también protege contra
+            // dos cambios de correo simultáneos posteriores a la validación.
+            $this->addError('email', 'No fue posible usar este correo. Inicia sesión o recupera tu contraseña.');
+
+            return;
+        }
+
+        if ($correoCambio) {
+            $user->sendEmailVerificationNotification();
+        }
 
         $this->dispatch('profile-updated', name: $user->name);  // accessor returns full name
     }

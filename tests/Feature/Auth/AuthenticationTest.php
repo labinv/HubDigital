@@ -24,6 +24,17 @@ test('users can authenticate using the login screen', function () {
     $this->assertAuthenticated();
 });
 
+test('email is canonicalized before authentication', function () {
+    $user = User::factory()->create(['email' => 'persona@example.com']);
+
+    $this->post(route('login.store'), [
+        'email' => '  PERSONA@EXAMPLE.COM  ',
+        'password' => 'password',
+    ])->assertRedirect(route('dashboard', absolute: false));
+
+    $this->assertAuthenticatedAs($user);
+});
+
 test('users can not authenticate with invalid password', function () {
     $user = User::factory()->create();
 

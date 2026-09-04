@@ -21,6 +21,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
     // --- Gestión de registros taxonómicos ---
     Route::prefix('taxonomia')
         ->name('api.v1.taxonomia.')
+        ->middleware(['ability:curaduria:gestionar', 'role:CURADOR'])
         ->group(function (): void {
             // Taxones
             Route::post('taxones', [TaxonController::class, 'registrar'])

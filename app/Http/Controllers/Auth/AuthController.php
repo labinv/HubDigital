@@ -5,21 +5,48 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Models\User;
+use App\Services\Security\DummyPasswordHash;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly DummyPasswordHash $dummyPasswordHash) {}
+
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email_normalizado', User::normalizarEmail($request->email))->first();
+        $dummyHash = $this->dummyPasswordHash->value();
+        $hash = $user?->password ?? $dummyHash;
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (! Hash::check($request->password, $hash) || ! $user) {
             return response()->json(['message' => 'Credenciales inválidas'], 401);
         }
 
-        $token = $user->createToken('api')->plainTextToken;
+        if (! $user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Credenciales inválidas'], 401);
+        }
+
+        // No se emiten tokens de larga duración saltando el segundo factor.
+        // Las cuentas con 2FA usan el flujo web interactivo de Fortify.
+        if ($user->hasEnabledTwoFactorAuthentication()) {
+            return response()->json([
+                'message' => 'Esta cuenta requiere autenticación de dos factores en el portal web.',
+                'two_factor_required' => true,
+            ], 409);
+        }
+
+        if (Hash::needsRehash($user->password)) {
+            $user->forceFill(['password' => Hash::make($request->password)])->save();
+        }
+
+        $tokenLifetime = max(5, (int) config('auth.api_token_lifetime', 480));
+        $token = $user->createToken(
+            'api',
+            $user->habilidadesApiInteractiva(),
+            now()->addMinutes($tokenLifetime),
+        )->plainTextToken;
 
         return response()->json([
             'token' => $token,
@@ -37,7 +64,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $request->user()->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Sesión cerrada']);
     }

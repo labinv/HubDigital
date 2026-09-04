@@ -8,6 +8,13 @@ enum RolUsuario: string
     case DEPOSITANTE = 'DEPOSITANTE';
     case CURADOR = 'CURADOR';
     case RECEPTOR = 'RECEPTOR';
+    case ADMIN = 'ADMIN';
+
+    /** @return list<self> */
+    public static function rolesInternos(): array
+    {
+        return [self::CURADOR, self::RECEPTOR, self::ADMIN];
+    }
 
     /**
      * Nombre legible por humanos del rol (para la interfaz).
@@ -19,6 +26,7 @@ enum RolUsuario: string
             self::DEPOSITANTE => 'Depositante',
             self::CURADOR => 'Curador',
             self::RECEPTOR => 'Recepción EPN',
+            self::ADMIN => 'Administración del sistema',
         };
     }
 }

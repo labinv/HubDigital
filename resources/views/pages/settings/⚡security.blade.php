@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\PasswordValidationRules;
+use App\Services\Security\InvalidateUserAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
@@ -43,7 +44,7 @@ new #[Title('Configuración de seguridad')] class extends Component {
     /**
      * Update the password for the currently authenticated user.
      */
-    public function updatePassword(): void
+    public function updatePassword(InvalidateUserAccess $invalidateUserAccess): void
     {
         try {
             $validated = $this->validate([
@@ -56,9 +57,12 @@ new #[Title('Configuración de seguridad')] class extends Component {
             throw $e;
         }
 
-        Auth::user()->update([
+        $user = Auth::user();
+        $user->forceFill([
             'password' => $validated['password'],
-        ]);
+        ])->save();
+
+        $invalidateUserAccess->keepingCurrentRequest($user);
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
@@ -77,9 +81,13 @@ new #[Title('Configuración de seguridad')] class extends Component {
     /**
      * Disable two-factor authentication for the user.
      */
-    public function disable(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
+    public function disable(
+        DisableTwoFactorAuthentication $disableTwoFactorAuthentication,
+        InvalidateUserAccess $invalidateUserAccess,
+    ): void
     {
         $disableTwoFactorAuthentication(auth()->user());
+        $invalidateUserAccess->keepingCurrentRequest(auth()->user());
 
         $this->twoFactorEnabled = false;
     }

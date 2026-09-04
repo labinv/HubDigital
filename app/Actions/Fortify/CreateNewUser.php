@@ -6,8 +6,11 @@ use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Enums\RolUsuario;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -21,6 +24,10 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        $input['email'] = User::normalizarEmail($input['email'] ?? '');
+        $input['first_name'] = trim($input['first_name'] ?? '');
+        $input['last_name'] = trim($input['last_name'] ?? '');
+
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
@@ -37,19 +44,28 @@ class CreateNewUser implements CreatesNewUsers
 
         $rol = RolUsuario::from($input['rol']);
 
-        $user = User::create([
-            'first_name' => $input['first_name'],
-            'last_name' => $input['last_name'],
-            'email' => $input['email'],
-            'password' => $input['password'],
-            'rol' => $rol,
-            'cargo' => $rol === RolUsuario::DEPOSITANTE ? $input['cargo'] : null,
-            'institucion' => $rol === RolUsuario::DEPOSITANTE ? $input['institucion'] : null,
-        ]);
+        try {
+            return DB::transaction(function () use ($input, $rol): User {
+                $user = User::create([
+                    'first_name' => $input['first_name'],
+                    'last_name' => $input['last_name'],
+                    'email' => $input['email'],
+                    'password' => $input['password'],
+                    'rol' => $rol,
+                    'cargo' => $rol === RolUsuario::DEPOSITANTE ? trim($input['cargo']) : null,
+                    'institucion' => $rol === RolUsuario::DEPOSITANTE ? trim($input['institucion']) : null,
+                ]);
 
-        // Registra la membresía del rol primario en el pivote de roles.
-        $user->asignarRol($user->rol);
+                $user->asignarRol($user->rol);
 
-        return $user;
+                return $user;
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Mismo resultado para la validación previa y para una carrera entre
+            // dos solicitudes simultáneas; nunca se crea una cuenta duplicada.
+            throw ValidationException::withMessages([
+                'email' => 'No fue posible registrar este correo. Inicia sesión o recupera tu contraseña.',
+            ]);
+        }
     }
 }

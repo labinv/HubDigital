@@ -35,7 +35,7 @@ class SelectorRolActivo extends Component
         // Si la cuenta tiene un solo rol auto-servicio (y no es curador),
         // ofrece activar el rol complementario desde el propio menú.
         $rolActivable = null;
-        if (! $user->esCurador() && $roles->count() === 1) {
+        if (! $user->esUsuarioInterno() && $roles->count() === 1) {
             $rolActivable = $user->esDepositante()
                 ? RolUsuario::PRESTAMISTA
                 : RolUsuario::DEPOSITANTE;

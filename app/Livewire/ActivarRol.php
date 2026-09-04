@@ -6,6 +6,7 @@ use App\Enums\RolUsuario;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -14,6 +15,7 @@ use Livewire\Component;
 #[Title('Activar rol')]
 class ActivarRol extends Component
 {
+    #[Locked]
     public string $rol = '';
 
     #[Validate('required|string|max:255')]
@@ -32,8 +34,8 @@ class ActivarRol extends Component
             abort(404);
         }
 
-        // Una cuenta curador no puede asumir roles auto-servicio.
-        if ($user->esCurador()) {
+        // Ninguna cuenta interna puede asumir roles públicos de autoservicio.
+        if ($user->esUsuarioInterno()) {
             abort(403);
         }
 
@@ -62,7 +64,12 @@ class ActivarRol extends Component
     public function confirmar(): void
     {
         $user = Auth::user();
-        $destino = RolUsuario::from($this->rol);
+        $destino = RolUsuario::tryFrom($this->rol);
+
+        if (! in_array($destino, [RolUsuario::PRESTAMISTA, RolUsuario::DEPOSITANTE], true)
+            || $user->esUsuarioInterno()) {
+            abort(403);
+        }
 
         if ($destino === RolUsuario::DEPOSITANTE) {
             $this->validate();
