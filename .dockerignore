@@ -35,6 +35,10 @@ public/build-*
 
 # Tests
 tests
+!tests/
+tests/*
+!tests/js/
+!tests/js/**
 .phpunit.cache
 .phpunit.result.cache
 phpunit.xml
