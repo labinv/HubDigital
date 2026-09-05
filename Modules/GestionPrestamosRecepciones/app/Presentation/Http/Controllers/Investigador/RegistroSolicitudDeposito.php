@@ -34,6 +34,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDepo
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\JustificarHallazgoTaxonomico\JustificarHallazgoTaxonomicoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\JustificarHallazgoTaxonomico\JustificarHallazgoTaxonomicoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\MantenerNombreTaxonomicoOriginal\MantenerNombreTaxonomicoOriginalHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\MantenerNombreTaxonomicoOriginal\MantenerNombreTaxonomicoOriginalInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RevertirSugerenciaTaxonomica\RevertirSugerenciaTaxonomicaHandler;
@@ -1809,6 +1811,35 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         $this->dispatch('modal-close', name: 'confirmar-aceptar-todas');
+    }
+
+    /** Conserva el nombre enviado y deja constancia para revisión curatorial. */
+    public function mantenerNombreOriginal(string $registroId): void
+    {
+        $motivo = 'Nombre verificado por el investigador';
+        $comentario = trim((string) ($this->comentariosJustificacion[$registroId] ?? '')) ?: null;
+
+        $output = app(MantenerNombreTaxonomicoOriginalHandler::class)(
+            new MantenerNombreTaxonomicoOriginalInput(
+                solicitudId: $this->solicitudId,
+                matrizId: $this->matrizId,
+                registroId: $registroId,
+                motivoJustificacion: $motivo,
+                comentarioJustificacion: $comentario,
+            ),
+        );
+
+        $this->motivosJustificacion[$registroId] = $motivo;
+
+        if (isset($this->estadosRegistros[$registroId])) {
+            $this->estadosRegistros[$registroId]['estado'] = $output->estadoRegistro->value;
+            $this->estadosRegistros[$registroId]['motivoJustificacion'] = $motivo;
+            $this->estadosRegistros[$registroId]['comentarioJustificacion'] = $comentario;
+            $this->estadosRegistros[$registroId]['noCatalogado'] = true;
+        }
+
+        $this->estadoMatriz = $output->estadoMatriz->value;
+        $this->mostrarToast('Nombre original conservado. Se derivará a revisión de curaduría.', 'success');
     }
 
     /**

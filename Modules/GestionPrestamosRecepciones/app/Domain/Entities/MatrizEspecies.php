@@ -275,6 +275,31 @@ final class MatrizEspecies
         $registro->marcarComoNoCatalogado();
     }
 
+    /**
+     * Deriva a curaduría un nombre que el depositante confirma como correcto,
+     * pese a que el catálogo propuso otra grafía.
+     */
+    public function mantenerNombreOriginal(string $registroId, string $motivoJustificacion, ?string $comentarioJustificacion = null): void
+    {
+        if ($this->tipoTramite->equals(TipoTramite::Donacion)) {
+            throw new \DomainException(
+                'No se permite modificar la identificación original en solicitudes de tipo Donación',
+            );
+        }
+
+        $registro = $this->obtenerRegistroOFallar($registroId);
+        $registro->mantenerNombreOriginal($motivoJustificacion, $comentarioJustificacion);
+
+        $this->estado = EstadoMatrizEspecies::CargadaConAlertas;
+
+        $this->events[] = new HallazgoTaxonomicoJustificado(
+            matrizId: $this->id,
+            registroId: $registroId,
+            especie: $registro->nombreCientifico(),
+            motivoJustificacion: $motivoJustificacion,
+        );
+    }
+
     /** Confirma en el agregado el resultado exacto de la validación taxonómica. */
     public function validarRegistroCatalogado(string $registroId): void
     {

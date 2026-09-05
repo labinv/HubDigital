@@ -139,6 +139,35 @@ final class RegistroEspecimen
     }
 
     /**
+     * Conserva el nombre declarado cuando una sugerencia automática no representa
+     * correctamente la identificación del depositante. La decisión queda a
+     * revisión manual de curaduría y nunca convierte la sugerencia en dato final.
+     *
+     * @throws \DomainException Si el registro ya fue resuelto o no existe motivo.
+     */
+    public function mantenerNombreOriginal(string $motivo, ?string $comentario = null): void
+    {
+        if (trim($motivo) === '') {
+            throw new \DomainException('El motivo de justificación no puede estar vacío');
+        }
+
+        if (! $this->estado->equals(EstadoRegistroEspecimen::Pendiente)) {
+            throw new \DomainException(
+                sprintf(
+                    'Solo se puede conservar el nombre original en estado "Pendiente", estado actual: "%s"',
+                    $this->estado->value,
+                ),
+            );
+        }
+
+        $this->nombreCorregido = null;
+        $this->noCatalogado = true;
+        $this->motivoJustificacion = $motivo;
+        $this->comentarioJustificacion = $this->normalizarComentario($comentario);
+        $this->estado = EstadoRegistroEspecimen::ValidacionManualPorCuraduria;
+    }
+
+    /**
      * Confirma que el nombre declarado fue encontrado sin ambigüedad en el
      * catálogo taxonómico. Nunca oculta un hallazgo no catalogado.
      */
