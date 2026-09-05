@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenDivulgableEloquentModel;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
@@ -30,6 +32,59 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 #[Title('Dashboard')]
 class Dashboard extends Component
 {
+    #[Url]
+    public string $periodoAnalisis = '12';
+
+    public function updatedPeriodoAnalisis(): void
+    {
+        if (! in_array($this->periodoAnalisis, ['6', '12', '24'], true)) {
+            $this->periodoAnalisis = '12';
+        }
+    }
+
+    public function descargarReporteDepositos(): StreamedResponse
+    {
+        abort_unless(auth()->user()?->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN), 403);
+
+        $inicio = $this->inicioAnalisis();
+        $solicitudes = SolicitudDepositoEloquentModel::query()
+            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
+            ->where('created_at', '>=', $inicio)
+            ->orderByDesc('created_at')
+            ->get(['id', 'numero', 'tipo_tramite', 'estado', 'nro_lotes', 'nro_individuos', 'aprobada_en', 'created_at']);
+        $recepciones = RecepcionLoteEloquentModel::query()
+            ->whereIn('solicitud_deposito_id', $solicitudes->pluck('id'))
+            ->get(['solicitud_deposito_id', 'estado', 'verificado_en', 'acta_firmada_ruta'])
+            ->keyBy('solicitud_deposito_id');
+
+        return response()->streamDownload(function () use ($solicitudes, $recepciones): void {
+            $salida = fopen('php://output', 'wb');
+            // BOM UTF-8 para que Excel conserve tildes y nombres taxonómicos.
+            fwrite($salida, "\xEF\xBB\xBF");
+            fputcsv($salida, ['Número', 'Trámite', 'Estado documental', 'Estado de recepción', 'Lotes', 'Individuos', 'Fecha de registro', 'Aprobación documental', 'Constatación física', 'Acta firmada'], ';');
+
+            foreach ($solicitudes as $solicitud) {
+                $recepcion = $recepciones->get($solicitud->id);
+                fputcsv($salida, [
+                    $solicitud->numero,
+                    $solicitud->tipo_tramite,
+                    $solicitud->estado,
+                    $recepcion?->estado ?? 'Pendiente de entrega',
+                    $solicitud->nro_lotes,
+                    $solicitud->nro_individuos,
+                    $solicitud->created_at?->format('Y-m-d H:i'),
+                    $solicitud->aprobada_en?->format('Y-m-d H:i'),
+                    $recepcion?->verificado_en?->format('Y-m-d H:i'),
+                    $recepcion?->acta_firmada_ruta ? 'Sí' : 'No',
+                ], ';');
+            }
+
+            fclose($salida);
+        }, 'reporte-depositos-'.now()->format('Ymd-His').'.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
     public function render(
         ListarCajasHandler $cajasHandler,
         ListarAlertasHandler $alertasHandler,
@@ -44,6 +99,7 @@ class Dashboard extends Component
                 'graficoDeterminacion' => $this->graficoDeterminacion(),
                 'graficoDepositosPorMes' => $this->graficoDepositosPorMes(),
                 'graficoEstadosDepositos' => $this->graficoEstadosDepositos(),
+                ...$this->analiticaDepositos(),
             ]),
             RolUsuario::RECEPTOR => view('livewire.dashboard.receptor-panel', [
                 'pendientesRecepcion' => SolicitudDepositoEloquentModel::query()
@@ -184,7 +240,8 @@ class Dashboard extends Component
     /** @return list<array{etiqueta: string, valor: int}> */
     private function graficoDepositosPorMes(): array
     {
-        $inicio = now()->startOfMonth()->subMonths(11);
+        $cantidadMeses = (int) $this->periodoAnalisis;
+        $inicio = now()->startOfMonth()->subMonths($cantidadMeses - 1);
         $conteos = SolicitudDepositoEloquentModel::query()
             ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
             ->where('created_at', '>=', $inicio)
@@ -195,7 +252,7 @@ class Dashboard extends Component
         $meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
         $filas = [];
 
-        for ($desplazamiento = 0; $desplazamiento < 12; $desplazamiento++) {
+        for ($desplazamiento = 0; $desplazamiento < $cantidadMeses; $desplazamiento++) {
             $mes = $inicio->copy()->addMonths($desplazamiento);
             $filas[] = [
                 'etiqueta' => $meses[$mes->month - 1].' '.$mes->format('y'),
@@ -232,6 +289,140 @@ class Dashboard extends Component
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Indicadores de gestión museológica desde la llegada documental hasta el
+     * cierre del acta de recepción. Todos se calculan sobre el período visible.
+     *
+     * @return array<string, mixed>
+     */
+    private function analiticaDepositos(): array
+    {
+        $inicio = $this->inicioAnalisis();
+        $estadosConstatados = ['Verificado Físicamente', 'Verificado con Observaciones'];
+
+        $solicitudes = SolicitudDepositoEloquentModel::query()
+            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
+            ->where('created_at', '>=', $inicio);
+
+        $resumenDocumental = (clone $solicitudes)->selectRaw(
+            'COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE aprobada_en IS NOT NULL) AS aprobadas,
+             COUNT(*) FILTER (WHERE estado = ?) AS por_revisar,
+             COUNT(*) FILTER (WHERE estado = ?) AS por_corregir,
+             COALESCE(AVG(EXTRACT(EPOCH FROM (aprobada_en - created_at)) / 86400) FILTER (WHERE aprobada_en IS NOT NULL), 0) AS dias_revision',
+            [
+                EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value,
+                EstadoSolicitudDeposito::RequiereCorreccion->value,
+            ],
+        )->first();
+
+        $recepciones = RecepcionLoteEloquentModel::query()
+            ->where('created_at', '>=', $inicio)
+            ->selectRaw(
+                "COUNT(*) AS iniciadas,
+                 COUNT(*) FILTER (WHERE estado IN (?, ?)) AS constatadas,
+                 COUNT(*) FILTER (WHERE estado = 'Verificado con Observaciones') AS con_observaciones,
+                 COUNT(*) FILTER (WHERE estado = 'Recepción Suspendida') AS suspendidas,
+                 COUNT(*) FILTER (WHERE estado IN (?, ?) AND acta_firmada_ruta IS NULL) AS actas_pendientes,
+                 COUNT(*) FILTER (WHERE acta_firmada_ruta IS NOT NULL) AS actas_firmadas,
+                 COALESCE(AVG(EXTRACT(EPOCH FROM (verificado_en - created_at)) / 86400) FILTER (WHERE verificado_en IS NOT NULL), 0) AS dias_constatacion",
+                [
+                    ...$estadosConstatados,
+                    ...$estadosConstatados,
+                ],
+            )->first();
+
+        $estadosGrafico = [
+            'En constatación' => (int) $recepciones->iniciadas - (int) $recepciones->constatadas - (int) $recepciones->suspendidas,
+            'Constatadas' => (int) $recepciones->constatadas,
+            'Con observaciones' => (int) $recepciones->con_observaciones,
+            'Suspendidas' => (int) $recepciones->suspendidas,
+            'Actas firmadas' => (int) $recepciones->actas_firmadas,
+        ];
+
+        return [
+            'periodoAnaliticoEtiqueta' => 'Últimos '.((int) $this->periodoAnalisis).' meses',
+            'indicadoresDepositos' => [
+                'total' => (int) $resumenDocumental->total,
+                'aprobadas' => (int) $resumenDocumental->aprobadas,
+                'porRevisar' => (int) $resumenDocumental->por_revisar,
+                'porCorregir' => (int) $resumenDocumental->por_corregir,
+                'diasRevision' => round((float) $resumenDocumental->dias_revision, 1),
+                'constatadas' => (int) $recepciones->constatadas,
+                'observaciones' => (int) $recepciones->con_observaciones,
+                'suspendidas' => (int) $recepciones->suspendidas,
+                'actasPendientes' => (int) $recepciones->actas_pendientes,
+                'actasFirmadas' => (int) $recepciones->actas_firmadas,
+                'diasConstatacion' => round((float) $recepciones->dias_constatacion, 1),
+            ],
+            'graficoRecepciones' => collect($estadosGrafico)
+                ->map(fn (int $valor, string $etiqueta): array => ['etiqueta' => $etiqueta, 'valor' => max(0, $valor)])
+                ->values()
+                ->all(),
+            'colaCuratorial' => $this->colaCuratorial($inicio, $estadosConstatados),
+        ];
+    }
+
+    /** @return list<array{numero:string, detalle:string, estado:string, fecha:string, accion:string, ruta:string, prioridad:string}> */
+    private function colaCuratorial(\DateTimeInterface $inicio, array $estadosConstatados): array
+    {
+        $documentales = SolicitudDepositoEloquentModel::query()
+            ->where('created_at', '>=', $inicio)
+            ->whereIn('estado', [
+                EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value,
+                EstadoSolicitudDeposito::RequiereCorreccion->value,
+                EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value,
+            ])
+            ->latest('updated_at')
+            ->limit(8)
+            ->get(['id', 'numero', 'estado', 'tipo_tramite', 'updated_at'])
+            ->map(fn (SolicitudDepositoEloquentModel $solicitud): array => [
+                'numero' => (string) $solicitud->numero,
+                'detalle' => (string) $solicitud->tipo_tramite,
+                'estado' => (string) $solicitud->estado,
+                'fecha' => $solicitud->updated_at?->format('d/m/Y H:i') ?? '—',
+                'accion' => 'Revisar expediente',
+                'ruta' => route('prestamos.curador.deposito.revisar', $solicitud->id),
+                'prioridad' => 'documental',
+            ]);
+
+        $actas = RecepcionLoteEloquentModel::query()
+            ->whereIn('estado', $estadosConstatados)
+            ->whereNull('acta_firmada_ruta')
+            ->where('verificado_en', '>=', $inicio)
+            ->latest('verificado_en')
+            ->limit(8)
+            ->get(['solicitud_deposito_id', 'estado', 'verificado_en'])
+            ->map(function (RecepcionLoteEloquentModel $recepcion): array {
+                $solicitud = SolicitudDepositoEloquentModel::query()->find($recepcion->solicitud_deposito_id);
+
+                return [
+                    'numero' => (string) ($solicitud?->numero ?? 'Expediente'),
+                    'detalle' => $recepcion->estado,
+                    'estado' => 'Acta pendiente de firma',
+                    'fecha' => $recepcion->verificado_en?->format('d/m/Y H:i') ?? '—',
+                    'accion' => 'Generar y firmar',
+                    'ruta' => route('prestamos.curador.deposito.acta', $recepcion->solicitud_deposito_id),
+                    'prioridad' => 'acta',
+                ];
+            });
+
+        return $actas->concat($documentales)
+            ->sortByDesc(fn (array $fila): int => $fila['prioridad'] === 'acta' ? 2 : 1)
+            ->take(10)
+            ->values()
+            ->all();
+    }
+
+    private function inicioAnalisis(): \Illuminate\Support\Carbon
+    {
+        $meses = in_array($this->periodoAnalisis, ['6', '12', '24'], true)
+            ? (int) $this->periodoAnalisis
+            : 12;
+
+        return now()->startOfMonth()->subMonths($meses - 1);
     }
 
     /** @return array<string, int> */
