@@ -19,12 +19,13 @@
     $activeFilters = collect([$filtroTipo, $filtroEstado, $filtroDesde, $filtroHasta])->filter()->count();
 @endphp
 
-<div class="space-y-6">
+<div class="hub-workspace space-y-6 p-4 sm:p-6">
 
     {{-- Encabezado --}}
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <header class="hub-page-header">
         <div>
-            <flux:heading size="xl" level="1" class="font-display">Mis depósitos</flux:heading>
+            <p class="hub-page-kicker">Portal del consultor</p>
+            <h1 class="mt-1 hub-page-title">Mis depósitos</h1>
             <flux:text class="text-text-secondary text-sm mt-1">
                 Historial de tus solicitudes de depósito de especímenes.
             </flux:text>
@@ -32,10 +33,10 @@
         <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.deposito.crear') }}" class="shrink-0 self-start sm:self-auto">
             Nueva solicitud
         </flux:button>
-    </div>
+    </header>
 
     {{-- Panel de filtros --}}
-    <div class="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
+    <div class="hub-table-shell">
 
         {{-- Header del panel --}}
         <div class="flex items-center justify-between px-4 py-2.5 bg-bg-main border-b border-border">
