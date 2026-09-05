@@ -414,7 +414,7 @@
             <flux:spacer />
 
             <div class="sticky bottom-0 z-10 -mx-4 -mb-4 hidden border-t border-white/15 bg-blue-navy p-4 lg:block" style="box-shadow: 0 16px 0 0 var(--color-blue-navy);">
-                <x-desktop-user-menu :name="auth()->user()->name" />
+                <x-desktop-user-menu variant="sidebar" />
             </div>
         </flux:sidebar>
 
