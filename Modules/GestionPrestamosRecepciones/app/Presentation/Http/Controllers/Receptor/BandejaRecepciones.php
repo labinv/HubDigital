@@ -75,6 +75,8 @@ final class BandejaRecepciones extends Component
                         ->orWhere('nombre_investigador_documento', 'ilike', $termino);
                 });
             })
+            ->orderByRaw('CASE WHEN entrega_programada_para IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('entrega_programada_para')
             ->latest('aprobada_en')
             ->get();
 

@@ -51,6 +51,9 @@
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="font-mono text-xs text-text-secondary">{{ $solicitud->numero }}</span>
                         <flux:badge size="sm" color="sky">{{ $solicitud->tipo_tramite }}</flux:badge>
+                        @if($solicitud->entrega_programada_para)
+                            <flux:badge size="sm" color="indigo" icon="calendar-days">Entrega anunciada</flux:badge>
+                        @endif
                         @if($recepcion)
                             <x-gestionprestamosrecepciones::recepcion-status-badge :estado="$recepcion->estado" />
                         @else
@@ -58,7 +61,7 @@
                         @endif
                     </div>
                     <p class="mt-2 font-medium text-text-primary">{{ $nombres[$solicitud->investigador_id] ?? $solicitud->nombre_investigador_documento }}</p>
-                    <p class="mt-1 text-xs text-text-secondary">Lote {{ $solicitud->codigo_qr }} Â· {{ $solicitud->grupo_animal ?? 'Grupo por confirmar' }}</p>
+                    <p class="mt-1 text-xs text-text-secondary">Lote {{ $solicitud->codigo_qr }} Â· {{ $solicitud->grupo_animal ?? 'Grupo por confirmar' }}@if($solicitud->entrega_programada_para) · Prevista: @fechaEc($solicitud->entrega_programada_para, 'd/m H:i')@endif</p>
                 </div>
                 <flux:button class="mt-3 w-full sm:mt-0 sm:w-auto" variant="primary" icon="clipboard-document-check" wire:navigate
                     href="{{ route('prestamos.receptor.deposito.recepcion', $solicitud->id) }}">

@@ -112,6 +112,32 @@
                     );
                 @endphp
                 @if($deposito->estado === 'Aprobada Documentalmente' && !$recepcionFinalizada)
+                    <section class="rounded-lg border border-science-blue/30 bg-science-blue/5 p-5 shadow-sm" aria-labelledby="entrega-fisica">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="flex gap-3">
+                                <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-science-blue text-white"><flux:icon name="truck" class="size-5" /></span>
+                                <div>
+                                    <h2 id="entrega-fisica" class="font-display text-lg font-semibold text-blue-navy">Entrega física a la EPN</h2>
+                                    @if($deposito->entrega_programada_para)
+                                        <p class="mt-1 text-sm text-text-secondary">Entrega anunciada para <strong class="text-text-primary">@fechaEc($deposito->entrega_programada_para, 'd/m/Y H:i')</strong>. Recepción EPN ya puede preparar la constatación.</p>
+                                        @if($deposito->entrega_nota)<p class="mt-1 text-sm text-text-secondary">Nota para recepción: {{ $deposito->entrega_nota }}</p>@endif
+                                    @else
+                                        <p class="mt-1 text-sm text-text-secondary">Antes de trasladarte, anuncia la fecha prevista. Lleva el lote rotulado, los documentos originales y el QR emitido por HubDigital.</p>
+                                    @endif
+                                </div>
+                            </div>
+                            <flux:button wire:click="$toggle('mostrarEntrega')" variant="primary" icon="calendar-days" class="w-full sm:w-auto">{{ $deposito->entrega_programada_para ? 'Actualizar entrega' : 'Anunciar entrega' }}</flux:button>
+                        </div>
+                        @if($mostrarEntrega)
+                            <form wire:submit="anunciarEntrega" class="mt-5 grid gap-4 border-t border-science-blue/20 pt-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] md:items-end">
+                                <flux:field><flux:label>Fecha y hora prevista</flux:label><input type="datetime-local" wire:model="entregaProgramadaPara" min="{{ now()->format('Y-m-d\\TH:i') }}" class="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm" required /><flux:error name="entregaProgramadaPara" /></flux:field>
+                                <flux:textarea wire:model="entregaNota" rows="2" label="Nota para Recepción EPN (opcional)" placeholder="Número de cajas, material delicado o particularidades de traslado." />
+                                <flux:button type="submit" variant="primary" icon="paper-airplane" wire:loading.attr="disabled">Enviar aviso</flux:button>
+                            </form>
+                        @endif
+                    </section>
+                @endif
+                @if($deposito->estado === 'Aprobada Documentalmente' && !$recepcionFinalizada)
                     <div class="rounded-lg border-2 border-warning/40 bg-surface shadow-sm overflow-hidden">
                         <div class="px-5 py-4 border-b border-warning/20 bg-warning/5 flex items-start gap-3">
                             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
