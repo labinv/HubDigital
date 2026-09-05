@@ -136,11 +136,7 @@
             </div>
         </div>
 
-    {{-- Pendiente con sugerencia tipografica disponible --}}
-    {{-- TODO: Agregar botón "Mantener original" que descarte la sugerencia sin cambiar el nombre,
-         derivando el registro a Validación Manual por Curaduría con motivo "Nombre verificado por
-         el investigador". Cubre el caso donde la sugerencia del catálogo es incorrecta y el
-         investigador confirma que su nombre original es el correcto. --}}
+    {{-- Pendiente con sugerencia tipográfica disponible --}}
     @elseif($estadoValor === 'Pendiente' && $especieSugerida)
         <div class="{{ $gridClasses }}">
             <div class="flex flex-col gap-0.5">
