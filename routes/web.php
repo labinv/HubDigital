@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminBootstrapController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Livewire\ActivarRol;
+use App\Livewire\Administracion\CentroAdministracion;
 use App\Livewire\Administracion\GestionUsuarios;
 use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +20,9 @@ Route::middleware(['guest', 'throttle:10,1'])->group(function (): void {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
     Route::get('/roles/activar/{rol}', ActivarRol::class)->name('roles.activar');
+    Route::get('/administracion', CentroAdministracion::class)
+        ->middleware('role:admin')
+        ->name('admin.centro');
     Route::get('/administracion/usuarios', GestionUsuarios::class)
         ->middleware('role:admin')
         ->name('admin.usuarios');

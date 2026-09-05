@@ -93,6 +93,14 @@
                         @if($rolActivo === RolUsuario::ADMIN)
                             <flux:sidebar.group heading="Administración" class="grid">
                                 <flux:sidebar.item
+                                    icon="squares-2x2"
+                                    :href="route('admin.centro')"
+                                    :current="request()->routeIs('admin.centro')"
+                                    wire:navigate
+                                >
+                                    Centro de administración
+                                </flux:sidebar.item>
+                                <flux:sidebar.item
                                     icon="users"
                                     :href="route('admin.usuarios')"
                                     :current="request()->routeIs('admin.usuarios')"
