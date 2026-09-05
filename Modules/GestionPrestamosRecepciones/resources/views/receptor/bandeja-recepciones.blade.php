@@ -9,6 +9,40 @@
         <flux:callout.text>Tu constatación registra usuario, fecha y resultado. Curaduría generará y firmará el acta final después.</flux:callout.text>
     </flux:callout>
 
+    <section class="rounded-xl border border-border bg-surface p-4 shadow-sm">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <h2 class="font-display text-lg font-semibold text-blue-navy">Ingreso de ventanilla</h2>
+                <p class="mt-1 text-sm text-text-secondary">Escanea el QR impreso por el consultor o ingresa el código del comprobante para abrir exactamente su expediente.</p>
+            </div>
+            <form wire:submit="abrirPorCodigo" class="flex w-full gap-2 lg:w-[28rem]">
+                <flux:input wire:model="codigoQr" class="flex-1" icon="qr-code" placeholder="LOTE-ABC123" aria-label="Código QR del lote" autocomplete="off" />
+                <flux:button type="submit" variant="primary" icon="arrow-right">Abrir</flux:button>
+            </form>
+        </div>
+        <flux:error name="codigoQr" class="mt-2" />
+    </section>
+
+    <div class="inline-flex max-w-full overflow-x-auto rounded-lg border border-border bg-surface p-1" role="tablist" aria-label="Estado de recepciones">
+        @foreach (['pendientes' => 'Por recibir', 'verificacion' => 'En constatación', 'historial' => 'Historial'] as $valor => $etiqueta)
+            <button type="button" wire:click="cambiarVista('{{ $valor }}')"
+                @class([
+                    'inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    'bg-blue-navy text-white' => $vista === $valor,
+                    'text-text-secondary hover:text-text-primary' => $vista !== $valor,
+                ])>
+                {{ $etiqueta }}
+                <span @class([
+                    'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs tabular-nums',
+                    'bg-white/20 text-white' => $vista === $valor,
+                    'bg-bg-main text-text-secondary' => $vista !== $valor,
+                ])>{{ $contadores[$valor] }}</span>
+            </button>
+        @endforeach
+    </div>
+
+    <flux:input wire:model.live.debounce.300ms="busqueda" icon="magnifying-glass" placeholder="Buscar por número, QR o nombre del consultor" aria-label="Buscar lotes" />
+
     <div class="grid gap-3">
         @forelse($solicitudes as $solicitud)
             @php $recepcion = $recepciones->get($solicitud->id); @endphp
@@ -28,11 +62,11 @@
                 </div>
                 <flux:button class="mt-3 w-full sm:mt-0 sm:w-auto" variant="primary" icon="clipboard-document-check" wire:navigate
                     href="{{ route('prestamos.receptor.deposito.recepcion', $solicitud->id) }}">
-                    {{ $recepcion ? 'Ver constatación' : 'Iniciar constatación' }}
+                    {{ $recepcion?->estado === 'En Verificación' ? 'Continuar constatación' : ($recepcion ? 'Ver recepción' : 'Iniciar constatación') }}
                 </flux:button>
             </div>
         @empty
-            <div class="rounded-xl border border-border bg-surface p-10 text-center text-sm text-text-secondary">No hay lotes aprobados pendientes de entrega.</div>
+            <div class="rounded-xl border border-border bg-surface p-10 text-center text-sm text-text-secondary">No hay lotes en esta bandeja.</div>
         @endforelse
     </div>
 </div>

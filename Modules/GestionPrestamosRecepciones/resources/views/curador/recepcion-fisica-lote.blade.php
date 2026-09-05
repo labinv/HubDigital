@@ -61,6 +61,20 @@
         </div>
     </div>
 
+    <section class="rounded-lg border border-border bg-surface p-4 shadow-sm" aria-labelledby="documentacion-entrega">
+        <div class="flex items-start gap-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-navy/8 text-blue-navy"><flux:icon name="document-check" class="size-5" /></span>
+            <div class="min-w-0">
+                <h2 id="documentacion-entrega" class="font-display text-base font-semibold text-blue-navy">Documentación que acompaña la entrega</h2>
+                <p class="mt-1 text-sm text-text-secondary">Contrasta estos códigos con los documentos físicos y etiquetas presentados por el consultor antes de marcar conformidad.</p>
+                <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                    <div class="rounded-md bg-bg-main/70 px-3 py-2"><dt class="text-xs text-text-secondary">Permiso de recolección</dt><dd class="mt-1 font-mono font-medium text-text-primary">{{ $recepcion->nroPermisoRecoleccion ?? 'No declarado' }}</dd></div>
+                    <div class="rounded-md bg-bg-main/70 px-3 py-2"><dt class="text-xs text-text-secondary">Guía o permiso de movilización</dt><dd class="mt-1 font-mono font-medium text-text-primary">{{ $recepcion->nroPermisoMovilizacion ?? 'No declarado' }}</dd></div>
+                </dl>
+            </div>
+        </div>
+    </section>
+
     {{-- Estado terminal: verificado (conforme o con observaciones) --}}
     @if($verificado)
         <flux:callout variant="success" icon="check-badge">
