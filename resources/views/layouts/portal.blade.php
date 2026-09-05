@@ -45,10 +45,15 @@
                         Mi cuenta
                     </a>
                 @else
-                    <a href="{{ route('login') }}" wire:navigate class="inline-flex min-h-11 items-center gap-2 rounded-md border border-blue-navy px-4 py-2 text-sm font-semibold !text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue">
-                        <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
-                        Iniciar sesión
-                    </a>
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('login') }}" wire:navigate class="inline-flex min-h-11 items-center gap-2 rounded-md border border-blue-navy px-4 py-2 text-sm font-semibold !text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+                            Iniciar sesión
+                        </a>
+                        <a href="{{ route('register') }}" wire:navigate class="inline-flex min-h-11 items-center gap-2 rounded-md bg-blue-navy px-4 py-2 text-sm font-semibold !text-white transition hover:bg-[#244872] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2">
+                            Crear cuenta
+                        </a>
+                    </div>
                 @endauth
             </div>
 
@@ -87,7 +92,8 @@
                 @auth
                     <a href="{{ route('dashboard') }}" wire:navigate class="mt-2 flex min-h-11 items-center justify-center rounded-md bg-blue-navy px-4 text-sm font-semibold !text-white">Mi cuenta</a>
                 @else
-                    <a href="{{ route('login') }}" wire:navigate class="mt-2 flex min-h-11 items-center justify-center rounded-md bg-blue-navy px-4 text-sm font-semibold !text-white">Iniciar sesión</a>
+                    <a href="{{ route('register') }}" wire:navigate class="mt-2 flex min-h-11 items-center justify-center rounded-md bg-blue-navy px-4 text-sm font-semibold !text-white">Crear cuenta</a>
+                    <a href="{{ route('login') }}" wire:navigate class="flex min-h-11 items-center justify-center rounded-md border border-blue-navy/25 px-4 text-sm font-semibold !text-blue-navy">Ya tengo una cuenta</a>
                 @endauth
             </div>
         </nav>
