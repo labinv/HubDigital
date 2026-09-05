@@ -1,6 +1,17 @@
 # Estado del módulo de depósitos MEPN
 
-Fecha de corte: 4 de septiembre de 2026.
+Fecha de corte: 5 de septiembre de 2026.
+
+## Estado de disponibilidad
+
+- **Codificado:** portal público, trámite guiado, extracción local, catálogos
+  taxonómicos controlados, recepción, curaduría, actas, firmador, gestión web
+  de usuarios, paneles analíticos y alertas Web Push.
+- **Configurado mediante secretos:** R2 y VAPID se reciben desde secretos de
+  Codespaces; sus valores no viven en este repositorio.
+- **Desplegado:** este documento no declara despliegues remotos.
+- **No comprobado en ejecución:** esta descripción registra código y
+  configuración, no sustituye una validación de ambiente.
 
 ## Alcance implementado
 
@@ -21,9 +32,9 @@ Fecha de corte: 4 de septiembre de 2026.
   depositante con el Firmador HubDigital.
 - Recepción física separada de curaduría: el receptor EPN escanea/resuelve el QR,
   verifica el lote y deja constancia de recepción o de observaciones.
-- Alerta al curador por base de datos, correo y notificación del sistema
-  operativo mientras la PWA está abierta. La alerta abre el expediente exacto y
-  también permanece en la bandeja de actas pendientes.
+- Alerta al curador por base de datos, correo y Web Push con VAPID. La alerta
+  abre el expediente exacto y también permanece en la bandeja de actas
+  pendientes.
 - Acta final generada únicamente después de la constatación física. Los
   especímenes ingresan a la colección solo después de validar y guardar el acta
   firmada por curaduría.
@@ -49,10 +60,9 @@ comprobaciones antes de cerrar el expediente:
 7. Bloqueo transaccional del expediente para impedir que dos firmas
    concurrentes se sobrescriban.
 
-El certificado real entregado para desarrollo fue probado exclusivamente en
-memoria: identidad, vigencia, correspondencia entre clave privada y certificado
-y creación de CAdES resultaron correctas. El certificado y la contraseña no
-forman parte del repositorio.
+El certificado y la contraseña no forman parte del repositorio. La validez de
+una firma y su aceptación institucional deben confirmarse en el ambiente que
+corresponda.
 
 ## Arquitectura de desarrollo gratuito
 
@@ -63,7 +73,7 @@ Navegador/PWA
   -> Laravel 13 + Livewire 4
        -> PostgreSQL
        -> worker de colas: OCR, extracción, alertas y correo
-       -> almacenamiento privado de documentos
+       -> almacenamiento privado R2 (configurado mediante secretos)
        -> Mailpit para inspeccionar correo de pruebas
 ```
 
@@ -136,11 +146,10 @@ Las cuentas creadas son:
   desarrollo.
 - Incorporar antivirus/antimalware para archivos subidos antes de abrir el
   portal en producción.
-- Implementar Web Push con VAPID si se requieren avisos con el navegador
-  totalmente cerrado. La bandeja, correo y notificación con la PWA abierta ya
-  están disponibles.
+- Confirmar en el ambiente correspondiente la entrega de Web Push con VAPID
+  para navegadores cerrados o sin conexión; el código está implementado pero
+  este documento no declara una comprobación de ejecución.
 - Desplegar en Hetzner, montar almacenamiento persistente/cifrado, automatizar
   copias de seguridad y restauración, observabilidad y rotación de secretos.
 - Realizar revisión jurídica de protección de datos, conservación documental,
   firma electrónica y términos de depósito con la EPN.
-
