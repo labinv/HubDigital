@@ -1,13 +1,19 @@
-<div class="flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
+<div class="hub-workspace flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
 
     {{-- Invitación a activar el rol complementario. Vive aquí y no en el layout:
          es contenido del panel, no del armazón, y antes salía en todas las pantallas. --}}
     <x-banner-activar-rol />
 
-    <div class="flex flex-col gap-1">
-        <h1 class="font-display text-2xl font-bold text-blue-navy">Mis préstamos</h1>
-        <p class="text-sm text-text-secondary">Bienvenido, {{ auth()->user()->name }}</p>
-    </div>
+    <header class="hub-page-header">
+        <div class="flex flex-col gap-1">
+            <p class="hub-page-kicker">Consulta y custodia de especímenes</p>
+            <h1 class="hub-page-title">Mis préstamos</h1>
+            <p class="text-sm text-text-secondary">Bienvenido, {{ auth()->user()->name }}</p>
+        </div>
+        <flux:button href="{{ route('prestamos.investigador.solicitud.crear') }}" wire:navigate variant="primary" icon="plus">
+            Nueva solicitud
+        </flux:button>
+    </header>
 
     {{-- ── Mis solicitudes ────────────────────────────────────────── --}}
     <section class="flex flex-col gap-3">
@@ -56,7 +62,7 @@
     </section>
 
     {{-- ── Accesos rápidos ────────────────────────────────────────── --}}
-    <section class="rounded-lg border border-border bg-surface p-6 shadow-sm">
+    <section class="hub-panel p-6">
         <h2 class="font-display text-lg font-semibold text-blue-navy">Accesos rápidos</h2>
         <div class="mt-4 flex flex-wrap gap-3">
             <flux:button href="{{ route('prestamos.investigador.solicitud.crear') }}" wire:navigate variant="primary" icon="plus">

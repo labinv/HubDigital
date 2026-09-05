@@ -11,20 +11,26 @@
     $hayDatosGrafico = ($pendientesRevision + $pausadasAsesoria + $rechazadas) > 0;
 @endphp
 
-<div class="flex h-full w-full flex-1 flex-col gap-4 p-6">
+<div class="hub-workspace flex h-full w-full flex-1 flex-col gap-5 p-6">
 
     {{-- Invitación a activar el rol complementario. Vive aquí y no en el layout:
          es contenido del panel, no del armazón, y antes salía en todas las pantallas. --}}
     <x-banner-activar-rol />
 
     {{-- Encabezado --}}
-    <div class="flex flex-col gap-1">
-        <h1 class="font-display text-2xl font-bold text-blue-navy">Mi contribución</h1>
-        <p class="text-sm text-text-secondary">Bienvenido, {{ auth()->user()->name }}</p>
+    <div class="hub-page-header">
+        <div class="flex flex-col gap-1">
+            <p class="hub-page-kicker">Depósitos de material biológico</p>
+            <h1 class="hub-page-title">Mi contribución</h1>
+            <p class="text-sm text-text-secondary">Bienvenido, {{ auth()->user()->name }}</p>
+        </div>
+        <flux:button href="{{ route('prestamos.investigador.deposito.crear') }}" wire:navigate variant="primary" icon="plus">
+            Nueva solicitud
+        </flux:button>
     </div>
 
     {{-- Hero: Tu contribución a la colección --}}
-    <div class="relative overflow-hidden rounded-lg border border-border bg-surface p-6 shadow-sm">
+    <div class="hub-panel relative overflow-hidden p-6">
         <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-bio-green/5 via-surface to-science-blue/5"></div>
 
         <div class="relative">
@@ -210,26 +216,25 @@
 
 </div>
 
-@assets
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-@endassets
-
 @script
 <script>
     const canvas = document.getElementById('dep-estado-chart');
 
-    if (canvas && window.Chart) {
+    if (canvas && window.HubDigitalChart) {
         const datos = @js($chartData);
 
-        new Chart(canvas, {
+        if (canvas.hubDigitalChart) {
+            canvas.hubDigitalChart.destroy();
+        }
+
+        canvas.hubDigitalChart = new window.HubDigitalChart(canvas, {
             type: 'doughnut',
             data: {
                 labels: datos.labels,
                 datasets: [{
                     data: datos.valores,
-                    // Colores de marca (canvas no lee tokens Tailwind):
-                    // warning #FF9800, info #0288D1, error #D32F2F
-                    backgroundColor: ['#FF9800', '#0288D1', '#D32F2F'],
+                    // Tokens institucionales serializados para el canvas.
+                    backgroundColor: ['#B87811', '#0069A8', '#B42318'],
                     borderColor: '#FFFFFF',
                     borderWidth: 2,
                     hoverOffset: 6,
@@ -247,7 +252,7 @@
                             pointStyle: 'circle',
                             padding: 14,
                             font: { size: 12, family: 'Inter, sans-serif' },
-                            color: '#212121',
+                            color: '#1B2A3A',
                         },
                     },
                 },

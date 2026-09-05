@@ -17,6 +17,7 @@
         "@tailwindcss/vite": "^4.1.11",
         "autoprefixer": "^10.4.20",
         "buffer": "^6.0.3",
+        "chart.js": "^4.4.1",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^3.0.0",
         "node-forge": "^1.4.0",
