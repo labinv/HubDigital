@@ -3,6 +3,7 @@
     data-hub-notification-title="HubDigital · Laboratorio de Invertebrados"
     data-hub-notification-body="{{ $ultimaNoLeida?->data['mensaje'] ?? '' }}"
     data-hub-notification-url="{{ $ultimaNoLeida?->data['url'] ?? '' }}"
+    data-hub-notification-action="{{ $ultimaNoLeida?->data['accion'] ?? 'Abrir expediente' }}"
     x-data="{
         open: false,
         pwaStatus: 'checking',

@@ -19,6 +19,7 @@ self.addEventListener('push', (event) => {
         badge: payload.badge ?? '/images/hub-icon.png',
         tag: payload.tag ?? 'hubdigital',
         renotify: true,
+        actions: payload.actions ?? [{ action: 'open', title: 'Abrir expediente' }],
         data: { url: payload.data?.url ?? payload.url ?? '/dashboard' },
     }));
 });
@@ -30,8 +31,10 @@ self.addEventListener('notificationclick', (event) => {
         ? destino.href
         : new URL('/dashboard', self.location.origin).href;
     event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-        const existing = windows.find((client) => client.url === url);
-        return existing ? existing.focus() : clients.openWindow(url);
+        const existing = windows.find((client) => new URL(client.url).origin === destino.origin);
+        if (!existing) return clients.openWindow(url);
+
+        return existing.navigate(url).then((client) => client.focus());
     }));
 });
 
