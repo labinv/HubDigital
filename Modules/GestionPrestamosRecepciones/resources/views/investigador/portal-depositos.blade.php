@@ -13,14 +13,25 @@
                     </p>
 
                     <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-                        <a
-                            href="{{ route('depositos.solicitud.crear') }}"
-                            class="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-3 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#244872] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
-                        >
-                            <flux:icon name="document-plus" class="size-5" />
-                            Iniciar una solicitud
-                            <flux:icon name="arrow-right" class="size-4" />
-                        </a>
+                        @auth
+                            <a
+                                href="{{ auth()->user()->esDepositante() || auth()->user()->esAdministrador() ? route('depositos.solicitud.crear') : route('dashboard') }}"
+                                class="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-3 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#244872] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
+                            >
+                                <flux:icon name="document-plus" class="size-5" />
+                                {{ auth()->user()->esDepositante() || auth()->user()->esAdministrador() ? 'Iniciar una solicitud' : 'Ir a mi cuenta' }}
+                                <flux:icon name="arrow-right" class="size-4" />
+                            </a>
+                        @else
+                            <a
+                                href="{{ route('register') }}"
+                                class="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-3 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#244872] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
+                            >
+                                <flux:icon name="user-plus" class="size-5" />
+                                Crear cuenta e iniciar
+                                <flux:icon name="arrow-right" class="size-4" />
+                            </a>
+                        @endauth
 
                         @auth
                             @if(auth()->user()->esDepositante())
@@ -141,13 +152,23 @@
                     <p class="mt-1.5 text-sm leading-6 text-white/75">Puedes guardar el avance y completar el trámite por etapas.</p>
                 </div>
             </div>
-            <a
-                href="{{ route('depositos.solicitud.crear') }}"
-                class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy"
-            >
-                Iniciar una solicitud
-                <flux:icon name="arrow-right" class="size-4" />
-            </a>
+            @auth
+                <a
+                    href="{{ auth()->user()->esDepositante() || auth()->user()->esAdministrador() ? route('depositos.solicitud.crear') : route('dashboard') }}"
+                    class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy"
+                >
+                    {{ auth()->user()->esDepositante() || auth()->user()->esAdministrador() ? 'Iniciar una solicitud' : 'Ir a mi cuenta' }}
+                    <flux:icon name="arrow-right" class="size-4" />
+                </a>
+            @else
+                <a
+                    href="{{ route('register') }}"
+                    class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy"
+                >
+                    Crear cuenta e iniciar
+                    <flux:icon name="arrow-right" class="size-4" />
+                </a>
+            @endauth
         </div>
     </section>
 </div>
