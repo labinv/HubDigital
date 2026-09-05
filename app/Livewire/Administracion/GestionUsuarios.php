@@ -8,9 +8,11 @@ use App\Enums\RolUsuario;
 use App\Models\User;
 use App\Support\Administracion\CreadorUsuario;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -40,6 +42,18 @@ final class GestionUsuarios extends Component
     public string $cargo = '';
 
     public string $institucion = '';
+
+    public ?string $usuarioEnEdicion = null;
+
+    public string $edicionFirstName = '';
+
+    public string $edicionLastName = '';
+
+    public string $edicionRol = '';
+
+    public string $edicionCargo = '';
+
+    public string $edicionInstitucion = '';
 
     public function boot(): void
     {
@@ -110,6 +124,93 @@ final class GestionUsuarios extends Component
         session()->flash('usuario-creado', 'Cuenta creada. La persona debe verificar su correo mediante el enlace enviado.');
     }
 
+    public function editar(string $usuarioId): void
+    {
+        $this->autorizarAdministracion();
+
+        $usuario = User::query()->with('roles')->findOrFail($usuarioId);
+
+        $this->usuarioEnEdicion = $usuario->getKey();
+        $this->edicionFirstName = $usuario->first_name;
+        $this->edicionLastName = $usuario->last_name;
+        $this->edicionRol = $usuario->rol->value;
+        $this->edicionCargo = $usuario->cargo ?? '';
+        $this->edicionInstitucion = $usuario->institucion ?? '';
+        $this->resetValidation();
+    }
+
+    public function cancelarEdicion(): void
+    {
+        $this->resetEdicion();
+    }
+
+    public function actualizar(): void
+    {
+        $this->autorizarAdministracion();
+
+        $usuario = User::query()->with('roles')->findOrFail($this->usuarioEnEdicion);
+        $rol = RolUsuario::tryFrom($this->edicionRol);
+
+        $datos = Validator::make([
+            'first_name' => trim($this->edicionFirstName),
+            'last_name' => trim($this->edicionLastName),
+            'rol' => $this->edicionRol,
+            'cargo' => trim($this->edicionCargo),
+            'institucion' => trim($this->edicionInstitucion),
+        ], [
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'rol' => ['required', Rule::enum(RolUsuario::class)],
+            'cargo' => ['nullable', 'string', 'max:255'],
+            'institucion' => ['nullable', 'string', 'max:255'],
+        ])->validate();
+
+        if ($rol === null) {
+            return;
+        }
+
+        if (in_array($rol, RolUsuario::rolesInternos(), true) && ! $this->esCorreoInstitucional($usuario->email)) {
+            throw ValidationException::withMessages([
+                'edicionRol' => 'Los roles internos requieren un correo institucional autorizado.',
+            ]);
+        }
+
+        if ($usuario->is(auth()->user()) && $rol !== RolUsuario::ADMIN) {
+            throw ValidationException::withMessages([
+                'edicionRol' => 'No puedes retirar tu propio rol de administración.',
+            ]);
+        }
+
+        DB::transaction(function () use ($usuario, $datos, $rol): void {
+            $usuario->fill([
+                'first_name' => $datos['first_name'],
+                'last_name' => $datos['last_name'],
+                'rol' => $rol,
+                'cargo' => $this->valorOpcional($datos['cargo']),
+                'institucion' => $this->valorOpcional($datos['institucion']),
+            ])->save();
+
+            $usuario->roles()->delete();
+            $usuario->unsetRelation('roles');
+            $usuario->asignarRol($rol);
+        });
+
+        $this->resetEdicion();
+        session()->flash('usuario-actualizado', 'Perfil y rol actualizados.');
+    }
+
+    public function reenviarVerificacion(string $usuarioId): void
+    {
+        $this->autorizarAdministracion();
+
+        $usuario = User::query()->findOrFail($usuarioId);
+
+        if (! $usuario->hasVerifiedEmail()) {
+            $usuario->sendEmailVerificationNotification();
+            session()->flash('usuario-actualizado', 'Se reenvió el enlace de verificación al correo registrado.');
+        }
+    }
+
     public function render(): View
     {
         return view('livewire.administracion.gestion-usuarios', [
@@ -130,6 +231,37 @@ final class GestionUsuarios extends Component
                 ->exists(),
             403,
         );
+    }
+
+    private function resetEdicion(): void
+    {
+        $this->reset([
+            'usuarioEnEdicion',
+            'edicionFirstName',
+            'edicionLastName',
+            'edicionRol',
+            'edicionCargo',
+            'edicionInstitucion',
+        ]);
+        $this->resetValidation();
+    }
+
+    private function esCorreoInstitucional(string $email): bool
+    {
+        foreach (config('auth.internal_email_domains', []) as $dominio) {
+            if (str_ends_with(User::normalizarEmail($email), '@'.mb_strtolower((string) $dominio))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function valorOpcional(string $valor): ?string
+    {
+        $valor = trim($valor);
+
+        return $valor === '' ? null : $valor;
     }
 
     /** @return LengthAwarePaginator<User> */

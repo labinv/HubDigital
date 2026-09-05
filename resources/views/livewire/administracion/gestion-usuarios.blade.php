@@ -23,6 +23,12 @@
         </div>
     @endif
 
+    @if (session('usuario-actualizado'))
+        <div role="status" class="rounded-lg border border-science-blue/25 bg-science-blue/5 px-4 py-3 text-sm text-science-blue">
+            {{ session('usuario-actualizado') }}
+        </div>
+    @endif
+
     @if ($mostrarFormulario)
         <section class="rounded-xl border border-border bg-surface p-5 shadow-sm">
             <div class="mb-5">
@@ -81,6 +87,38 @@
         </section>
     @endif
 
+    @if ($usuarioEnEdicion)
+        <section class="rounded-xl border border-science-blue/30 bg-surface p-5 shadow-sm">
+            <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h2 class="font-display text-lg font-semibold text-blue-navy">Editar perfil institucional</h2>
+                    <p class="text-sm text-text-secondary">El correo es la identidad de la cuenta y se conserva. Actualiza sus datos de perfil y su rol operativo.</p>
+                </div>
+                <flux:button wire:click="cancelarEdicion" variant="ghost" icon="x-mark">Cancelar</flux:button>
+            </div>
+
+            <form wire:submit="actualizar" class="grid gap-4 md:grid-cols-2">
+                <flux:input wire:model="edicionFirstName" label="Nombres" required autocomplete="off" />
+                <flux:input wire:model="edicionLastName" label="Apellidos" required autocomplete="off" />
+                <flux:select wire:model="edicionRol" label="Rol operativo" required>
+                    @foreach ($roles as $opcionRol)
+                        <flux:select.option value="{{ $opcionRol->value }}">{{ $opcionRol->etiqueta() }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:input wire:model="edicionCargo" label="Cargo o función" autocomplete="off" />
+                <flux:input wire:model="edicionInstitucion" class="md:col-span-2" label="Institución" autocomplete="off" />
+
+                @if ($errors->any())
+                    <div role="alert" class="md:col-span-2 rounded-lg border border-error/25 bg-error/5 p-3 text-sm text-error">{{ $errors->first() }}</div>
+                @endif
+
+                <div class="md:col-span-2 flex justify-end">
+                    <flux:button type="submit" variant="primary" icon="check">Guardar cambios</flux:button>
+                </div>
+            </form>
+        </section>
+    @endif
+
     <section class="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
         <div class="grid gap-3 border-b border-border p-4 md:grid-cols-[minmax(0,1fr)_16rem]">
             <flux:input
@@ -107,6 +145,7 @@
                         <th class="px-4 py-3">Rol</th>
                         <th class="px-4 py-3">Estado</th>
                         <th class="px-4 py-3">Alta</th>
+                        <th class="px-4 py-3"><span class="sr-only">Acciones</span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
@@ -138,10 +177,18 @@
                             <td class="whitespace-nowrap px-4 py-4 text-xs text-text-secondary">
                                 {{ $usuario->created_at?->format('d/m/Y') }}
                             </td>
+                            <td class="whitespace-nowrap px-4 py-4 text-right">
+                                <div class="inline-flex items-center gap-1">
+                                    @if (! $usuario->hasVerifiedEmail())
+                                        <flux:button wire:click="reenviarVerificacion('{{ $usuario->id }}')" variant="ghost" size="sm" icon="envelope" title="Reenviar verificación">Verificar</flux:button>
+                                    @endif
+                                    <flux:button wire:click="editar('{{ $usuario->id }}')" variant="ghost" size="sm" icon="pencil-square">Editar</flux:button>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-10 text-center text-sm text-text-secondary">
+                            <td colspan="6" class="px-4 py-10 text-center text-sm text-text-secondary">
                                 No se encontraron usuarios con estos criterios.
                             </td>
                         </tr>
