@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFString, StandardFonts } from 'pdf-lib';
 
 const [rutaP12, rutaCredenciales] = process.argv.slice(2);
 
@@ -30,6 +30,20 @@ pagina.drawText('Validacion local del Firmador HubDigital', {
     size: 12,
     font: fuente,
 });
+const marcadores = [
+    ['https://firmas.hubdigital.invalid/bloques/solicitud-deposito/depositante/v1', [48, 540, 547, 630]],
+    ['https://firmas.hubdigital.invalid/zonas/solicitud-deposito/depositante/v1', [56, 548, 539, 622]],
+];
+for (const [uri, rect] of marcadores) {
+    const anotacion = documento.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: rect,
+        Border: [0, 0, 0],
+        A: { Type: 'Action', S: 'URI', URI: PDFString.of(uri) },
+    });
+    pagina.node.addAnnot(documento.context.register(anotacion));
+}
 const pdfBytes = await documento.save();
 
 let respuesta;
@@ -48,6 +62,7 @@ for (const clave of candidatosClave) {
             pdf: pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength),
             p12: p12Bytes.buffer.slice(p12Bytes.byteOffset, p12Bytes.byteOffset + p12Bytes.byteLength),
             passphrase: clave,
+            signatureProfile: 'solicitud-deposito:depositante:v1',
             reason: 'Validacion local del Firmador HubDigital',
             location: 'Quito, Ecuador',
         },
@@ -59,6 +74,7 @@ for (const clave of candidatosClave) {
 }
 
 assert.equal(respuesta?.ok, true, 'El certificado real no pudo firmar con las credenciales proporcionadas.');
+assert.equal(respuesta.zonaFirma.visible, true, 'La firma real debe incluir apariencia visible.');
 
 const pdfFirmado = Buffer.from(respuesta.pdf);
 assert.ok(pdfFirmado.length > pdfBytes.length, 'El PDF firmado debe incluir el contenedor criptografico.');

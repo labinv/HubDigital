@@ -47,10 +47,16 @@
         .nota { margin: 11px 0; }
         .nota strong { font-weight: bold; }
 
-        .firma { margin-top: 14px; }
-        .firma .espacio { height: 42px; }
+        .firma { border: 1px solid #999; margin-top: 14px; padding: 8px; page-break-inside: avoid; }
+        .firma .titulo-firma { font-size: 9pt; font-weight: bold; margin-bottom: 4px; }
+        .firma .marcadores { height: 94px; position: relative; width: 100%; }
+        .firma .marcador-bloque,
+        .firma .marcador-zona { color: #fff; display: block; font-size: 1px; line-height: 1px; position: absolute; text-decoration: none; }
+        .firma .marcador-bloque { bottom: 0; left: 0; right: 0; top: 0; }
+        .firma .marcador-zona { bottom: 6px; left: 6px; right: 6px; top: 6px; }
         .firma p { margin: 0; line-height: 1.3; }
-        .firma .nombre-curador { font-weight: bold; }
+        .firma .nombre-curador { border-top: 1px solid #333; font-weight: bold; padding-top: 4px; text-align: center; }
+        .firma .detalle-curador { text-align: center; }
 
         .pie {
             position: fixed;
@@ -147,14 +153,17 @@
     <p>Atentamente,</p>
 
     <div class="firma">
-        <div class="espacio">Firmado electrónicamente al finalizar este documento en HubDigital</div>
+        <div class="titulo-firma">Firma electrónica del curador responsable</div>
+        <div class="marcadores">
+            <a class="marcador-bloque" href="{{ $perfilFirma['bloque'] }}">HUBDIGITAL BLOQUE NOMINAL {{ $perfilFirma['rol'] }}</a>
+            <a class="marcador-zona" href="{{ $perfilFirma['zona'] }}">HUBDIGITAL ZONA FIRMA {{ $perfilFirma['rol'] }}</a>
+        </div>
         <p class="nombre-curador">{{ $curador ?? 'Curador responsable' }}</p>
-        <p>Curador</p>
-        <p>Laboratorio de Invertebrados</p>
-        <p>Museo de Historia Natural “Gustavo Orcés V.”</p>
-        <p>Departamento de Biología</p>
-        <p>Escuela Politécnica Nacional</p>
-        <p>Quito, Ecuador</p>
+        <div class="detalle-curador">
+            <p>Curador · Laboratorio de Invertebrados</p>
+            <p>Museo de Historia Natural “Gustavo Orcés V.” · Departamento de Biología</p>
+            <p>Escuela Politécnica Nacional · Quito, Ecuador</p>
+        </div>
     </div>
 
 </body>

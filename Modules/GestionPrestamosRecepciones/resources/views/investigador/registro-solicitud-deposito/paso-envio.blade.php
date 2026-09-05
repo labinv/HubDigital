@@ -261,6 +261,7 @@
                     x-data="hubDigitalFirmador({
                         documentUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])),
                         uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])),
+                        signatureProfile: 'solicitud-deposito:depositante:v1',
                         reason: 'Solicitud de {{ $tipoTramite }} de especímenes biológicos',
                         location: 'Quito, Ecuador'
                     })"

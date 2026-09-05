@@ -39,6 +39,7 @@ final class GeneradorPdfActaRecepcion
             'curador' => $curador,
             'receptor' => $receptor,
             'fecha' => $fecha,
+            'perfilFirma' => PerfilFirmaPdf::actaRecepcionCurador(),
         ])->output();
     }
 }

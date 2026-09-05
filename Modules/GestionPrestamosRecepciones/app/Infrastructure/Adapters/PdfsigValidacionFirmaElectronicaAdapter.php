@@ -159,8 +159,12 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
         }
 
         try {
-            if (! $this->estructuraPdfSegura($original, $directorio, 'original')
-                || ! $this->estructuraPdfSegura($firmado, $directorio, 'firmado')) {
+            $estructuraOriginal = $this->estructuraPdf($original);
+            $estructuraFirmada = $this->estructuraPdf($firmado);
+            if (! (new EstructuraFirmaVisiblePdf)->coincide(
+                $estructuraOriginal,
+                $estructuraFirmada,
+            )) {
                 return false;
             }
 
@@ -186,32 +190,49 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
             $textoFirmado = $directorio.DIRECTORY_SEPARATOR.'firmado.txt';
             $pdftotext = $this->binario('pdftotext_binary', 'pdftotext', '/usr/bin/pdftotext');
 
-            $this->ejecutar([$pdftotext, '-layout', $original, $textoOriginal]);
-            $this->ejecutar([$pdftotext, '-layout', $firmado, $textoFirmado]);
+            // Poppler tambien extrae el texto del sello AP. La estructura ya
+            // validada permite retirar solo las anotaciones de copias temporales;
+            // asi se compara todo el texto oficial sin excluir frases por patron.
+            $baseOriginal = $this->copiaSinAnotaciones($original, $estructuraOriginal, $directorio, 'original');
+            $baseFirmada = $this->copiaSinAnotaciones($firmado, $estructuraFirmada, $directorio, 'firmado');
+            $this->ejecutar([$pdftotext, '-layout', $baseOriginal, $textoOriginal]);
+            $this->ejecutar([$pdftotext, '-layout', $baseFirmada, $textoFirmado]);
             if (! hash_equals(hash_file('sha256', $textoOriginal), hash_file('sha256', $textoFirmado))) {
                 return false;
             }
 
             $pdftoppm = $this->binario('pdftoppm_binary', 'pdftoppm', '/usr/bin/pdftoppm');
             $dpi = (string) $dpiNumero;
-            $this->ejecutar([$pdftoppm, '-r', $dpi, '-png', $original, $directorio.DIRECTORY_SEPARATOR.'original']);
-            $this->ejecutar([$pdftoppm, '-r', $dpi, '-png', $firmado, $directorio.DIRECTORY_SEPARATOR.'firmado']);
+            // La apariencia visible vive exclusivamente en el widget criptografico
+            // situado dentro del bloque nominal. Se ocultan anotaciones para comparar
+            // todos los pixeles del contenido base; EstructuraFirmaVisiblePdf garantiza que
+            // no exista ninguna otra anotacion que pudiera aprovechar esta excepcion.
+            $this->ejecutar([$pdftoppm, '-hide-annotations', '-r', $dpi, '-png', $original, $directorio.DIRECTORY_SEPARATOR.'original']);
+            $this->ejecutar([$pdftoppm, '-hide-annotations', '-r', $dpi, '-png', $firmado, $directorio.DIRECTORY_SEPARATOR.'firmado']);
+            $this->ejecutar([$pdftoppm, '-r', $dpi, '-png', $firmado, $directorio.DIRECTORY_SEPARATOR.'visible']);
 
             $originales = glob($directorio.DIRECTORY_SEPARATOR.'original-*.png') ?: [];
             $firmados = glob($directorio.DIRECTORY_SEPARATOR.'firmado-*.png') ?: [];
-            if (count($originales) === 0 || count($originales) !== count($firmados)) {
+            $visibles = glob($directorio.DIRECTORY_SEPARATOR.'visible-*.png') ?: [];
+            if (count($originales) === 0 || count($originales) !== count($firmados) || count($firmados) !== count($visibles)) {
                 return false;
             }
 
             sort($originales);
             sort($firmados);
+            sort($visibles);
+            $paginasConSello = 0;
             foreach ($originales as $indice => $imagen) {
                 if (! hash_equals(hash_file('sha256', $imagen), hash_file('sha256', $firmados[$indice]))) {
                     return false;
                 }
+                if (! hash_equals(hash_file('sha256', $firmados[$indice]), hash_file('sha256', $visibles[$indice]))) {
+                    $paginasConSello++;
+                }
             }
 
-            return true;
+            // Un stream AP vacio o transparente no constituye una firma visible.
+            return $paginasConSello === 1;
         } finally {
             foreach (glob($directorio.DIRECTORY_SEPARATOR.'*') ?: [] as $archivo) {
                 @unlink($archivo);
@@ -220,40 +241,57 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
         }
     }
 
-    /**
-     * QPDF descomprime los object streams para que los nombres peligrosos no
-     * puedan ocultarse en contenido comprimido. El firmador solo necesita un
-     * AcroForm con campo /Sig; scripts, acciones automáticas y adjuntos quedan
-     * expresamente prohibidos en documentos oficiales.
-     */
-    private function estructuraPdfSegura(string $ruta, string $directorio, string $prefijo): bool
+    /** @param array<string, mixed> $estructura */
+    private function copiaSinAnotaciones(string $ruta, array $estructura, string $directorio, string $prefijo): string
+    {
+        $objetos = [];
+        foreach ($estructura['qpdf'][1] as $referencia => $objeto) {
+            $tipo = $objeto['value']['/Type'] ?? null;
+            if ($tipo === '/Page') {
+                $objeto['value']['/Annots'] = [];
+                $objetos[$referencia] = $objeto;
+            } elseif ($tipo === '/Catalog') {
+                unset($objeto['value']['/AcroForm']);
+                $objetos[$referencia] = $objeto;
+            }
+        }
+        $actualizacion = $directorio.DIRECTORY_SEPARATOR.$prefijo.'.base.json';
+        $salida = $directorio.DIRECTORY_SEPARATOR.$prefijo.'.base.pdf';
+        $json = json_encode(['qpdf' => [$estructura['qpdf'][0], $objetos]], JSON_THROW_ON_ERROR);
+        if (file_put_contents($actualizacion, $json) === false) {
+            throw new \RuntimeException('No se pudo preparar la comparacion textual del PDF.');
+        }
+        $this->ejecutar([
+            $this->binario('qpdf_binary', 'qpdf', '/usr/bin/qpdf'),
+            '--update-from-json='.$actualizacion,
+            $ruta,
+            $salida,
+        ]);
+
+        return $salida;
+    }
+
+    /** @return array<string, mixed> */
+    private function estructuraPdf(string $ruta): array
     {
         $qpdf = $this->binario('qpdf_binary', 'qpdf', '/usr/bin/qpdf');
-        $normalizado = $directorio.DIRECTORY_SEPARATOR.$prefijo.'.qdf.pdf';
+        // qpdf analiza referencias, nombres escapados y objetos comprimidos.
+        // El servidor compara la pagina/Rect real del widget con el original.
         $process = new Process([
             $qpdf,
-            '--qdf',
-            '--object-streams=disable',
-            '--stream-data=preserve',
+            '--json=2',
+            '--json-key=qpdf',
+            '--json-stream-data=none',
             $ruta,
-            $normalizado,
         ]);
         $process->setEnv($this->entorno());
         $process->setTimeout(20);
         $process->run();
-        if (! is_file($normalizado) || ! in_array($process->getExitCode(), [0, 3], true)) {
-            return false;
+        if (! $process->isSuccessful()) {
+            throw new \RuntimeException('No se pudo analizar la estructura del PDF.');
         }
 
-        $contenido = file_get_contents($normalizado);
-        if (! is_string($contenido)) {
-            return false;
-        }
-
-        return preg_match(
-            '/\/(?:JavaScript|JS|Launch|EmbeddedFiles|RichMedia|XFA|OpenAction|AA)\b/',
-            $contenido,
-        ) !== 1;
+        return json_decode($process->getOutput(), true, 512, JSON_THROW_ON_ERROR);
     }
 
     /** @return array{paginas: int, tamano_pagina: string, ancho_maximo_points: float, alto_maximo_points: float} */

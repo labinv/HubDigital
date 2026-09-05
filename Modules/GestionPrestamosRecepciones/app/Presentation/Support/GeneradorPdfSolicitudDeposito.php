@@ -53,6 +53,7 @@ final class GeneradorPdfSolicitudDeposito
             'depositante' => $depositante,
             'registros' => $matriz?->registros ?? collect(),
             'datosMepn' => $datosMepn,
+            'perfilFirma' => PerfilFirmaPdf::solicitudDepositante(),
             'huellaExpediente' => hash('sha256', json_encode($expediente, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)),
         ])->setPaper('a4')->output();
     }

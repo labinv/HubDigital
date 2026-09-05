@@ -80,6 +80,7 @@
                     x-data="hubDigitalFirmador({
                         documentUrl: @js(route('prestamos.deposito.acta-recepcion', $this->id)),
                         uploadUrl: @js(route('prestamos.curador.deposito.acta.firmar', $this->id)),
+                        signatureProfile: 'acta-recepcion:curador:v1',
                         reason: 'Aprobación del acta final de recepción de especímenes',
                         location: 'Laboratorio de Invertebrados EPN, Quito, Ecuador'
                     })">

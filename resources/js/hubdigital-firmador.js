@@ -62,6 +62,7 @@ window.hubDigitalFirmador = (config) => ({
                     pdf: pdfBytes,
                     p12: certificadoBytes,
                     passphrase: clave,
+                    signatureProfile: config.signatureProfile,
                     reason: config.reason,
                     location: config.location ?? 'Quito, Ecuador',
                 }, [pdfBytes, certificadoBytes]);

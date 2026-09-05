@@ -14,6 +14,15 @@
         .muted { color: #56636b; }
         .declaration { background: #f3f7f4; border: 1px solid #b7c9bc; margin-top: 15px; padding: 9px; }
         .hash { color: #56636b; font: 7px DejaVu Sans Mono, monospace; word-break: break-all; }
+        .firma-persona { border: 1px solid #93aa99; margin-top: 13px; padding: 8px; page-break-inside: avoid; }
+        .firma-persona .titulo { color: #12385a; font-size: 10px; font-weight: bold; margin-bottom: 5px; }
+        .firma-persona .marcadores { height: 94px; position: relative; width: 100%; }
+        .firma-persona .marcador-bloque,
+        .firma-persona .marcador-zona { color: #fff; display: block; font-size: 1px; line-height: 1px; position: absolute; text-decoration: none; }
+        .firma-persona .marcador-bloque { bottom: 0; left: 0; right: 0; top: 0; }
+        .firma-persona .marcador-zona { bottom: 6px; left: 6px; right: 6px; top: 6px; }
+        .firma-persona .nombre { border-top: 1px solid #596963; font-weight: bold; margin: 3px 0 0; padding-top: 4px; text-align: center; }
+        .firma-persona .rol { color: #56636b; margin: 1px 0 0; text-align: center; }
         .footer { bottom: -29px; color: #64716b; font-size: 7px; left: 0; position: fixed; right: 0; text-align: center; }
     </style>
 </head>
@@ -61,7 +70,15 @@
         <strong>Declaración del solicitante.</strong> Declaro que la información registrada es verídica, que el material tiene procedencia lícita y que los permisos y documentos incorporados al expediente son auténticos. Solicito al Laboratorio de Invertebrados de la EPN evaluar el material bajo sus procedimientos de ingreso, revisión, custodia y devolución o incorporación, según corresponda.
     </div>
     <p class="hash">Huella del expediente: {{ $huellaExpediente }}</p>
-    <p><strong>Firma electrónica del depositante:</strong> incorporada como firma PAdES en este documento por el Firmador HubDigital.</p>
+    <div class="firma-persona">
+        <div class="titulo">Firma electrónica del depositante</div>
+        <div class="marcadores">
+            <a class="marcador-bloque" href="{{ $perfilFirma['bloque'] }}">HUBDIGITAL BLOQUE NOMINAL {{ $perfilFirma['rol'] }}</a>
+            <a class="marcador-zona" href="{{ $perfilFirma['zona'] }}">HUBDIGITAL ZONA FIRMA {{ $perfilFirma['rol'] }}</a>
+        </div>
+        <p class="nombre">{{ trim(($depositante?->first_name ?? '').' '.($depositante?->last_name ?? '')) ?: 'Depositante responsable' }}</p>
+        <p class="rol">Depositante / solicitante del expediente {{ $solicitud->numero }}</p>
+    </div>
 
     <div class="footer">Documento generado por HubDigital. La copia oficial firmada se conserva en almacenamiento privado con huella SHA-256 y trazabilidad de validación.</div>
 </body>
