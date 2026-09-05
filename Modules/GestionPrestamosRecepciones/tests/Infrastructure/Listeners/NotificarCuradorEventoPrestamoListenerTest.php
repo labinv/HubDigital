@@ -43,6 +43,18 @@ it('usa la ruta de cierre cuando se registra una devolución', function () {
         );
 });
 
+it('avisa al administrador porque posee facultades curatoriales', function () {
+    $administrador = User::factory()->administrador()->create();
+    $prestamoId = PrestamoId::generate();
+
+    event(new ProrrogaSolicitada($prestamoId, 'investigador-1', new DateTimeImmutable));
+
+    $notificacion = $administrador->unreadNotifications()->sole();
+
+    expect($administrador->esCurador())->toBeTrue()
+        ->and($notificacion->data['tipo'])->toBe('prestamo_prorroga_solicitada');
+});
+
 it('no falla cuando no hay curadores registrados', function () {
     event(new ProrrogaSolicitada(PrestamoId::generate(), 'investigador-1', new DateTimeImmutable));
 

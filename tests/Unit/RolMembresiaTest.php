@@ -46,6 +46,7 @@ test('administracion es un rol interno reconocido por los helpers', function () 
     $user = usuarioConRoles(RolUsuario::ADMIN);
 
     expect($user->esAdministrador())->toBeTrue();
+    expect($user->esCurador())->toBeTrue();
     expect($user->esUsuarioInterno())->toBeTrue();
     expect(RolUsuario::rolesInternos())->toContain(RolUsuario::ADMIN);
 });

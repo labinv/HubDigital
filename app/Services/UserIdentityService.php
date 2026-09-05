@@ -56,6 +56,8 @@ final class UserIdentityService
 
     public function esCurador(string $uuid): bool
     {
-        return $this->tieneRol($uuid, RolUsuario::CURADOR);
+        $usuario = User::find($uuid);
+
+        return $usuario?->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN) ?? false;
     }
 }

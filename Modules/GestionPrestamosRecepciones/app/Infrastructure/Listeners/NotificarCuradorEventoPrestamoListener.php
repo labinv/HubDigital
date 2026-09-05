@@ -26,7 +26,13 @@ final class NotificarCuradorEventoPrestamoListener
     public function handle(
         SolicitudPrestamoEnviada|ActaFirmadaSubida|ProrrogaSolicitada|VerificacionEntregaRegistrada|DevolucionRegistrada $event,
     ): void {
-        $curadores = User::where('rol', RolUsuario::CURADOR)->get();
+        $curadores = User::query()->whereHas(
+            'roles',
+            fn ($consulta) => $consulta->whereIn('rol', [
+                RolUsuario::CURADOR->value,
+                RolUsuario::ADMIN->value,
+            ]),
+        )->get();
 
         if ($curadores->isEmpty()) {
             return;

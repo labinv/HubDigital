@@ -10,9 +10,7 @@ use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /** Evita revelar si un correo está o no registrado. */
-final class GenericPasswordResetLinkResponse implements
-    FailedPasswordResetLinkRequestResponse,
-    SuccessfulPasswordResetLinkRequestResponse
+final class GenericPasswordResetLinkResponse implements FailedPasswordResetLinkRequestResponse, SuccessfulPasswordResetLinkRequestResponse
 {
     private const MESSAGE = 'Si existe una cuenta con ese correo, recibirás un enlace para restablecer la contraseña.';
 

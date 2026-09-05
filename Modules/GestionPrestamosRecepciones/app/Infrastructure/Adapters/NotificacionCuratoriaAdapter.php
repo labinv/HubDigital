@@ -17,7 +17,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\Solici
 
 /**
  * Adaptador de notificaciones a la curaduría. Entrega por correo y por el portal
- * (campana) a todos los usuarios con rol CURADOR.
+ * (campana) a todas las cuentas con facultades CURADOR o ADMIN.
  */
 final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
 {
@@ -38,7 +38,7 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
     ): string {
         $referencia = (string) Str::uuid();
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
-        $curadores = User::whereHas('roles', fn ($q) => $q->where('rol', RolUsuario::CURADOR->value))
+        $curadores = $this->equipoCuratorial()
             ->when(
                 $deposito?->curador_responsable,
                 fn ($q, string $curadorId) => $q->where('id', $curadorId),
@@ -53,10 +53,7 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
                 'solicitud_id' => $solicitudId,
                 'curador_responsable' => $deposito->curador_responsable,
             ]);
-            $curadores = User::whereHas(
-                'roles',
-                fn ($q) => $q->where('rol', RolUsuario::CURADOR->value),
-            )->get();
+            $curadores = $this->equipoCuratorial()->get();
         }
 
         if ($curadores->isEmpty()) {
@@ -91,7 +88,7 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
 
         // Se notifica a todos los curadores EXCEPTO al que tomó la decisión.
-        $otrosCuradores = User::whereHas('roles', fn ($q) => $q->where('rol', RolUsuario::CURADOR->value))
+        $otrosCuradores = $this->equipoCuratorial()
             ->where('id', '!=', $curadorQueDecideId)
             ->get();
 
@@ -127,7 +124,7 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
         $referencia = (string) Str::uuid();
 
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
-        $curadores = User::whereHas('roles', fn ($q) => $q->where('rol', RolUsuario::CURADOR->value))->get();
+        $curadores = $this->equipoCuratorial()->get();
 
         if ($curadores->isEmpty()) {
             Log::info('Notificación a curaduría omitida: no hay curadores', [
@@ -154,5 +151,16 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
         ));
 
         return $referencia;
+    }
+
+    private function equipoCuratorial(): \Illuminate\Database\Eloquent\Builder
+    {
+        return User::query()->whereHas(
+            'roles',
+            fn ($consulta) => $consulta->whereIn('rol', [
+                RolUsuario::CURADOR->value,
+                RolUsuario::ADMIN->value,
+            ]),
+        );
     }
 }

@@ -8,6 +8,7 @@
         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
         RolUsuario::CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
         RolUsuario::RECEPTOR => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
+        RolUsuario::ADMIN => ['bg-violet-100 text-violet-800', 'users'],
     };
 @endphp
 

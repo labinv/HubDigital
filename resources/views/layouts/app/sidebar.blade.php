@@ -89,7 +89,19 @@
                                 Lotes por recibir
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif($rolActivo === RolUsuario::CURADOR)
+                    @elseif(in_array($rolActivo, [RolUsuario::CURADOR, RolUsuario::ADMIN], true))
+                        @if($rolActivo === RolUsuario::ADMIN)
+                            <flux:sidebar.group heading="Administración" class="grid">
+                                <flux:sidebar.item
+                                    icon="users"
+                                    :href="route('admin.usuarios')"
+                                    :current="request()->routeIs('admin.usuarios')"
+                                    wire:navigate
+                                >
+                                    Usuarios y perfiles
+                                </flux:sidebar.item>
+                            </flux:sidebar.group>
+                        @endif
                         <flux:sidebar.group
                             heading="Gestión de préstamos"
                             class="grid"
@@ -434,6 +446,7 @@
                                         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
                                         RolUsuario::CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
                                         RolUsuario::RECEPTOR => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
+                                        RolUsuario::ADMIN => ['bg-violet-100 text-violet-800', 'users'],
                                     };
                                 @endphp
                                 <div class="grid flex-1 text-start text-sm leading-tight">

@@ -191,7 +191,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function esCurador(): bool
     {
-        return $this->tieneRol(RolUsuario::CURADOR);
+        return $this->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN);
     }
 
     public function esReceptor(): bool
