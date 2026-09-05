@@ -1,12 +1,13 @@
-<div class="p-4 sm:p-6 space-y-5"
+<div class="hub-workspace p-4 sm:p-6 space-y-6"
     x-data
     @toast.window="$flux.toast($event.detail.message)"
     @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">
 
     {{-- Encabezado --}}
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <header class="hub-page-header">
         <div>
-            <flux:heading size="xl" level="1" class="font-display">Bandeja de recepciones</flux:heading>
+            <p class="hub-page-kicker">Ingreso de colecciones</p>
+            <h1 class="mt-1 hub-page-title">Bandeja de recepciones</h1>
             <flux:text class="text-text-secondary mt-1 text-sm">
                 {{ $esActas
                     ? 'Lotes recibidos y constatados que requieren generar y firmar el acta final.'
@@ -15,7 +16,7 @@
                         : 'Solicitudes de depósito y donación pendientes de revisión documental.') }}
             </flux:text>
         </div>
-    </div>
+    </header>
 
     {{-- Pestañas: revisión documental / actuación curatorial / historial --}}
     <div class="inline-flex rounded-lg border border-border bg-surface p-1">
@@ -60,7 +61,7 @@
     </div>
 
     {{-- Filtros --}}
-    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+    <div class="hub-table-shell">
         <div class="flex items-center gap-2 px-4 py-2.5 bg-bg-main border-b border-border">
             <flux:icon name="funnel" class="size-3.5 text-text-secondary" />
             <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">Filtros</span>

@@ -1,15 +1,29 @@
-<div class="flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
+<div class="hub-workspace flex h-full w-full flex-1 flex-col gap-7 p-4 sm:p-6">
 
-    <div class="flex flex-col gap-1">
-        <h1 class="font-display text-2xl font-bold text-blue-navy">Panel del curador</h1>
-        <p class="text-sm text-text-secondary">Bienvenido, {{ auth()->user()->name }}</p>
-    </div>
+    <header class="hub-page-header">
+        <div>
+            <p class="hub-page-kicker">Gestión de colección · EPN</p>
+            <h1 class="mt-1 hub-page-title">Panel del curador</h1>
+            <p class="mt-2 text-sm text-text-secondary">Prioriza la recepción, la trazabilidad y el cierre documental de la colección.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('prestamos.curador.depositos', ['vista' => 'actas']) }}" wire:navigate class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-science-blue px-4 py-2 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#005a91] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2">
+                <flux:icon name="pencil-square" class="size-4" /> Actas pendientes
+            </a>
+            <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-blue-navy transition hover:border-science-blue/45 hover:bg-bg-main">
+                <flux:icon name="inbox-arrow-down" class="size-4" /> Revisar ingresos
+            </a>
+        </div>
+    </header>
 
     {{-- ── La colección ─────────────────────────────────────────────
          Gestión de información taxonómica + Divulgación. Va primero
          porque es la magnitud real del acervo bajo custodia. --}}
     <section class="flex flex-col gap-4">
-        <h2 class="font-display text-lg font-semibold text-blue-navy">La colección</h2>
+        <div class="flex items-end justify-between gap-4">
+            <div><h2 class="hub-section-title">La colección</h2><p class="mt-1 text-sm text-text-secondary">Acervo bajo custodia y calidad de su descripción taxonómica.</p></div>
+            <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate class="hidden text-sm font-semibold text-science-blue hover:underline sm:inline">Abrir catálogo</a>
+        </div>
 
         <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
             {{-- Número protagonista. Va en la tipografía de interfaz y no en la
@@ -56,7 +70,7 @@
     </section>
 
     {{-- ── Recepción y depósitos ──────────────────────────────────── --}}
-    <section class="flex flex-col gap-3">
+    <section class="flex flex-col gap-4">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
                 <h2 class="font-display text-lg font-semibold text-blue-navy">Recepción y depósitos</h2>

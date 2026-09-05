@@ -6,7 +6,7 @@
     $verificado = in_array($recepcion->estadoRecepcion, ['Verificado Físicamente', 'Verificado con Observaciones'], true);
 @endphp
 
-<div class="p-4 sm:p-6 space-y-5"
+<div class="hub-workspace p-4 sm:p-6 space-y-6"
     x-data
     @toast.window="$flux.toast($event.detail.message)"
     @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">
@@ -20,9 +20,10 @@
     </flux:breadcrumbs>
 
     {{-- Encabezado --}}
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <header class="hub-page-header">
         <div>
-            <flux:heading size="xl" level="1" class="font-display">Recepción física del lote</flux:heading>
+            <p class="hub-page-kicker">Cadena de custodia</p>
+            <h1 class="mt-1 hub-page-title">Recepción física del lote</h1>
             <div class="flex items-center gap-3 mt-1.5 flex-wrap">
                 <p class="font-mono text-xs text-text-secondary">{{ $recepcion->numeroSolicitud }}</p>
                 <flux:badge color="zinc" size="sm">{{ $recepcion->tipoTramite }}</flux:badge>
@@ -31,37 +32,37 @@
                 @endif
             </div>
         </div>
-    </div>
+    </header>
 
     {{-- Tiles de resumen --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 auto-rows-fr">
-        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="hub-panel min-w-0 p-4">
             <p class="text-xs text-text-secondary">Código de lote (QR)</p>
             <p class="mt-1 font-mono text-base font-semibold text-blue-navy tracking-wide break-all">{{ $recepcion->codigoQR ?? '—' }}</p>
         </div>
-        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="hub-panel min-w-0 p-4">
             <p class="text-xs text-text-secondary">Depositante</p>
             <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $nombreInvestigador }}</p>
         </div>
-        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="hub-panel min-w-0 p-4">
             <p class="text-xs text-text-secondary">N.º de lotes</p>
             <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->nroLotes ?? '—' }}</p>
         </div>
-        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="hub-panel min-w-0 p-4">
             <p class="text-xs text-text-secondary">N.º de individuos</p>
             <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->nroIndividuos ?? '—' }}</p>
         </div>
-        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="hub-panel min-w-0 p-4">
             <p class="text-xs text-text-secondary">Grupo animal</p>
             <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->grupoAnimal ?? '—' }}</p>
         </div>
-        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="hub-panel min-w-0 p-4">
             <p class="text-xs text-text-secondary">Localidad</p>
             <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->localidad ?? '—' }}</p>
         </div>
     </div>
 
-    <section class="rounded-lg border border-border bg-surface p-4 shadow-sm" aria-labelledby="documentacion-entrega">
+    <section class="hub-panel p-4" aria-labelledby="documentacion-entrega">
         <div class="flex items-start gap-3">
             <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-navy/8 text-blue-navy"><flux:icon name="document-check" class="size-5" /></span>
             <div class="min-w-0">

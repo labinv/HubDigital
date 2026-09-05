@@ -5,20 +5,20 @@
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-bg-main">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-border bg-surface">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-border bg-blue-navy">
 
             {{-- Brand header --}}
-            <flux:sidebar.header class="border-b border-border px-4 pt-3 pb-5">
+            <flux:sidebar.header class="border-b border-white/15 px-4 pt-4 pb-5">
                 <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
-                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-navy shadow-sm">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/20 bg-white/10 shadow-sm">
                         <x-app-logo-icon class="size-6 fill-current text-white" />
                     </span>
                     <div class="flex flex-col leading-tight">
-                        <span class="font-display text-sm font-bold text-blue-navy">Hub Digital</span>
-                        <span class="text-[10px] font-medium uppercase tracking-wide text-text-secondary">Laboratorio de Invertebrados</span>
+                        <span class="font-display text-sm font-bold text-white">Hub Digital</span>
+                        <span class="text-[10px] font-medium uppercase tracking-[0.11em] text-white/60">Laboratorio de Invertebrados</span>
                     </div>
                 </a>
-                <div class="ml-auto flex items-center text-text-secondary">
+                <div class="ml-auto flex items-center text-white/80">
                     <div class="hidden lg:block">
                         <livewire:campana-notificaciones />
                     </div>
@@ -413,7 +413,7 @@
 
             <flux:spacer />
 
-            <div class="sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border bg-surface p-4 hidden lg:block" style="box-shadow: 0 16px 0 0 var(--color-surface);">
+            <div class="sticky bottom-0 z-10 -mx-4 -mb-4 hidden border-t border-white/15 bg-blue-navy p-4 lg:block" style="box-shadow: 0 16px 0 0 var(--color-blue-navy);">
                 <x-desktop-user-menu :name="auth()->user()->name" />
             </div>
         </flux:sidebar>

@@ -31,7 +31,7 @@
     class="relative">
 
     <button type="button" x-ref="trigger" x-on:click="toggle()"
-        class="inline-flex items-center justify-center size-9 rounded-lg text-current hover:bg-black/5 transition-colors" aria-label="Notificaciones">
+        class="inline-flex items-center justify-center size-9 rounded-lg text-current transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70" aria-label="Notificaciones">
         <span class="relative inline-flex">
             <flux:icon name="bell" class="size-5" />
             @if($noLeidas > 0)
@@ -45,10 +45,10 @@
     <div x-ref="panel" x-show="open" x-cloak x-transition.origin.top.left
         x-on:click.outside="open = false"
         :style="`left: ${coords.left}px; top: ${coords.top}px`"
-        class="fixed w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-surface shadow-lg z-50 overflow-hidden">
+        class="fixed z-50 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border border-border bg-surface shadow-[0_18px_42px_rgba(16,43,70,.18)]">
 
-        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
-            <span class="text-sm font-semibold text-text-primary">Notificaciones</span>
+        <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div><span class="font-display text-base font-semibold text-blue-navy">Notificaciones</span><p class="mt-0.5 text-[11px] text-text-secondary">Actividad del laboratorio</p></div>
             @if($noLeidas > 0)
                 <button wire:click="marcarTodasLeidas" class="shrink-0 whitespace-nowrap text-xs font-medium text-science-blue hover:underline">
                     Marcar todas como leídas

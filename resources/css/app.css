@@ -17,15 +17,15 @@
     --font-display: 'Roboto Slab', ui-serif, Georgia, serif;
 
     /* Hub Digital Design System — Primary Colors */
-    --color-blue-navy: #1B365D;
-    --color-bio-green: #2E7D32;
-    --color-science-blue: #1976D2;
+    --color-blue-navy: #102B46;
+    --color-bio-green: #1D6A4D;
+    --color-science-blue: #0069A8;
 
     /* Hub Digital Design System — Semantic Colors */
-    --color-success: #4CAF50;
-    --color-warning: #FF9800;
-    --color-error: #D32F2F;
-    --color-info: #0288D1;
+    --color-success: #247A52;
+    --color-warning: #B87811;
+    --color-error: #B42318;
+    --color-info: #0069A8;
 
     /* Relleno de datos en gráficas.
        NO reutilizar --color-science-blue aquí: un color de interfaz se elige por
@@ -35,11 +35,11 @@
     --color-chart-serie: #1976D2;
 
     /* Hub Digital Design System — Neutrals */
-    --color-bg-main: #F5F7FA;
+    --color-bg-main: #F4F7FA;
     --color-surface: #FFFFFF;
-    --color-text-primary: #212121;
-    --color-text-secondary: #757575;
-    --color-border: #E0E0E0;
+    --color-text-primary: #1B2A3A;
+    --color-text-secondary: #607080;
+    --color-border: #D9E2EA;
 
     --color-zinc-50: #fafafa;
     --color-zinc-100: #f5f5f5;
@@ -159,6 +159,58 @@ select[data-flux-control] {
 
 body {
     color: var(--color-text-primary);
+    background: var(--color-bg-main);
+    text-rendering: optimizeLegibility;
+}
+
+/* Sistema visual operativo del Laboratorio de Invertebrados.
+   Las vistas de los módulos comparten estos acabados sin sustituir su
+   estructura ni alterar los flujos curatoriales. */
+[data-flux-main] {
+    background: var(--color-bg-main);
+}
+
+[data-flux-sidebar] {
+    background: var(--color-blue-navy) !important;
+    border-color: rgba(255, 255, 255, .14) !important;
+    color: rgba(255, 255, 255, .8);
+}
+
+[data-flux-sidebar] [data-flux-sidebar-header],
+[data-flux-sidebar] [data-flux-sidebar-footer] {
+    border-color: rgba(255, 255, 255, .14) !important;
+}
+
+[data-flux-sidebar] [data-flux-sidebar-item] {
+    border-left: 3px solid transparent;
+    border-radius: .45rem;
+    color: rgba(255, 255, 255, .78) !important;
+    font-size: .84rem;
+    font-weight: 500;
+    transition: background-color .16s ease, color .16s ease, border-color .16s ease;
+}
+
+[data-flux-sidebar] [data-flux-sidebar-item] [data-flux-icon],
+[data-flux-sidebar] [data-flux-sidebar-item] svg {
+    color: rgba(255, 255, 255, .62) !important;
+}
+
+[data-flux-sidebar] [data-flux-sidebar-item]:hover {
+    background-color: rgba(255, 255, 255, .09) !important;
+    color: #fff !important;
+}
+
+[data-flux-sidebar] [data-flux-sidebar-item]:hover [data-flux-icon],
+[data-flux-sidebar] [data-flux-sidebar-item]:hover svg {
+    color: #fff !important;
+}
+
+[data-flux-sidebar] [data-flux-sidebar-group] > div:first-child,
+[data-flux-sidebar] [data-flux-sidebar-group] [data-flux-heading] {
+    color: rgba(255, 255, 255, .45) !important;
+    font-size: .64rem;
+    font-weight: 700;
+    letter-spacing: .12em;
 }
 
 /* Hub Digital auth background — subtle radial gradients */
@@ -176,18 +228,95 @@ body {
 
 /* Hub Digital Sidebar — Active item highlight (science-blue) */
 [data-flux-sidebar] [data-flux-sidebar-item][data-current] {
-    background-color: color-mix(in srgb, var(--color-science-blue) 10%, transparent);
-    color: var(--color-science-blue) !important;
+    background-color: rgba(0, 105, 168, .78) !important;
+    color: #ffffff !important;
     border-color: transparent;
-    border-left: 3px solid var(--color-science-blue);
+    border-left: 3px solid #9bd7a5;
 }
 
 [data-flux-sidebar] [data-flux-sidebar-item][data-current] [data-flux-icon] {
-    color: var(--color-science-blue) !important;
+    color: #ffffff !important;
 }
 
 [data-flux-sidebar] [data-flux-sidebar-item][data-current]:hover {
-    background-color: color-mix(in srgb, var(--color-science-blue) 15%, transparent);
+    background-color: rgba(0, 105, 168, .94) !important;
+}
+
+/* Superficies de trabajo: bordes deliberados, sombras discretas y una
+   jerarquía tipográfica consistente para formularios, bandejas y tableros. */
+.hub-workspace {
+    max-width: 108rem;
+    margin-inline: auto;
+}
+
+.hub-page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 1.35rem;
+}
+
+.hub-page-kicker {
+    color: var(--color-bio-green);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.hub-page-title {
+    color: var(--color-blue-navy);
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 2.5vw, 2.35rem);
+    font-weight: 700;
+    letter-spacing: -.025em;
+    line-height: 1.12;
+}
+
+.hub-section-title {
+    color: var(--color-blue-navy);
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 650;
+    letter-spacing: -.015em;
+}
+
+.hub-panel {
+    border: 1px solid var(--color-border);
+    border-radius: .75rem;
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgba(16, 43, 70, .05), 0 8px 24px rgba(16, 43, 70, .035);
+}
+
+.hub-table-shell {
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: .75rem;
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgba(16, 43, 70, .04);
+}
+
+.hub-status {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: .23rem .55rem;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .025em;
+    line-height: 1.2;
+}
+
+.hub-status--pending { background: #fff3da; color: #82570d; }
+.hub-status--active { background: #e7f1f8; color: #075d92; }
+.hub-status--complete { background: #e7f4ed; color: #17633f; }
+.hub-status--alert { background: #fdeceb; color: #a3251a; }
+
+@media (max-width: 1023px) {
+    .hub-page-header { align-items: flex-start; }
 }
 
 /* Hub Digital Secondary Links — Science Blue */

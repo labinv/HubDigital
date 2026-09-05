@@ -1,8 +1,8 @@
-<div data-testid="admin-users-page" class="flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
-    <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+<div data-testid="admin-users-page" class="hub-workspace flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
+    <header class="hub-page-header">
         <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-bio-green">Gobierno de acceso</p>
-            <h1 class="mt-1 font-display text-2xl font-bold text-blue-navy">Usuarios y perfiles</h1>
+            <p class="hub-page-kicker">Gobierno de acceso</p>
+            <h1 class="mt-1 hub-page-title">Usuarios y perfiles</h1>
             <p class="mt-1 max-w-2xl text-sm text-text-secondary">
                 Consulta las cuentas ciudadanas e internas y crea perfiles con un único rol autorizado.
             </p>
@@ -30,7 +30,7 @@
     @endif
 
     @if ($mostrarFormulario)
-        <section class="rounded-xl border border-border bg-surface p-5 shadow-sm">
+        <section class="hub-panel p-5">
             <div class="mb-5">
                 <h2 class="font-display text-lg font-semibold text-blue-navy">Nueva cuenta</h2>
                 <p class="text-sm text-text-secondary">
@@ -88,7 +88,7 @@
     @endif
 
     @if ($usuarioEnEdicion)
-        <section class="rounded-xl border border-science-blue/30 bg-surface p-5 shadow-sm">
+        <section class="hub-panel border-science-blue/30 p-5">
             <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <h2 class="font-display text-lg font-semibold text-blue-navy">Editar perfil institucional</h2>
@@ -119,7 +119,7 @@
         </section>
     @endif
 
-    <section class="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+    <section class="hub-table-shell">
         <div class="grid gap-3 border-b border-border p-4 md:grid-cols-[minmax(0,1fr)_16rem]">
             <flux:input
                 wire:model.live.debounce.350ms="busqueda"
