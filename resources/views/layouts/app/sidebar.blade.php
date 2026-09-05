@@ -22,7 +22,7 @@
                     <div class="hidden lg:block">
                         <livewire:campana-notificaciones />
                     </div>
-                    <flux:sidebar.collapse class="lg:hidden text-text-secondary" />
+                    <flux:sidebar.collapse class="text-white/75 hover:text-white lg:hidden" />
                 </div>
             </flux:sidebar.header>
 
@@ -437,6 +437,7 @@
                 <flux:profile
                     :initials="auth()->user()->initials()"
                     icon-trailing="chevron-down"
+                    class="text-white hover:bg-white/10"
                 />
 
                 <flux:menu>
