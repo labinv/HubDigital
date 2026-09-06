@@ -13,6 +13,22 @@ if [[ -f "${codespaces_secret_env}" ]]; then
     # shellcheck disable=SC1090
     source "${codespaces_secret_env}"
     set +a
+
+    # Los secretos de este Codespace fueron cargados originalmente como Base64
+    # para evitar interpretaciÃ³n del shell. Se reconocen por el valor conocido
+    # y no sensible de COMPOSE_PROJECT_NAME; la decodificaciÃ³n ocurre solo en
+    # memoria y nunca se imprime.
+    if [[ "${COMPOSE_PROJECT_NAME:-}" == "aHViZGlnaXRhbC1kZXY=" ]]; then
+        for clave_codificada in CLOUDFLARE_TUNNEL_TOKEN DEPOSIT_STORAGE_DRIVER R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY; do
+            valor_codificado="${!clave_codificada:-}"
+            [[ -n "${valor_codificado}" ]] || continue
+            valor_decodificado="$(printf '%s' "${valor_codificado}" | base64 --decode)"
+            printf -v "${clave_codificada}" '%s' "${valor_decodificado}"
+            export "${clave_codificada}"
+        done
+    fi
+
+    export COMPOSE_PROJECT_NAME=hubdigital-dev
 fi
 
 if [[ ! -f .env ]]; then
