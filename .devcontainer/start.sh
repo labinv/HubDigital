@@ -33,6 +33,29 @@ for secreto in R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_
     actualizar_env_secreto "${secreto}"
 done
 
+r2_presentes=0
+for variable in R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+    if [[ -n "${!variable:-}" ]]; then
+        r2_presentes=$((r2_presentes + 1))
+    fi
+done
+
+if [[ ${r2_presentes} -gt 0 && ${r2_presentes} -lt 4 ]]; then
+    echo "ERROR: la configuracion R2 de Codespaces esta incompleta." >&2
+    exit 1
+fi
+
+if [[ ${r2_presentes} -eq 4 ]]; then
+    sed -i 's|^DEPOSIT_STORAGE_DRIVER=.*|DEPOSIT_STORAGE_DRIVER=r2|' .env
+    sed -i 's|^DEPOSIT_STORAGE_REQUIRE_REMOTE=.*|DEPOSIT_STORAGE_REQUIRE_REMOTE=true|' .env
+elif [[ -n "${CODESPACES:-}" ]]; then
+    echo "ERROR: Codespaces requiere los cuatro secretos R2 para evitar almacenamiento local silencioso." >&2
+    exit 1
+else
+    sed -i 's|^DEPOSIT_STORAGE_DRIVER=.*|DEPOSIT_STORAGE_DRIVER=auto|' .env
+    sed -i 's|^DEPOSIT_STORAGE_REQUIRE_REMOTE=.*|DEPOSIT_STORAGE_REQUIRE_REMOTE=false|' .env
+fi
+
 build_flag="--build"
 if [[ "${1:-}" == "--no-build" ]]; then
     build_flag=""
@@ -41,25 +64,8 @@ fi
 docker compose --profile development up -d ${build_flag} postgres mailpit app worker scheduler nginx
 docker compose exec -T app php artisan migrate --force
 
-r2_presentes=0
-for variable in R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
-    if [[ -n "${!variable:-}" ]]; then
-        r2_presentes=$((r2_presentes + 1))
-    fi
-done
-if [[ ${r2_presentes} -gt 0 && ${r2_presentes} -lt 4 ]]; then
-    echo "ERROR: la configuracion R2 de Codespaces esta incompleta." >&2
-    exit 1
-fi
 if [[ ${r2_presentes} -eq 4 ]]; then
-    actualizar_env_secreto DEPOSIT_STORAGE_DRIVER
-    actualizar_env_secreto DEPOSIT_STORAGE_REQUIRE_REMOTE
-    sed -i 's|^DEPOSIT_STORAGE_DRIVER=.*|DEPOSIT_STORAGE_DRIVER=r2|' .env
-    sed -i 's|^DEPOSIT_STORAGE_REQUIRE_REMOTE=.*|DEPOSIT_STORAGE_REQUIRE_REMOTE=true|' .env
     docker compose exec -T app php artisan depositos:verificar-almacenamiento --exigir-r2
-elif [[ -n "${CODESPACES:-}" ]]; then
-    echo "ERROR: Codespaces requiere los cuatro secretos R2 para evitar almacenamiento local silencioso." >&2
-    exit 1
 else
     echo "R2 no configurado: se usa fallback local solo para esta sesion de desarrollo."
 fi
