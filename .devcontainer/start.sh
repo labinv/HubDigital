@@ -3,6 +3,18 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Los comandos post-create reciben estos valores automáticamente. Las sesiones
+# SSH de mantenimiento pueden no exportarlos, aunque Codespaces conserva su
+# archivo de entorno. Cargarlo permite reinicios reproducibles sin revelar ni
+# persistir secretos en el repositorio.
+codespaces_secret_env="/workspaces/.codespaces/shared/.env-secrets"
+if [[ -f "${codespaces_secret_env}" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "${codespaces_secret_env}"
+    set +a
+fi
+
 if [[ ! -f .env ]]; then
     cp .devcontainer/codespaces.env .env
     app_key="$(openssl rand -base64 32 | tr -d '\n')"
