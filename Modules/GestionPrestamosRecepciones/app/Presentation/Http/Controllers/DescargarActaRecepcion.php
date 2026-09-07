@@ -8,6 +8,7 @@ use Illuminate\Http\Response;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\GestorOriginalActaRecepcion;
 
 /** Entrega el acta final al depositante y la version por firmar al curador. */
 final class DescargarActaRecepcion
@@ -16,6 +17,7 @@ final class DescargarActaRecepcion
         string $id,
         ConsultarDetalleRecepcionHandler $handler,
         AlmacenamientoDepositos $almacenamiento,
+        GestorOriginalActaRecepcion $originales,
     ): Response {
         $recepcion = $handler->handle(new ConsultarDetalleRecepcionInput($id));
         abort_if($recepcion === null, 404);
@@ -40,12 +42,11 @@ final class DescargarActaRecepcion
         // El depositante no debe recibir una version final aun no firmada.
         abort_if($esDueno, 404);
 
-        abort_unless(
-            $recepcion->actaRuta !== null && $almacenamiento->existe($recepcion->actaRuta),
-            409,
-            'El original oficial no está disponible. Curaduría debe reemitir una versión antes de visualizarla.',
-        );
-        $original = $almacenamiento->obtener($recepcion->actaRuta);
+        try {
+            $original = $originales->obtenerVerificado($id)['contenido'];
+        } catch (\DomainException $exception) {
+            abort(409, $exception->getMessage());
+        }
 
         return response($original, 200, [
             'Content-Type' => 'application/pdf',

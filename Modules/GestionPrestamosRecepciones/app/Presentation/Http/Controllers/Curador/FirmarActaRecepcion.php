@@ -13,6 +13,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRec
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\GestorOriginalActaRecepcion;
 
 /** Recibe solo el PDF que el firmador local produjo; nunca recibe el P12 o su clave. */
 final class FirmarActaRecepcion
@@ -23,6 +24,7 @@ final class FirmarActaRecepcion
         ConsultarDetalleRecepcionHandler $consultar,
         SubirActaRecepcionFirmadaHandler $guardarFirma,
         AlmacenamientoDepositos $almacenamiento,
+        GestorOriginalActaRecepcion $originales,
     ): JsonResponse {
         $request->validate([
             'pdf_firmado' => ['required', 'file', 'mimes:pdf', 'max:15360'],
@@ -36,16 +38,8 @@ final class FirmarActaRecepcion
         $originalTemporal = null;
         $rutaRelativa = null;
         try {
-            $rutaOriginal = $recepcion->actaRuta;
-            if ($rutaOriginal === null) {
-                abort(409, 'El expediente no conserva la referencia del acta oficial. Genere una nueva versión antes de firmar.');
-            }
-            abort_unless(
-                $almacenamiento->existe($rutaOriginal),
-                409,
-                'El original oficial no está disponible. Reemita explícitamente una nueva versión antes de firmar.',
-            );
-            $pdfOriginal = $almacenamiento->obtener($rutaOriginal);
+            $original = $originales->obtenerVerificado($id);
+            $pdfOriginal = $original['contenido'];
 
             $originalTemporal = tempnam(sys_get_temp_dir(), 'hubdigital-acta-');
             if ($originalTemporal === false) {
@@ -69,6 +63,8 @@ final class FirmarActaRecepcion
                 rutaRelativa: $rutaRelativa,
                 rutaAbsoluta: $archivo->getRealPath(),
                 rutaOriginalAbsoluta: $originalTemporal,
+                referenciaOriginal: $original['referencia'],
+                sha256Original: $original['sha256'],
             ));
         } catch (\DomainException $e) {
             if ($rutaRelativa !== null) {

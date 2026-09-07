@@ -19,5 +19,7 @@ final readonly class SubirActaRecepcionFirmadaInput
         public string $rutaRelativa,
         public string $rutaAbsoluta,
         public string $rutaOriginalAbsoluta,
+        public string $referenciaOriginal,
+        public string $sha256Original,
     ) {}
 }

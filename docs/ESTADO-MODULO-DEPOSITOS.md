@@ -112,11 +112,38 @@ Docker en Windows.
 ```bash
 bash .devcontainer/start.sh
 docker compose -p hubdigital-dev exec -T app php artisan migrate --force
-docker compose -p hubdigital-dev exec -T app npm run build
+# La imagen Docker construye Vite en su etapa frontend; app no contiene npm.
+docker compose -p hubdigital-dev --profile development up -d --build app worker scheduler nginx
 ```
 
 El diagnóstico de lectura/escritura R2 es explícito y no forma parte del
 arranque: `bash .devcontainer/start.sh --verificar-r2`.
+
+## Correcciones posteriores a la primera aceptación
+
+- La asesoría por ausencia de documentos y la revisión de documentos cargados
+  son recorridos distintos. Una incertidumbre documental conserva el expediente,
+  sus evidencias y su huella, y pasa a la cola curatorial sin declarar falsamente
+  que el depositante no presentó documentos.
+- La campana entrega avisos pendientes por cursores de sesión, en lotes ordenados,
+  sin marcarlos como leídos. El navegador conserva su identidad por notificación
+  para no repetir avisos durante una navegación Livewire.
+- Cada original de acta se materializa con una referencia y ruta inmutables,
+  versión, SHA-256 y bitácora de reemplazos. Firma, visualización y descarga usan
+  la misma versión; una firma se rechaza si el original cambió durante el proceso.
+- La reemisión es explícita y queda reservada para un original no verificable.
+  Nunca se regenera de forma silenciosa al descargar o firmar.
+
+## Preparación de aceptación funcional
+
+Luna debe obtener las cuentas ficticias mediante la administración web del
+ambiente de desarrollo: una cuenta de consultor, una de receptor y una de
+curador. El correo de desarrollo se consulta en Mailpit. Los documentos de
+ensayo deben estar identificados como ficticios, conservar la estructura mínima
+del tipo documental que representan y no deben publicarse como permisos reales.
+El material de firma se entrega por el mecanismo privado institucional; no se
+versionan certificados ni claves. `adrian.troya@epn.edu.ec` se conserva como
+curador administrador y no se gestiona mediante seeders o SQL.
 
 ## Recorrido de aceptación
 

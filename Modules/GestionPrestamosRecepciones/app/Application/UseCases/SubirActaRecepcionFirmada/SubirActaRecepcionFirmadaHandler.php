@@ -14,6 +14,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaRecepcionSinFirmaE
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 
 /**
  * Adjunta el PDF producido por el firmador local de HubDigital. Antes de persistirlo,
@@ -61,6 +62,8 @@ final class SubirActaRecepcionFirmadaHandler
         $firmaMetadata['firmante_usuario_id'] = $firmanteId;
         $firmaMetadata['proposito'] = 'acta_final_recepcion';
         $firmaMetadata['pdf_sha256'] = hash_file('sha256', $input->rutaAbsoluta);
+        $firmaMetadata['original_referencia'] = $input->referenciaOriginal;
+        $firmaMetadata['original_sha256'] = $input->sha256Original;
 
         $loteFirmado = null;
         $this->transactionManager->executeTransactional(function () use ($solicitudId, $input, $firmaMetadata, &$loteFirmado): void {
@@ -70,6 +73,15 @@ final class SubirActaRecepcionFirmadaHandler
             $loteActual = $this->recepcionRepo->buscarPorSolicitudIdParaActualizar($solicitudId);
             if ($loteActual === null) {
                 throw RecepcionLoteNoEncontradaException::conSolicitud($input->solicitudId);
+            }
+
+            $original = RecepcionLoteEloquentModel::query()
+                ->where('solicitud_deposito_id', (string) $solicitudId)
+                ->lockForUpdate()
+                ->firstOrFail();
+            if (! hash_equals((string) $original->acta_original_referencia, $input->referenciaOriginal)
+                || ! hash_equals((string) $original->acta_original_sha256, $input->sha256Original)) {
+                throw new \DomainException('El original oficial cambió durante la firma. Revise y firme la versión vigente.');
             }
 
             $loteActual->adjuntarActaFirmada($input->rutaRelativa, $firmaMetadata);
