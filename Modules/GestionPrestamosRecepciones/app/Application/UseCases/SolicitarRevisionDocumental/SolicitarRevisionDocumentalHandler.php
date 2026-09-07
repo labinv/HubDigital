@@ -9,6 +9,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 /** Envía una solicitud con documentos cargados a revisión documental curatorial. */
 final class SolicitarRevisionDocumentalHandler
@@ -28,8 +29,15 @@ final class SolicitarRevisionDocumentalHandler
 
         $solicitud->solicitarRevisionDocumental();
 
-        $this->transactionManager->executeTransactional(function () use ($solicitud): void {
+        $this->transactionManager->executeTransactional(function () use ($solicitud, $input): void {
             $this->repo->guardar($solicitud);
+            $modelo = SolicitudDepositoEloquentModel::query()
+                ->whereKey((string) $solicitud->id())
+                ->lockForUpdate()
+                ->firstOrFail();
+            $metadatos = $modelo->extraccion_metadatos ?? [];
+            $metadatos['revision_documental'] = $input->revisionDocumental;
+            $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
             foreach ($solicitud->pullEvents() as $event) {
                 $this->eventPublisher->publish($event);
             }

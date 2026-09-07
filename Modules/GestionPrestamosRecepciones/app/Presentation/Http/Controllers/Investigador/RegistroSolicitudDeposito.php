@@ -943,9 +943,11 @@ final class RegistroSolicitudDeposito extends Component
                 investigadorId: (string) auth()->id(),
             ));
         } else {
-            ($revisionDocumental)(new SolicitarRevisionDocumentalInput($this->solicitudId));
+            ($revisionDocumental)(new SolicitarRevisionDocumentalInput(
+                $this->solicitudId,
+                $this->datosRevisionDocumental('asistencia solicitada por el depositante'),
+            ));
         }
-        $this->registrarSolicitudRevisionDocumental('asistencia solicitada por el depositante');
         $this->intervencionCuratoriaActiva = true;
     }
 
@@ -956,8 +958,10 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        ($handler)(new SolicitarRevisionDocumentalInput($this->solicitudId));
-        $this->registrarSolicitudRevisionDocumental('incertidumbre documental detectada por el analizador');
+        ($handler)(new SolicitarRevisionDocumentalInput(
+            $this->solicitudId,
+            $this->datosRevisionDocumental('incertidumbre documental detectada por el analizador'),
+        ));
         $this->intervencionCuratoriaActiva = true;
     }
 
@@ -2115,13 +2119,10 @@ final class RegistroSolicitudDeposito extends Component
         ));
     }
 
-    private function registrarSolicitudRevisionDocumental(string $motivo): void
+    /** @return array<string, mixed> */
+    private function datosRevisionDocumental(string $motivo): array
     {
-        if ($this->solicitudId === null) {
-            return;
-        }
-
-        $this->metadatosExtraccion['revision_documental'] = [
+        return [
             'estado' => 'pendiente',
             'solicitada_por' => (string) auth()->id(),
             'solicitada_en' => now()->toIso8601String(),
@@ -2129,10 +2130,6 @@ final class RegistroSolicitudDeposito extends Component
             'advertencias' => $this->advertenciasDocumentales,
             'version_documental' => ExtraccionDatosDocumentoJob::huellaDocumental($this->documentosCargados),
         ];
-
-        SolicitudDepositoEloquentModel::whereKey($this->solicitudId)
-            ->where('investigador_id', (string) auth()->id())
-            ->update(['extraccion_metadatos' => $this->metadatosExtraccion]);
     }
 
     private function registrarConfirmacionExtraccion(): void

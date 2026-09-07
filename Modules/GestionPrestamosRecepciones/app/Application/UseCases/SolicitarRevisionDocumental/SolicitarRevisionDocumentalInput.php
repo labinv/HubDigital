@@ -8,5 +8,7 @@ final readonly class SolicitarRevisionDocumentalInput
 {
     public function __construct(
         public string $solicitudId,
+        /** @var array<string, mixed> */
+        public array $revisionDocumental,
     ) {}
 }
