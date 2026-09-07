@@ -11,5 +11,5 @@ interface RevisionDocumentalPort
     public function registrarSolicitud(string $solicitudId, array $revision): void;
 
     /** @param array<string, mixed> $resolucion */
-    public function resolver(string $solicitudId, array $resolucion): void;
+    public function resolver(string $solicitudId, array $resolucion): bool;
 }

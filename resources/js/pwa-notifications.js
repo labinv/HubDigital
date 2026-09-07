@@ -10,6 +10,7 @@ const presentingNatively = new Set();
 const enMemoria = new Set();
 let confirmacionPendiente = new Set();
 let temporizadorConfirmacion = null;
+let entregaActiva = null;
 
 function emitStatus(status, message) {
     window.dispatchEvent(new CustomEvent('hub-pwa-status', {
@@ -53,7 +54,7 @@ async function jsonRequest(url, options = {}) {
     return response.json();
 }
 
-async function showLatest(element) {
+async function showLatest(element, entrega) {
     const id = element?.dataset.hubNotificationId;
     const body = element?.dataset.hubNotificationBody;
     if (!id || !body) return;
@@ -62,25 +63,27 @@ async function showLatest(element) {
     // en el borde inferior, similar a una conversación de mensajería. No depende
     // de permisos del navegador y conserva la misma ruta accionable del push.
     showInAppToast(element);
-    confirmDelivery(element);
+    confirmDelivery(entrega);
 
     // La campana es la única responsable cuando la aplicación está abierta.
     // El service worker presenta Web Push cuando no existe una ventana operativa.
 }
 
-function confirmDelivery(element) {
-    const recordId = element?.dataset.hubNotificationRecordId;
-    if (!recordId) return;
-    confirmacionPendiente.add(recordId);
+function confirmDelivery(entrega) {
+    if (!entrega?.lote || !entrega?.componentId) return;
+    entrega.ids.forEach((id) => confirmacionPendiente.add(id));
     if (temporizadorConfirmacion) return;
     temporizadorConfirmacion = window.setTimeout(() => {
         const ids = [...confirmacionPendiente];
         confirmacionPendiente = new Set();
         temporizadorConfirmacion = null;
-        const component = document.querySelector('[data-hub-notification-record-id]')?.closest('[wire\\:id]');
-        const componentId = component?.getAttribute('wire:id');
-        window.Livewire?.find(componentId)?.call('confirmarEntrega', ids).catch(() => {
+        const actual = entregaActiva;
+        if (!actual || !window.Livewire?.find) return;
+        window.Livewire.find(actual.componentId)?.call('confirmarEntrega', actual.lote, ids).then(() => {
+            entregaActiva = null;
+        }).catch(() => {
             ids.forEach((id) => enMemoria.delete(id));
+            entregaActiva = null;
         });
     }, 150);
 }
@@ -279,7 +282,11 @@ function observe() {
         const componente = elementos[0].closest('[wire\\:id]');
         const componentId = componente?.getAttribute('wire:id');
         const ids = elementos.map((element) => element.dataset.hubNotificationRecordId);
-        const mostrar = () => elementos.forEach((element) => showLatest(element).catch(() => enMemoria.delete(element.dataset.hubNotificationRecordId)));
+        const mostrar = (lote = '') => {
+            const entrega = { componentId, lote, ids };
+            entregaActiva = entrega;
+            elementos.forEach((element) => showLatest(element, entrega).catch(() => enMemoria.delete(element.dataset.hubNotificationRecordId)));
+        };
         if (!componentId || !window.Livewire?.find) {
             mostrar();
             return;
@@ -309,4 +316,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('livewire:navigated', () => {
     observe();
+});
+
+navigator.serviceWorker?.addEventListener('message', (event) => {
+    if (event.data?.type !== 'hubdigital-push-pendiente') return;
+    const component = document.querySelector('[data-hub-notification-record-id]')?.closest('[wire\\:id]');
+    const componentId = component?.getAttribute('wire:id');
+    window.Livewire?.find(componentId)?.$refresh();
 });

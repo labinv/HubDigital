@@ -22,7 +22,7 @@ final class EloquentRevisionDocumentalAdapter implements RevisionDocumentalPort
         $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
     }
 
-    public function resolver(string $solicitudId, array $resolucion): void
+    public function resolver(string $solicitudId, array $resolucion): bool
     {
         $modelo = SolicitudDepositoEloquentModel::query()->whereKey($solicitudId)->lockForUpdate()->firstOrFail();
         $metadatos = $modelo->extraccion_metadatos ?? [];
@@ -37,7 +37,10 @@ final class EloquentRevisionDocumentalAdapter implements RevisionDocumentalPort
             $metadatos['revision_documental'] = [...$actual, 'estado' => 'invalidada'];
             $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
 
-            throw new \DomainException('Los documentos cambiaron durante la revisión. Solicite una nueva revisión documental.');
+            return false;
+        }
+        if (! is_array($actual) || ($actual['estado'] ?? null) !== 'pendiente' || empty($actual['version_documental_persistida'])) {
+            throw new \DomainException('No existe una revisión documental pendiente y versionada para resolver.');
         }
         $resolucion['version_documental_persistida'] = $actual['version_documental_persistida']
             ?? $huellaActual;
@@ -46,6 +49,7 @@ final class EloquentRevisionDocumentalAdapter implements RevisionDocumentalPort
         $historial[] = $metadatos['revision_documental'];
         $metadatos['revision_documental_historial'] = $historial;
         $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
+        return true;
     }
 
     private function huellaDocumentosPersistidos(SolicitudDepositoEloquentModel $modelo): string

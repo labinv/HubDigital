@@ -30,8 +30,12 @@ self.addEventListener('push', (event) => {
     event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
         // Con una sesión abierta la campana durable entrega el aviso inferior;
         // así no se duplica una alerta nativa por el mismo evento.
-        if (windows.some((client) => new URL(client.url).origin === self.location.origin)) {
-            return Promise.all(windows.map((client) => client.postMessage({ type: 'hubdigital-push-pendiente', notificationId })));
+        const curadorActivo = windows.find((client) => client.focused
+            && new URL(client.url).origin === self.location.origin
+            && /\/(curador|depositos)/.test(new URL(client.url).pathname));
+        if (curadorActivo) {
+            curadorActivo.postMessage({ type: 'hubdigital-push-pendiente', notificationId });
+            return undefined;
         }
 
         return self.registration.showNotification(payload.title ?? 'HubDigital', {

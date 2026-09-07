@@ -108,6 +108,11 @@
 
         @if($notificaciones->isNotEmpty())
             <div class="border-t border-border px-4 py-2.5">
+                @if($puedeCargarMasHistorial)
+                    <button type="button" wire:click="cargarMasHistorial" class="mb-2 flex w-full items-center justify-center text-xs font-medium text-science-blue hover:underline">
+                        Ver notificaciones anteriores
+                    </button>
+                @endif
                 <button type="button" wire:click="eliminarTodas"
                     wire:confirm="¿Vaciar todas las notificaciones? Esta acción no se puede deshacer."
                     class="flex w-full items-center justify-center gap-1.5 text-xs font-medium text-error hover:underline">

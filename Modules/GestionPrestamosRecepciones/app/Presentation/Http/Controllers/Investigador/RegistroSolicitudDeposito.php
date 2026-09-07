@@ -929,6 +929,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->estadoValidacionContenido = '';
         $this->erroresDocumentales = [];
         $this->advertenciasDocumentales = [];
+        $this->invalidarRevisionDocumentalPorCambio('El consultor eliminó documentación del expediente.');
         $this->invalidarFirmaSolicitud();
 
         $propiedad = $this->propiedadParaDocumento($nombre);
@@ -2201,6 +2202,26 @@ final class RegistroSolicitudDeposito extends Component
             ->update([
             'extraccion_metadatos' => $this->metadatosExtraccion,
         ]);
+    }
+
+    private function invalidarRevisionDocumentalPorCambio(string $motivo): void
+    {
+        if ($this->solicitudId === null) return;
+
+        DB::transaction(function () use ($motivo): void {
+            $modelo = SolicitudDepositoEloquentModel::query()
+                ->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())
+                ->lockForUpdate()->first();
+            if ($modelo === null) return;
+            $metadatos = $modelo->extraccion_metadatos ?? [];
+            $revision = $metadatos['revision_documental'] ?? null;
+            if (! is_array($revision) || ($revision['estado'] ?? null) === 'invalidada') return;
+            $invalida = [...$revision, 'estado' => 'invalidada', 'invalidada_en' => now()->toIso8601String(), 'motivo_invalidacion' => $motivo];
+            $metadatos['revision_documental'] = $invalida;
+            $metadatos['revision_documental_historial'] = [...($metadatos['revision_documental_historial'] ?? []), $invalida];
+            $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
+        });
     }
 
     public function usarMuestraDetectada(string $codigo): void

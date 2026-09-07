@@ -33,3 +33,11 @@ No se guardan en el repositorio ni se envían al servidor.
 - **Compilación, publicación y despliegue:** se registran únicamente cuando el
   procedimiento de desarrollo complete esas etapas para el commit correspondiente.
 - **Aceptación funcional:** pendiente de ejecución independiente con Playwright.
+
+## Entrega de avisos
+
+La campana entrega avisos en lotes con identificador, vencimiento y confirmación
+visual. El cursor confirmado evita repetir el historial ya presentado en una
+sesión. Los lotes que no se confirman vencen y vuelven a estar disponibles. Una
+ventana curatorial activa usa el aviso inferior; Web Push presenta el aviso
+nativo cuando la aplicación no puede atenderlo.

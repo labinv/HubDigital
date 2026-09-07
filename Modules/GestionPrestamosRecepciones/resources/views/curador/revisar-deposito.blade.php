@@ -936,15 +936,17 @@
                     <li class="flex items-start gap-2"><flux:icon name="arrow-uturn-left" class="size-4 text-success shrink-0 mt-0.5" />El expediente vuelve al consultor como borrador editable.</li>
                     <li class="flex items-start gap-2"><flux:icon name="document-text" class="size-4 text-success shrink-0 mt-0.5" />El consultor debe completar, generar, firmar y enviar antes de la revisión final.</li>
                     <li class="flex items-start gap-2"><flux:icon name="no-symbol" class="size-4 text-text-secondary shrink-0 mt-0.5" />No se aprueba el trámite ni se genera un código QR en esta etapa.</li>
-                @elseif($accionAprobar === 'justificaciones')
-                    <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se aceptan todas las justificaciones de alertas pendientes.</li>
+                @else
+                    @if($accionAprobar === 'justificaciones')
+                        <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se aceptan todas las justificaciones de alertas pendientes.</li>
+                    @endif
+                    <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" /><span>La solicitud pasa a <span class="font-medium">Aprobada documentalmente</span> y queda registrada en la auditoría a tu nombre.</span></li>
+                    <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se asigna un Código QR único de lote.</li>
+                    @if($accionAprobar === 'donacion')
+                        <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se genera el Acta de Transferencia de Dominio.</li>
+                    @endif
+                    <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se notifica al depositante para la entrega física.</li>
                 @endif
-                <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" /><span>La solicitud pasa a <span class="font-medium">Aprobada documentalmente</span> y queda registrada en la auditoría a tu nombre.</span></li>
-                <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se asigna un Código QR único de lote.</li>
-                @if($accionAprobar === 'donacion')
-                    <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se genera el Acta de Transferencia de Dominio.</li>
-                @endif
-                <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se notifica al depositante para la entrega física.</li>
             </ul>
             <div class="flex justify-end gap-2 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showConfirmacionModal', false)">Cancelar</flux:button>
