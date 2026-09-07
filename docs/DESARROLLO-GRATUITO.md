@@ -16,6 +16,11 @@ requiere PHP, PostgreSQL, Node.js ni Docker instalados en la computadora local.
 La primera construcción puede tardar varios minutos. En los siguientes inicios
 se reutilizan las imágenes y volúmenes del Codespace.
 
+El Codespace de desarrollo público exige R2: si faltan cualquiera de las cuatro
+credenciales de R2, el arranque se detiene para impedir que expedientes privados
+caigan silenciosamente en almacenamiento local. Este requisito no aplica a un
+entorno local aislado de desarrollo.
+
 ## Habilitar `dev.labinvepn.org`
 
 El dominio de desarrollo sólo funciona mientras el Codespace está encendido.
@@ -67,7 +72,9 @@ En Codespaces, define `SEED_DEMO_USERS=true` y opcionalmente una contraseña en 
 4. La misma tarea aparece en **Bandeja de recepciones > Actas pendientes**, aunque la notificación ya se haya marcado como leída.
 5. Para avisos del sistema operativo mientras el portal está abierto, pulsar **Activar avisos en este dispositivo**. Esta función requiere HTTPS y permiso explícito del navegador.
 
-El service worker no intercepta solicitudes ni guarda expedientes o PDF en caché. La entrega en segundo plano con el navegador totalmente cerrado requerirá configurar posteriormente un proveedor Web Push/VAPID; durante el desarrollo gratuito la alerta garantizada es la combinación de campana, cola de actas y correo en Mailpit.
+El service worker no intercepta solicitudes ni guarda expedientes o PDF en caché. Web Push ya está codificado con VAPID, suscripciones por dispositivo, entrega al curador y navegación directa al expediente; cuando el portal está abierto también se muestra el aviso inferior. La entrega efectiva depende de HTTPS, permiso del navegador y de las claves VAPID del ambiente, por lo que esta documentación no declara una comprobación funcional.
+
+Los secretos de Codespaces deben guardarse con sus valores originales, nunca en el repositorio. `start.sh` conserva una decodificación Base64 temporal exclusivamente para secretos heredados y solo en memoria; no imprime ni persiste sus valores. `dev.labinvepn.org` es el entorno público de desarrollo y funciona mientras el Codespace esté encendido. `labinvepn.org` sigue siendo producción.
 
 ## Confianza de firma electrónica
 

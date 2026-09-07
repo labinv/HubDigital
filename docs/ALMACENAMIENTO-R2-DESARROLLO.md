@@ -13,8 +13,15 @@ En GitHub Codespaces, registrar estos secretos sin escribirlos en el repositorio
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
 - `DEPOSIT_STORAGE_DRIVER=r2`
+- `DEPOSIT_STORAGE_REQUIRE_REMOTE=true`
 
 `R2_ENDPOINT` es opcional; por defecto se construye como `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`. La region de firma siempre es `auto`, como exige R2.
+
+Los secretos se guardan con sus valores originales y nunca se incluyen en `.env`
+versionado. En Codespaces los cuatro valores R2 son obligatorios: una
+configuración parcial o ausente detiene el arranque en vez de permitir un
+fallback local. La compatibilidad Base64 de `.devcontainer/start.sh` existe solo
+para secretos heredados y se elimina de memoria al terminar el proceso.
 
 Documentacion oficial: [API S3 de R2](https://developers.cloudflare.com/r2/get-started/s3/) y [tokens de R2](https://developers.cloudflare.com/r2/api/tokens/).
 
