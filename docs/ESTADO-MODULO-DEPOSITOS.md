@@ -38,8 +38,9 @@ Fecha de corte: 5 de septiembre de 2026.
 - Acta final generada únicamente después de la constatación física. Los
   especímenes ingresan a la colección solo después de validar y guardar el acta
   firmada por curaduría.
-- Cuentas desechables de depositante, receptor y curador para el recorrido de
-  extremo a extremo.
+- Gestión web de cuentas, roles, recuperación de contraseña, verificación de
+  correo y 2FA mediante Laravel Fortify; las altas reales se realizan desde las
+  pantallas institucionales de administración.
 
 ## Firma electrónica propia
 
@@ -59,6 +60,8 @@ comprobaciones antes de cerrar el expediente:
    PDF.
 7. Bloqueo transaccional del expediente para impedir que dos firmas
    concurrentes se sobrescriban.
+8. Conservación privada del PDF oficial preparado para el acta; la descarga y
+   comparación de firma se basan en esa misma versión, no en una regeneración.
 
 El certificado y la contraseña no forman parte del repositorio. La validez de
 una firma y su aceptación institucional deben confirmarse en el ambiente que
@@ -82,34 +85,16 @@ registrado en GoDaddy, mientras Cloudflare administra DNS, TLS y el túnel. No s
 usa Hetzner en esta etapa y no hace falta instalar PHP, Composer, PostgreSQL o
 Docker en Windows.
 
-## Verificación en Codespaces
+## Operación en Codespaces
 
 ```bash
 bash .devcontainer/start.sh
 docker compose exec -T app php artisan migrate --force
-docker compose exec -T app php artisan db:seed
-docker compose exec -T app php artisan test tests/Unit/AnalizadorDocumentoAmbientalTest.php
-docker compose exec -T app php artisan test tests/Unit/DetalleValidacionFirmaTest.php
-docker compose exec -T app php artisan test tests/Feature/FlujoDepositoE2ETest.php
-docker compose exec -T app vendor/bin/behat --profile=recepcion \
-  --suite=RecepcionMuestrasFisicas
-docker compose exec -T app npm run test:signer
 docker compose exec -T app npm run build
 ```
 
-Para probar con una contraseña conocida, definir solo en el entorno de
-desarrollo:
-
-```dotenv
-SEED_DEMO_USERS=true
-DEMO_DEPOSITOS_PASSWORD=una-clave-temporal-larga
-```
-
-Las cuentas creadas son:
-
-- `test.depositante@labinvepn.test`
-- `test.recepcion@labinvepn.test`
-- `test.curaduria@labinvepn.test`
+El diagnóstico de lectura/escritura R2 es explícito y no forma parte del
+arranque: `bash .devcontainer/start.sh --verificar-r2`.
 
 ## Recorrido de aceptación
 
@@ -134,8 +119,8 @@ Las cuentas creadas son:
 
 ## Pendientes antes de producción
 
-- Ejecutar el recorrido completo anterior dentro de Codespaces, porque el
-  equipo Windows actual no tiene PHP, Composer, Docker ni `pdfsig`.
+- Ejecutar la aceptación funcional institucional del recorrido anterior en el
+  ambiente de desarrollo. Esta documentación no sustituye dicha aceptación.
 - Instalar en la base NSS del servidor las raíces e intermedias vigentes de las
   entidades certificadoras acreditadas por ARCOTEL y activar
   `FIRMA_EXIGIR_CERTIFICADO_CONFIABLE=true`.
@@ -149,7 +134,8 @@ Las cuentas creadas son:
 - Confirmar en el ambiente correspondiente la entrega de Web Push con VAPID
   para navegadores cerrados o sin conexión; el código está implementado pero
   este documento no declara una comprobación de ejecución.
-- Desplegar en Hetzner, montar almacenamiento persistente/cifrado, automatizar
-  copias de seguridad y restauración, observabilidad y rotación de secretos.
+- Definir la infraestructura institucional futura, la estrategia de copias de
+  seguridad/restauración, observabilidad y rotación de secretos. Esta etapa no
+  usa Hetzner.
 - Realizar revisión jurídica de protección de datos, conservación documental,
   firma electrónica y términos de depósito con la EPN.
