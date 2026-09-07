@@ -86,31 +86,25 @@ function showInAppToast(element) {
     toast.dataset.hubInAppToastId = id;
     toast.setAttribute('role', 'status');
     toast.setAttribute('aria-live', 'polite');
-    toast.style.cssText = [
-        'position:fixed', 'right:16px', 'bottom:16px', 'z-index:2147483647',
-        'display:flex', 'width:min(390px,calc(100vw - 32px))', 'gap:12px',
-        'border:1px solid rgba(23,55,94,.16)', 'border-radius:16px',
-        'background:#fff', 'box-shadow:0 18px 45px rgba(15,35,60,.24)',
-        'padding:14px', 'color:#15253a', 'font-family:Inter,system-ui,sans-serif',
-    ].join(';');
+    toast.className = 'hub-in-app-toast';
 
     const emblem = document.createElement('div');
     emblem.setAttribute('aria-hidden', 'true');
     emblem.textContent = '●';
-    emblem.style.cssText = 'display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:50%;background:#eaf4ef;color:#167247;font-size:18px';
+    emblem.className = 'hub-in-app-toast__emblem';
 
     const content = document.createElement('div');
-    content.style.cssText = 'min-width:0;flex:1';
+    content.className = 'hub-in-app-toast__content';
     const title = document.createElement('p');
     title.textContent = element.dataset.hubNotificationTitle || 'HubDigital · Curaduría';
-    title.style.cssText = 'margin:0 26px 3px 0;font-size:13px;font-weight:700;color:#17375e';
+    title.className = 'hub-in-app-toast__title';
     const message = document.createElement('p');
     message.textContent = body;
-    message.style.cssText = 'margin:0;font-size:13px;line-height:1.45;color:#435366';
+    message.className = 'hub-in-app-toast__message';
     const action = document.createElement('button');
     action.type = 'button';
     action.textContent = element.dataset.hubNotificationAction || 'Abrir expediente';
-    action.style.cssText = 'margin-top:9px;border:0;background:transparent;padding:0;color:#1265a8;font-size:13px;font-weight:700;cursor:pointer';
+    action.className = 'hub-in-app-toast__action';
     action.addEventListener('click', () => navigateToNotification(url));
     content.append(title, message, action);
 
@@ -118,7 +112,7 @@ function showInAppToast(element) {
     close.type = 'button';
     close.setAttribute('aria-label', 'Cerrar aviso');
     close.textContent = '×';
-    close.style.cssText = 'position:absolute;right:10px;top:7px;border:0;background:transparent;color:#607083;font-size:23px;line-height:1;cursor:pointer';
+    close.className = 'hub-in-app-toast__close';
     close.addEventListener('click', () => toast.remove());
 
     toast.append(emblem, content, close);
