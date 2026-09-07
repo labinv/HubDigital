@@ -12,7 +12,6 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRec
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaInput;
-use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfActaRecepcion;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /** Recibe solo el PDF que el firmador local produjo; nunca recibe el P12 o su clave. */
@@ -22,7 +21,6 @@ final class FirmarActaRecepcion
         Request $request,
         string $id,
         ConsultarDetalleRecepcionHandler $consultar,
-        GeneradorPdfActaRecepcion $generadorPdf,
         SubirActaRecepcionFirmadaHandler $guardarFirma,
         AlmacenamientoDepositos $almacenamiento,
     ): JsonResponse {
@@ -42,16 +40,12 @@ final class FirmarActaRecepcion
             if ($rutaOriginal === null) {
                 abort(409, 'El expediente no conserva la referencia del acta oficial. Genere una nueva versión antes de firmar.');
             }
-            $pdfOriginal = $almacenamiento->existe($rutaOriginal)
-                ? $almacenamiento->obtener($rutaOriginal)
-                : $generadorPdf->generar($recepcion);
-
-            // La primera preparación materializa el original oficial. Desde este
-            // instante descarga, firma y comparación usan exactamente sus mismos
-            // bytes; no se vuelve a regenerar con datos actuales de perfiles.
-            if (! $almacenamiento->existe($rutaOriginal)) {
-                $almacenamiento->guardarContenido($rutaOriginal, $pdfOriginal, 'application/pdf');
-            }
+            abort_unless(
+                $almacenamiento->existe($rutaOriginal),
+                409,
+                'El original oficial no está disponible. Reemita explícitamente una nueva versión antes de firmar.',
+            );
+            $pdfOriginal = $almacenamiento->obtener($rutaOriginal);
 
             $originalTemporal = tempnam(sys_get_temp_dir(), 'hubdigital-acta-');
             if ($originalTemporal === false) {

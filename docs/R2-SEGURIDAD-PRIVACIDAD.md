@@ -38,7 +38,7 @@ El comando es idempotente: crea el bucket Standard con sugerencia de ubicación 
 Después de reiniciar el Codespace para inyectar los secretos:
 
 ```bash
-docker compose exec -T app php artisan depositos:verificar-almacenamiento --exigir-r2
+docker compose -p hubdigital-dev exec -T app php artisan depositos:verificar-almacenamiento --exigir-r2
 ```
 
 La verificación crea un objeto sanitizado con nombre aleatorio, confirma `HEAD`, descarga y compara SHA-256, lo elimina y confirma su ausencia. No deja datos de prueba persistentes.

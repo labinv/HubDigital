@@ -111,8 +111,8 @@ Docker en Windows.
 
 ```bash
 bash .devcontainer/start.sh
-docker compose exec -T app php artisan migrate --force
-docker compose exec -T app npm run build
+docker compose -p hubdigital-dev exec -T app php artisan migrate --force
+docker compose -p hubdigital-dev exec -T app npm run build
 ```
 
 El diagnóstico de lectura/escritura R2 es explícito y no forma parte del

@@ -67,6 +67,18 @@
                     </flux:button>
                 </x-slot>
             </flux:callout>
+        @elseif(! $originalDisponible)
+            <flux:callout variant="warning" icon="exclamation-triangle">
+                <flux:callout.heading>El original oficial no está disponible</flux:callout.heading>
+                <flux:callout.text>
+                    No se puede firmar una versión regenerada silenciosamente. Emita una nueva versión y revísela completa antes de firmar.
+                </flux:callout.text>
+                <x-slot name="actions">
+                    <flux:button wire:click="reemitirOriginal" wire:loading.attr="disabled" variant="primary" icon="document-arrow-path">
+                        Reemitir versión para revisión
+                    </flux:button>
+                </x-slot>
+            </flux:callout>
         @else
             <div class="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
                 <div class="border-b border-border p-5">

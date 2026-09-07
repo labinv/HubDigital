@@ -103,11 +103,11 @@ for opcion in "$@"; do
     esac
 done
 
-docker compose --profile development up -d ${build_flag} postgres mailpit app worker scheduler nginx
-docker compose exec -T app php artisan migrate --force
+docker compose -p hubdigital-dev --profile development up -d ${build_flag} postgres mailpit app worker scheduler nginx
+docker compose -p hubdigital-dev exec -T app php artisan migrate --force
 
 if [[ ${r2_presentes} -eq 4 && "${verificar_r2}" == true ]]; then
-    docker compose exec -T app php artisan depositos:verificar-almacenamiento --exigir-r2
+    docker compose -p hubdigital-dev exec -T app php artisan depositos:verificar-almacenamiento --exigir-r2
 elif [[ ${r2_presentes} -eq 4 ]]; then
     echo "R2 configurado. La verificación de escritura se ejecuta solo con --verificar-r2."
 else
@@ -115,7 +115,7 @@ else
 fi
 
 if [[ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]]; then
-    docker compose --profile tunnel up -d cloudflared
+    docker compose -p hubdigital-dev --profile tunnel up -d cloudflared
     echo "HubDigital disponible en https://dev.labinvepn.org"
 else
     echo "HubDigital listo en el puerto 80 de Codespaces."

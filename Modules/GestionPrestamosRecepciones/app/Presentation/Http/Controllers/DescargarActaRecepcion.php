@@ -7,7 +7,6 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 use Illuminate\Http\Response;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionInput;
-use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfActaRecepcion;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /** Entrega el acta final al depositante y la version por firmar al curador. */
@@ -16,7 +15,6 @@ final class DescargarActaRecepcion
     public function __invoke(
         string $id,
         ConsultarDetalleRecepcionHandler $handler,
-        GeneradorPdfActaRecepcion $generadorPdf,
         AlmacenamientoDepositos $almacenamiento,
     ): Response {
         $recepcion = $handler->handle(new ConsultarDetalleRecepcionInput($id));
@@ -42,12 +40,12 @@ final class DescargarActaRecepcion
         // El depositante no debe recibir una version final aun no firmada.
         abort_if($esDueno, 404);
 
-        // El original oficial se conserva en almacenamiento privado desde la primera
-        // preparación para firma. Solo los expedientes históricos sin ese objeto se
-        // generan temporalmente al descargarse por curaduría.
-        $original = $almacenamiento->existe($recepcion->actaRuta)
-            ? $almacenamiento->obtener($recepcion->actaRuta)
-            : $generadorPdf->generar($recepcion);
+        abort_unless(
+            $recepcion->actaRuta !== null && $almacenamiento->existe($recepcion->actaRuta),
+            409,
+            'El original oficial no está disponible. Curaduría debe reemitir una versión antes de visualizarla.',
+        );
+        $original = $almacenamiento->obtener($recepcion->actaRuta);
 
         return response($original, 200, [
             'Content-Type' => 'application/pdf',

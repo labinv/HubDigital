@@ -37,17 +37,17 @@ No guardar el valor del token en `.env`, commits, capturas o mensajes.
 bash .devcontainer/start.sh
 
 # Ver el estado
-docker compose --profile development --profile tunnel ps
+docker compose -p hubdigital-dev --profile development --profile tunnel ps
 
 # Ver registros de Laravel
-docker compose logs --tail=100 app worker
+docker compose -p hubdigital-dev logs --tail=100 app worker
 
 # Detener los contenedores sin borrar datos
-docker compose --profile development --profile tunnel stop
+docker compose -p hubdigital-dev --profile development --profile tunnel stop
 ```
 
 Para evitar consumir la cuota gratuita, detener el Codespace desde GitHub al
-terminar la sesión. No ejecutar `docker compose down -v`: la opción `-v`
+terminar la sesión. No ejecutar `docker compose -p hubdigital-dev down -v`: la opción `-v`
 elimina la base de datos del entorno.
 
 ## Validación automática
@@ -74,6 +74,8 @@ En Codespaces, define `SEED_DEMO_USERS=true` y opcionalmente una contraseña en 
 
 El service worker no intercepta solicitudes ni guarda expedientes o PDF en caché. Web Push ya está codificado con VAPID, suscripciones por dispositivo, entrega al curador y navegación directa al expediente; cuando el portal está abierto también se muestra el aviso inferior. La entrega efectiva depende de HTTPS, permiso del navegador y de las claves VAPID del ambiente, por lo que esta documentación no declara una comprobación funcional.
 
+La campana entrega las notificaciones pendientes en orden y el aviso inferior las apila sin superponerlas. La aplicación identifica cada aviso por su ID, por lo que una actualización Livewire no confunde un aviso nuevo con uno ya mostrado. Mientras una página permanece abierta, el indicador de conectividad informa que los datos visibles podrían estar desactualizados; no envía automáticamente firmas, recepciones ni formularios al recuperar la red.
+
 Los secretos de Codespaces deben guardarse con sus valores originales, nunca en el repositorio. `start.sh` conserva una decodificación Base64 temporal exclusivamente para secretos heredados y solo en memoria; no imprime ni persiste sus valores. `dev.labinvepn.org` es el entorno público de desarrollo y funciona mientras el Codespace esté encendido. `labinvepn.org` sigue siendo producción.
 
 ## Confianza de firma electrónica
@@ -81,6 +83,8 @@ Los secretos de Codespaces deben guardarse con sus valores originales, nunca en 
 En desarrollo, `FIRMA_EXIGIR_CERTIFICADO_CONFIABLE=false` permite ensayar certificados sin haber preparado todavía el almacén institucional. La firma, el `ByteRange` y la inalterabilidad del PDF sí se validan.
 
 El Firmador HubDigital procesa el `.p12/.pfx` y su contraseña dentro de un Web Worker efímero del navegador; el servidor recibe solamente el PDF firmado. Para las solicitudes y actas generadas por HubDigital se exige una única firma final `ETSI.CAdES.detached`, cobertura completa, contenido visual idéntico al PDF oficial y certificado vigente. El expediente registra la huella SHA-256 del PDF, el usuario autenticado que ejecutó la firma y los datos del certificado informados por `pdfsig`.
+
+El original del acta de recepción se materializa en almacenamiento privado antes de abrir el firmador. La previsualización, descarga curatorial y validación usan esos mismos bytes. Si un objeto original se pierde, curaduría debe emitir explícitamente una nueva versión, que queda registrada con nueva versión, fecha y huella; el sistema no la regenera durante la descarga ni la firma.
 
 Los certificados reales y archivos de credenciales deben permanecer fuera del repositorio. `.gitignore` bloquea `.p12`, `.pfx` y archivos de credenciales relacionados. La prueba privada local debe ejecutarse en memoria y no conservar el PDF de ensayo.
 
