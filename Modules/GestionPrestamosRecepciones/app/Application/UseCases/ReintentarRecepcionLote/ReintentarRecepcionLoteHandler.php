@@ -33,7 +33,7 @@ final class ReintentarRecepcionLoteHandler
             throw RecepcionLoteNoEncontradaException::conSolicitud($input->solicitudId);
         }
 
-        $lote->reintentarVerificacion();
+        $lote->reintentarVerificacion($input->receptorId);
 
         $this->transactionManager->executeTransactional(function () use ($lote): void {
             $this->recepcionRepo->guardar($lote);

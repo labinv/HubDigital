@@ -41,7 +41,7 @@ final class RechazarRecepcionLoteHandler
         }
 
         $motivo = MotivoFalloRecepcion::from($input->motivoFallo);
-        $lote->rechazarPorAnomaliaSubsanable($motivo);
+        $lote->rechazarPorAnomaliaSubsanable($motivo, $input->receptorId);
 
         $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 

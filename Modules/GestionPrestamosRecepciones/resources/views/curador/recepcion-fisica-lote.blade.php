@@ -76,6 +76,20 @@
         </div>
     </section>
 
+    @if (! $recepcion->recepcionIniciada)
+        <flux:callout variant="info" icon="hand-raised">
+            <flux:callout.heading>Constatación pendiente de inicio</flux:callout.heading>
+            <flux:callout.text>
+                Confirma que el lote físico y sus documentos están presentes antes de abrir la lista de verificación. Este registro dejará constancia del inicio de la recepción por ventanilla.
+            </flux:callout.text>
+            <x-slot name="actions">
+                <flux:button variant="primary" icon="play" wire:click="iniciarRecepcion" wire:loading.attr="disabled" wire:target="iniciarRecepcion">
+                    Iniciar constatación física
+                </flux:button>
+            </x-slot>
+        </flux:callout>
+    @endif
+
     {{-- Estado terminal: verificado (conforme o con observaciones) --}}
     @if($verificado)
         <flux:callout variant="success" icon="check-badge">
@@ -124,7 +138,7 @@
     @endif
 
     {{-- Lista de verificación + decisión (solo mientras está en verificación) --}}
-    @if($enVerificacion)
+    @if($recepcion->recepcionIniciada && $enVerificacion)
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <div class="px-5 py-4 border-b border-border flex items-center gap-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">

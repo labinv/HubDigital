@@ -39,7 +39,7 @@ final class RecepcionFisicaLote extends Component
 
     public string $nombreInvestigador = '';
 
-    /** @var array<int, bool> Conformidad por índice de ITEMS; nacen en "No conforme" y el curador las activa. */
+    /** @var array<int, bool> Conformidad por índice de ítems; nacen en "No conforme" y el receptor las confirma. */
     public array $conforme = [0 => false, 1 => false, 2 => false, 3 => false];
 
     // ── Modal: suspender por anomalía subsanable ─────────────────────────────
@@ -57,7 +57,6 @@ final class RecepcionFisicaLote extends Component
     public function mount(
         string $id,
         ConsultarDetalleRecepcionHandler $detalle,
-        IniciarRecepcionLoteHandler $iniciar,
         UsuarioNombrePort $usuarios,
     ): void {
         $this->id = $id;
@@ -65,13 +64,18 @@ final class RecepcionFisicaLote extends Component
         $recepcion = $detalle->handle(new ConsultarDetalleRecepcionInput($id));
         abort_if($recepcion === null, 404);
 
-        // El curador abre la recepción física del lote (idempotente).
+        $this->nombreInvestigador = $usuarios->obtenerNombre($recepcion->investigadorId) ?? $recepcion->investigadorId;
+    }
+
+    /** Registra explícitamente el inicio material de la constatación. */
+    public function iniciarRecepcion(IniciarRecepcionLoteHandler $iniciar): void
+    {
         ($iniciar)(new IniciarRecepcionLoteInput(
-            solicitudId: $id,
-            curadorId: (string) auth()->id(),
+            solicitudId: $this->id,
+            receptorId: (string) auth()->id(),
         ));
 
-        $this->nombreInvestigador = $usuarios->obtenerNombre($recepcion->investigadorId) ?? $recepcion->investigadorId;
+        $this->dispatch('toast', message: 'Constatación iniciada. Completa la lista de verificación del lote físico.');
     }
 
     public function aprobar(AprobarRecepcionLoteHandler $handler): void
@@ -91,7 +95,7 @@ final class RecepcionFisicaLote extends Component
 
         ($handler)(new AprobarRecepcionLoteInput(
             solicitudId: $this->id,
-            curadorId: (string) auth()->id(),
+            receptorId: (string) auth()->id(),
             itemsVerificacion: $items,
         ));
 
@@ -104,7 +108,7 @@ final class RecepcionFisicaLote extends Component
 
         ($handler)(new RechazarRecepcionLoteInput(
             solicitudId: $this->id,
-            curadorId: (string) auth()->id(),
+            receptorId: (string) auth()->id(),
             motivoFallo: $this->motivoFallo,
         ));
 
@@ -120,7 +124,7 @@ final class RecepcionFisicaLote extends Component
     {
         ($handler)(new ReintentarRecepcionLoteInput(
             solicitudId: $this->id,
-            curadorId: (string) auth()->id(),
+            receptorId: (string) auth()->id(),
         ));
 
         $this->conforme = [0 => false, 1 => false, 2 => false, 3 => false];
@@ -145,7 +149,7 @@ final class RecepcionFisicaLote extends Component
 
         ($handler)(new AceptarRecepcionConObservacionesInput(
             solicitudId: $this->id,
-            curadorId: (string) auth()->id(),
+            receptorId: (string) auth()->id(),
             itemsNoConformes: $itemsNoConformes,
             comentario: trim($this->comentarioObservacion) !== '' ? trim($this->comentarioObservacion) : null,
         ));

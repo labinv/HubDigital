@@ -9,7 +9,7 @@ final readonly class RechazarRecepcionLoteInput
 {
     public function __construct(
         public string $solicitudId,
-        public string $curadorId,
+        public string $receptorId,
         public string $motivoFallo,
     ) {}
 }

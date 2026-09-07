@@ -76,6 +76,16 @@ final class RecepcionLote
 
     private ?string $recibidoPor = null;
 
+    private ?string $iniciadoPor = null;
+
+    private ?DateTimeImmutable $iniciadoEn = null;
+
+    private ?string $suspendidoPor = null;
+
+    private ?string $reanudadoPor = null;
+
+    private ?DateTimeImmutable $reanudadoEn = null;
+
     private ?string $actaGeneradaPor = null;
 
     /** @var array<string, mixed> */
@@ -107,6 +117,7 @@ final class RecepcionLote
         SolicitudDepositoId $solicitudId,
         CodigoQRLote $codigoQR,
         TipoTramite $tipoTramite,
+        string $receptorId,
     ): self {
         $lote = new self;
         $lote->id = $id;
@@ -114,11 +125,13 @@ final class RecepcionLote
         $lote->codigoQR = $codigoQR;
         $lote->tipoTramite = $tipoTramite;
         $lote->estado = EstadoRecepcionLote::EnVerificacion;
+        $lote->iniciadoPor = $lote->actorValido($receptorId);
+        $lote->iniciadoEn = new DateTimeImmutable;
 
         $lote->events[] = new RecepcionLoteIniciada(
             solicitudId: $solicitudId,
             codigoQR: (string) $codigoQR,
-            ocurridoEn: new DateTimeImmutable,
+            ocurridoEn: $lote->iniciadoEn,
         );
 
         return $lote;
@@ -149,6 +162,11 @@ final class RecepcionLote
         ?string $actaFirmadaRuta = null,
         ?DateTimeImmutable $firmadaEn = null,
         ?string $recibidoPor = null,
+        ?string $iniciadoPor = null,
+        ?DateTimeImmutable $iniciadoEn = null,
+        ?string $suspendidoPor = null,
+        ?string $reanudadoPor = null,
+        ?DateTimeImmutable $reanudadoEn = null,
         ?string $actaGeneradaPor = null,
         array $firmaMetadata = [],
         ?DateTimeImmutable $actaGeneradaEn = null,
@@ -170,6 +188,11 @@ final class RecepcionLote
         $lote->actaFirmadaRuta = $actaFirmadaRuta;
         $lote->firmadaEn = $firmadaEn;
         $lote->recibidoPor = $recibidoPor;
+        $lote->iniciadoPor = $iniciadoPor;
+        $lote->iniciadoEn = $iniciadoEn;
+        $lote->suspendidoPor = $suspendidoPor;
+        $lote->reanudadoPor = $reanudadoPor;
+        $lote->reanudadoEn = $reanudadoEn;
         $lote->actaGeneradaPor = $actaGeneradaPor;
         $lote->firmaMetadata = $firmaMetadata;
         $lote->actaGeneradaEn = $actaGeneradaEn;
@@ -213,7 +236,7 @@ final class RecepcionLote
      * correspondiente para el investigador. El Código QR del lote permanece vigente
      * para reintentar la recepción del mismo lote.
      */
-    public function rechazarPorAnomaliaSubsanable(MotivoFalloRecepcion $motivo): void
+    public function rechazarPorAnomaliaSubsanable(MotivoFalloRecepcion $motivo, string $receptorId): void
     {
         $this->garantizarEnVerificacion('rechazarPorAnomaliaSubsanable');
 
@@ -222,6 +245,7 @@ final class RecepcionLote
         $this->motivoFallo = $motivo;
         $this->accionCorrectiva = $motivo->accionCorrectiva();
         $this->suspendidoEn = $ahora;
+        $this->suspendidoPor = $this->actorValido($receptorId);
 
         $this->events[] = new RecepcionLoteSuspendida(
             solicitudId: $this->solicitudId,
@@ -235,7 +259,7 @@ final class RecepcionLote
      * Reabre la verificación de un lote suspendido para reintentar su recepción con el
      * mismo Código QR, una vez subsanada la anomalía.
      */
-    public function reintentarVerificacion(): void
+    public function reintentarVerificacion(string $receptorId): void
     {
         if (! $this->estado->equals(EstadoRecepcionLote::RecepcionSuspendida)) {
             throw TransicionEstadoInvalida::de($this->estado->value, 'reintentarVerificacion');
@@ -245,6 +269,8 @@ final class RecepcionLote
         $this->motivoFallo = null;
         $this->accionCorrectiva = null;
         $this->suspendidoEn = null;
+        $this->reanudadoPor = $this->actorValido($receptorId);
+        $this->reanudadoEn = new DateTimeImmutable;
     }
 
     /**
@@ -432,6 +458,31 @@ final class RecepcionLote
     public function recibidoPor(): ?string
     {
         return $this->recibidoPor;
+    }
+
+    public function iniciadoPor(): ?string
+    {
+        return $this->iniciadoPor;
+    }
+
+    public function iniciadoEn(): ?DateTimeImmutable
+    {
+        return $this->iniciadoEn;
+    }
+
+    public function suspendidoPor(): ?string
+    {
+        return $this->suspendidoPor;
+    }
+
+    public function reanudadoPor(): ?string
+    {
+        return $this->reanudadoPor;
+    }
+
+    public function reanudadoEn(): ?DateTimeImmutable
+    {
+        return $this->reanudadoEn;
     }
 
     public function actaGeneradaPor(): ?string

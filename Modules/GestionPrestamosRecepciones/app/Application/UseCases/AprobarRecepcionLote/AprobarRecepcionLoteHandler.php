@@ -51,7 +51,7 @@ final class AprobarRecepcionLoteHandler
             $input->itemsVerificacion,
         );
 
-        $lote->verificarConforme($items, $input->curadorId);
+        $lote->verificarConforme($items, $input->receptorId);
 
         $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 
@@ -69,7 +69,7 @@ final class AprobarRecepcionLoteHandler
         );
         $this->notificacionCuratoria->notificarLoteRecibidoParaActa(
             solicitudId: (string) $lote->solicitudId(),
-            receptorId: $input->curadorId,
+            receptorId: $input->receptorId,
             conObservaciones: false,
         );
 

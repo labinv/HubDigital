@@ -56,6 +56,7 @@ final class IniciarRecepcionLoteHandler
             $solicitudId,
             $solicitud->codigoQR(),
             TipoTramite::from($solicitud->tipoTramite()),
+            $input->receptorId,
         );
 
         $this->transactionManager->executeTransactional(function () use ($lote): void {

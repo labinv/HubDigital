@@ -47,7 +47,7 @@ final class AceptarRecepcionConObservacionesHandler
             static fn (string $item): ItemChecklistRecepcion => ItemChecklistRecepcion::from($item),
             array_values($input->itemsNoConformes),
         );
-        $lote->aceptarConObservaciones($itemsNoConformes, $input->comentario, $input->curadorId);
+        $lote->aceptarConObservaciones($itemsNoConformes, $input->comentario, $input->receptorId);
 
         $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 
@@ -65,7 +65,7 @@ final class AceptarRecepcionConObservacionesHandler
         );
         $this->notificacionCuratoria->notificarLoteRecibidoParaActa(
             solicitudId: (string) $lote->solicitudId(),
-            receptorId: $input->curadorId,
+            receptorId: $input->receptorId,
             conObservaciones: true,
         );
 

@@ -12,7 +12,7 @@ final readonly class AceptarRecepcionConObservacionesInput
      */
     public function __construct(
         public string $solicitudId,
-        public string $curadorId,
+        public string $receptorId,
         public array $itemsNoConformes,
         public ?string $comentario = null,
     ) {}
