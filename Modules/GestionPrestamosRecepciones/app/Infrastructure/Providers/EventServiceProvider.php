@@ -10,6 +10,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaPorCurador;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaRecepcionFirmada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaTransferenciaDominioGenerada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
@@ -32,6 +33,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificac
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionDevolucionRegistradaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionRecordatorioListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionResultadoProrrogaListener;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\GenerarActaTransferenciaDominioListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IngresarLoteEnColeccionListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IniciarPrestamoAlValidarActaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\NotificarCuradorEventoPrestamoListener;
@@ -50,6 +52,7 @@ class EventServiceProvider extends ServiceProvider
         // Accesión museológica: la recepción física deja el material bajo custodia;
         // solo el acta final firmada materializa la matriz en InventarioGestionColeccion.
         ActaRecepcionFirmada::class => [IngresarLoteEnColeccionListener::class],
+        ActaTransferenciaDominioGenerada::class => [GenerarActaTransferenciaDominioListener::class],
 
         SolicitudPrestamoRegistrada::class => [RegistrarEventoHistorialListener::class],
         SolicitudPrestamoEnviada::class => [

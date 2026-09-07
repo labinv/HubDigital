@@ -236,7 +236,7 @@
                                     <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success/10">
                                         <flux:icon name="document-check" class="size-4 text-success" />
                                     </div>
-                                    <p class="flex-1 text-sm text-text-secondary">Acta de transferencia de dominio generada.</p>
+                                    <p class="flex-1 text-sm text-text-secondary">Acta de transferencia pendiente de materializar en el expediente.</p>
                                 </div>
                             @endif
                         @endif
