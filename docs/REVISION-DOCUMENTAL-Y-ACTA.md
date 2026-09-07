@@ -24,3 +24,12 @@ se pretende sustituir y preserva los objetos anteriores.
 
 El certificado `.p12/.pfx` y su clave se procesan localmente en el navegador.
 No se guardan en el repositorio ni se envían al servidor.
+
+## Estado de entrega
+
+- **Implementado:** separación entre revisión previa y revisión final, bitácora
+  documental versionada, invalidación al sustituir archivos, actas versionadas y
+  firma ligada a referencia y huella del original.
+- **Compilación, publicación y despliegue:** se registran únicamente cuando el
+  procedimiento de desarrollo complete esas etapas para el commit correspondiente.
+- **Aceptación funcional:** pendiente de ejecución independiente con Playwright.

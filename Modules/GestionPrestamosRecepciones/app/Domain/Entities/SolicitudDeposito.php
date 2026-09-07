@@ -407,12 +407,23 @@ final class SolicitudDeposito
         $this->curadorResponsable = $curadorId;
         $this->rechazadaEn = $ahora;
         $this->comentarioCurador = trim($motivo);
-        $this->events[] = new SolicitudRequiereCorreccion(
-            solicitudId: $this->id,
-            curadorId: $curadorId,
-            comentario: $this->comentarioCurador,
-            ocurridoEn: $ahora,
-        );
+        if ($definitiva) {
+            $this->events[] = new SolicitudRechazadaDocumentalmente(
+                solicitudId: $this->id,
+                curadorId: $curadorId,
+                tipoRechazo: TipoRechazoDocumental::Definitivo,
+                estadoResultante: $this->estado,
+                motivo: $this->comentarioCurador,
+                ocurridoEn: $ahora,
+            );
+        } else {
+            $this->events[] = new SolicitudRequiereCorreccion(
+                solicitudId: $this->id,
+                curadorId: $curadorId,
+                comentario: $this->comentarioCurador,
+                ocurridoEn: $ahora,
+            );
+        }
     }
 
     /**

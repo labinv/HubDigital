@@ -14,7 +14,6 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaRecepcionSinFirmaE
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 
 /**
  * Adjunta el PDF producido por el firmador local de HubDigital. Antes de persistirlo,
@@ -75,12 +74,11 @@ final class SubirActaRecepcionFirmadaHandler
                 throw RecepcionLoteNoEncontradaException::conSolicitud($input->solicitudId);
             }
 
-            $original = RecepcionLoteEloquentModel::query()
-                ->where('solicitud_deposito_id', (string) $solicitudId)
-                ->lockForUpdate()
-                ->firstOrFail();
-            if (! hash_equals((string) $original->acta_original_referencia, $input->referenciaOriginal)
-                || ! hash_equals((string) $original->acta_original_sha256, $input->sha256Original)) {
+            if (! $this->recepcionRepo->coincideOriginalVigenteParaActualizar(
+                $solicitudId,
+                $input->referenciaOriginal,
+                $input->sha256Original,
+            )) {
                 throw new \DomainException('El original oficial cambió durante la firma. Revise y firme la versión vigente.');
             }
 

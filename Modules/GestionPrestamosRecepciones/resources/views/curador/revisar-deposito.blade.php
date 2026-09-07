@@ -913,7 +913,7 @@
                     <flux:icon name="check-badge" class="size-5 text-success" />
                 </div>
                 <flux:heading size="lg">
-                    {{ $accionAprobar === 'justificaciones' ? 'Aceptar justificaciones y aprobar' : ($accionAprobar === 'donacion' ? 'Aprobar donación' : 'Aprobar solicitud') }}
+                    {{ $accionAprobar === 'revision-previa' ? 'Resolver revisión documental previa' : ($accionAprobar === 'justificaciones' ? 'Aceptar justificaciones y aprobar' : ($accionAprobar === 'donacion' ? 'Aprobar donación' : 'Aprobar solicitud')) }}
                 </flux:heading>
             </div>
             <flux:text class="text-text-secondary text-sm">
@@ -932,7 +932,11 @@
                 </div>
             @endif
             <ul class="space-y-2 text-sm text-text-primary">
-                @if($accionAprobar === 'justificaciones')
+                @if($accionAprobar === 'revision-previa')
+                    <li class="flex items-start gap-2"><flux:icon name="arrow-uturn-left" class="size-4 text-success shrink-0 mt-0.5" />El expediente vuelve al consultor como borrador editable.</li>
+                    <li class="flex items-start gap-2"><flux:icon name="document-text" class="size-4 text-success shrink-0 mt-0.5" />El consultor debe completar, generar, firmar y enviar antes de la revisión final.</li>
+                    <li class="flex items-start gap-2"><flux:icon name="no-symbol" class="size-4 text-text-secondary shrink-0 mt-0.5" />No se aprueba el trámite ni se genera un código QR en esta etapa.</li>
+                @elseif($accionAprobar === 'justificaciones')
                     <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se aceptan todas las justificaciones de alertas pendientes.</li>
                 @endif
                 <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" /><span>La solicitud pasa a <span class="font-medium">Aprobada documentalmente</span> y queda registrada en la auditoría a tu nombre.</span></li>

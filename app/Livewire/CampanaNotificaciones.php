@@ -23,6 +23,22 @@ final class CampanaNotificaciones extends Component
     #[Session]
     public array $notificacionesEnTransito = [];
 
+    /** Registra un lote enviado; si el navegador no confirma quedará disponible al renovar la sesión. */
+    public function registrarLoteEnviado(array $ids): void
+    {
+        $ids = array_values(array_unique(array_filter($ids, 'is_string')));
+        if ($ids === []) {
+            return;
+        }
+
+        $propias = auth()->user()?->unreadNotifications()->whereIn('id', $ids)->pluck('id')
+            ->map(static fn (mixed $id): string => (string) $id)->all() ?? [];
+        $this->notificacionesEnTransito = array_values(array_unique([
+            ...$this->notificacionesEnTransito,
+            ...array_diff($propias, $this->notificacionesPresentadas),
+        ]));
+    }
+
     /** Confirma la presentación visual sin convertir el aviso en leído. */
     public function confirmarEntrega(array $ids): void
     {

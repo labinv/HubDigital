@@ -27,14 +27,22 @@ self.addEventListener('activate', (event) => event.waitUntil(
 self.addEventListener('push', (event) => {
     const payload = readPushPayload(event.data);
     const notificationId = payload.notificationId ?? payload.data?.notificationId ?? payload.id ?? null;
-    event.waitUntil(self.registration.showNotification(payload.title ?? 'HubDigital', {
-        body: payload.body ?? 'Tienes una nueva notificación.',
-        icon: payload.icon ?? '/images/hub-icon.png',
-        badge: payload.badge ?? '/images/hub-icon.png',
-        tag: payload.tag ?? (notificationId ? `hubdigital-${notificationId}` : 'hubdigital'),
-        renotify: false,
-        actions: payload.actions ?? [{ action: 'open', title: 'Abrir expediente' }],
-        data: { notificationId, url: payload.data?.url ?? payload.url ?? '/dashboard' },
+    event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+        // Con una sesión abierta la campana durable entrega el aviso inferior;
+        // así no se duplica una alerta nativa por el mismo evento.
+        if (windows.some((client) => new URL(client.url).origin === self.location.origin)) {
+            return Promise.all(windows.map((client) => client.postMessage({ type: 'hubdigital-push-pendiente', notificationId })));
+        }
+
+        return self.registration.showNotification(payload.title ?? 'HubDigital', {
+            body: payload.body ?? 'Tienes una nueva notificación.',
+            icon: payload.icon ?? '/images/hub-icon.png',
+            badge: payload.badge ?? '/images/hub-icon.png',
+            tag: payload.tag ?? (notificationId ? `hubdigital-${notificationId}` : 'hubdigital'),
+            renotify: false,
+            actions: payload.actions ?? [{ action: 'open', title: 'Abrir expediente' }],
+            data: { notificationId, url: payload.data?.url ?? payload.url ?? '/dashboard' },
+        });
     }));
 });
 

@@ -90,6 +90,18 @@ final class EloquentRecepcionLoteRepository implements RecepcionLoteRepositoryIn
         return $model !== null ? $this->reconstituir($model) : null;
     }
 
+    public function coincideOriginalVigenteParaActualizar(SolicitudDepositoId $solicitudId, string $referencia, string $sha256): bool
+    {
+        $modelo = RecepcionLoteEloquentModel::query()
+            ->where('solicitud_deposito_id', (string) $solicitudId)
+            ->lockForUpdate()
+            ->first();
+
+        return $modelo !== null
+            && hash_equals((string) $modelo->acta_original_referencia, $referencia)
+            && hash_equals((string) $modelo->acta_original_sha256, $sha256);
+    }
+
     public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?RecepcionLote
     {
         $model = RecepcionLoteEloquentModel::where('codigo_qr', (string) $codigoQR)->first();

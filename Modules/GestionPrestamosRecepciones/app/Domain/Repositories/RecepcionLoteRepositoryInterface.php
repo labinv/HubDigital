@@ -28,5 +28,8 @@ interface RecepcionLoteRepositoryInterface
      */
     public function buscarPorSolicitudIdParaActualizar(SolicitudDepositoId $solicitudId): ?RecepcionLote;
 
+    /** Comprueba bajo bloqueo que el PDF firmado corresponde al original vigente. */
+    public function coincideOriginalVigenteParaActualizar(SolicitudDepositoId $solicitudId, string $referencia, string $sha256): bool;
+
     public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?RecepcionLote;
 }

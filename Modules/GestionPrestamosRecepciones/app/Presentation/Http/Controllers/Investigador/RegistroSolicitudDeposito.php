@@ -888,13 +888,27 @@ final class RegistroSolicitudDeposito extends Component
         $this->estadoValidacionContenido = '';
         $this->erroresDocumentales = [];
         $this->advertenciasDocumentales = [];
-        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
-            ->where('investigador_id', (string) auth()->id())
-            ->update([
-            'extraccion_estado' => null,
-            'extraccion_metadatos' => [],
-            'documentos_procesados' => [],
-        ]);
+        DB::transaction(function (): void {
+            $modelo = SolicitudDepositoEloquentModel::query()
+                ->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())
+                ->lockForUpdate()
+                ->firstOrFail();
+            $metadatos = $modelo->extraccion_metadatos ?? [];
+            $revision = $metadatos['revision_documental'] ?? null;
+            $historial = $metadatos['revision_documental_historial'] ?? [];
+            if (is_array($revision)) {
+                $historial[] = [...$revision, 'estado' => 'invalidada', 'invalidada_en' => now()->toIso8601String(), 'motivo_invalidacion' => 'El consultor sustituyó documentación del expediente.'];
+            }
+            $modelo->forceFill([
+                'extraccion_estado' => null,
+                'extraccion_metadatos' => [
+                    'revision_documental' => is_array($revision) ? [...$revision, 'estado' => 'invalidada'] : null,
+                    'revision_documental_historial' => $historial,
+                ],
+                'documentos_procesados' => [],
+            ])->save();
+        });
         $this->invalidarFirmaSolicitud();
 
         $this->persistirEstadoWizard();
@@ -1058,7 +1072,7 @@ final class RegistroSolicitudDeposito extends Component
 
             $this->metadatosExtraccion = $model->extraccion_metadatos ?? [];
             $this->aplicarResultadosDocumentales($this->metadatosExtraccion);
-            if ($this->estadoValidacionContenido === 'rechazado') {
+            if ($this->estadoValidacionContenido === 'rechazado' && ! $this->revisionPreviaFavorableVigente()) {
                 $this->addError(
                     'documentos',
                     'Los archivos no forman un expediente regulatorio coherente. Corrige los documentos indicados para continuar.',
@@ -2117,6 +2131,20 @@ final class RegistroSolicitudDeposito extends Component
             $metadatos['registros_sugeridos'] ?? [],
             static fn (mixed $registro): bool => is_array($registro) && ! empty($registro['recordNumber']),
         ));
+    }
+
+    /** Una decisión humana solo resuelve incertidumbres de la misma versión de archivos. */
+    private function revisionPreviaFavorableVigente(): bool
+    {
+        $revision = $this->metadatosExtraccion['revision_documental'] ?? [];
+        if (! is_array($revision) || ($revision['estado'] ?? null) !== 'favorable') {
+            return false;
+        }
+
+        $version = $revision['version_documental_persistida'] ?? $revision['version_documental'] ?? null;
+
+        return is_string($version)
+            && hash_equals($version, ExtraccionDatosDocumentoJob::huellaDocumental($this->documentosCargados));
     }
 
     /** @return array<string, mixed> */

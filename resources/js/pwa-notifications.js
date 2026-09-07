@@ -7,6 +7,9 @@ const SUBSCRIPTIONS_URL = '/pwa/suscripciones';
 const TOAST_TRAY_ID = 'hub-in-app-toast-tray';
 let observerInitialized = false;
 const presentingNatively = new Set();
+const enMemoria = new Set();
+let confirmacionPendiente = new Set();
+let temporizadorConfirmacion = null;
 
 function emitStatus(status, message) {
     window.dispatchEvent(new CustomEvent('hub-pwa-status', {
@@ -61,36 +64,25 @@ async function showLatest(element) {
     showInAppToast(element);
     confirmDelivery(element);
 
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    if (wasRemembered(STORAGE_KEY, id) || presentingNatively.has(id)) return;
-
-    presentingNatively.add(id);
-    try {
-        const serviceWorker = await registration();
-        await serviceWorker?.showNotification(
-            element.dataset.hubNotificationTitle || 'HubDigital',
-            {
-                body,
-                icon: '/images/hub-icon.png',
-                badge: '/images/hub-icon.png',
-                tag: `hubdigital-${id}`,
-                renotify: false,
-                data: { notificationId: id, url: element.dataset.hubNotificationUrl || '/dashboard' },
-            },
-        );
-        remember(STORAGE_KEY, id);
-    } finally {
-        presentingNatively.delete(id);
-    }
+    // La campana es la única responsable cuando la aplicación está abierta.
+    // El service worker presenta Web Push cuando no existe una ventana operativa.
 }
 
 function confirmDelivery(element) {
     const recordId = element?.dataset.hubNotificationRecordId;
-    const component = element?.closest('[wire\\:id]');
-    const componentId = component?.getAttribute('wire:id');
-    if (!recordId || !componentId || !window.Livewire?.find) return;
-
-    window.Livewire.find(componentId)?.call('confirmarEntrega', [recordId]);
+    if (!recordId) return;
+    confirmacionPendiente.add(recordId);
+    if (temporizadorConfirmacion) return;
+    temporizadorConfirmacion = window.setTimeout(() => {
+        const ids = [...confirmacionPendiente];
+        confirmacionPendiente = new Set();
+        temporizadorConfirmacion = null;
+        const component = document.querySelector('[data-hub-notification-record-id]')?.closest('[wire\\:id]');
+        const componentId = component?.getAttribute('wire:id');
+        window.Livewire?.find(componentId)?.call('confirmarEntrega', ids).catch(() => {
+            ids.forEach((id) => enMemoria.delete(id));
+        });
+    }, 150);
 }
 
 function showInAppToast(element) {
@@ -276,12 +268,24 @@ function observe() {
     if (observerInitialized) return;
     observerInitialized = true;
 
-    const scan = () => document.querySelectorAll(SELECTOR).forEach((element) => {
-        showLatest(element).catch(() => {
-            // La notificación nativa es complementaria: la alerta durable permanece
-            // disponible en la bandeja cuando el navegador no puede presentarla.
+    const scan = () => {
+        const elementos = [...document.querySelectorAll(SELECTOR)].filter((element) => {
+            const id = element.dataset.hubNotificationRecordId;
+            if (!id || enMemoria.has(id)) return false;
+            enMemoria.add(id);
+            return true;
         });
-    });
+        if (elementos.length === 0) return;
+        const componente = elementos[0].closest('[wire\\:id]');
+        const componentId = componente?.getAttribute('wire:id');
+        const ids = elementos.map((element) => element.dataset.hubNotificationRecordId);
+        const mostrar = () => elementos.forEach((element) => showLatest(element).catch(() => enMemoria.delete(element.dataset.hubNotificationRecordId)));
+        if (!componentId || !window.Livewire?.find) {
+            mostrar();
+            return;
+        }
+        window.Livewire.find(componentId).call('registrarLoteEnviado', ids).then(mostrar).catch(() => ids.forEach((id) => enMemoria.delete(id)));
+    };
     scan();
     new MutationObserver(scan).observe(document.body, {
         subtree: true,

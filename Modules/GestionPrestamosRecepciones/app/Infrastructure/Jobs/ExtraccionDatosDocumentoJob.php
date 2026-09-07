@@ -232,6 +232,16 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 metadatosExtraccion: $metadatosExtraccion,
             );
 
+            // OCR puede tardar varios minutos. No integramos un resultado que ya
+            // dejó de corresponder a los documentos vigentes del expediente.
+            if (! $this->esVersionVigente()) {
+                Log::info('ExtraccionDatosDocumentoJob: resultados descartados por cambio documental', [
+                    'solicitudId' => $this->solicitudId,
+                ]);
+
+                return;
+            }
+
             $id = SolicitudDepositoId::from($this->solicitudId);
             $solicitud = $repo->buscarPorId($id);
 
@@ -245,6 +255,9 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             );
 
             $transactionManager->executeTransactional(function () use ($solicitud, $repo, $eventPublisher): void {
+                if (! $this->esVersionVigente()) {
+                    return;
+                }
                 $repo->guardar($solicitud);
                 foreach ($solicitud->pullEvents() as $event) {
                     $eventPublisher->publish($event);
@@ -255,6 +268,9 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             // inconsistencia si la transacción anterior falla.
             DB::transaction(function () use ($firmas, $metadatosExtraccion): void {
                 $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->firstOrFail();
+                if (self::huellaDocumental($modelo->documentos_cargados ?? []) !== $this->versionDocumental) {
+                    return;
+                }
                 $metadatosVigentes = $modelo->extraccion_metadatos ?? [];
                 $revisionHumana = $metadatosVigentes['revision_documental'] ?? null;
                 $historialRevision = $metadatosVigentes['revision_documental_historial'] ?? [];

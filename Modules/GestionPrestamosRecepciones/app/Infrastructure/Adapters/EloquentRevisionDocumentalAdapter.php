@@ -27,8 +27,20 @@ final class EloquentRevisionDocumentalAdapter implements RevisionDocumentalPort
         $modelo = SolicitudDepositoEloquentModel::query()->whereKey($solicitudId)->lockForUpdate()->firstOrFail();
         $metadatos = $modelo->extraccion_metadatos ?? [];
         $actual = $metadatos['revision_documental'] ?? [];
+        $huellaActual = $this->huellaDocumentosPersistidos($modelo);
+        if (is_array($actual)
+            && isset($actual['version_documental_persistida'])
+            && ! hash_equals((string) $actual['version_documental_persistida'], $huellaActual)) {
+            $historial = $metadatos['revision_documental_historial'] ?? [];
+            $historial[] = [...$actual, 'estado' => 'invalidada', 'invalidada_en' => now()->toIso8601String(), 'motivo_invalidacion' => 'Los documentos fueron sustituidos antes de resolver la revisión.'];
+            $metadatos['revision_documental_historial'] = $historial;
+            $metadatos['revision_documental'] = [...$actual, 'estado' => 'invalidada'];
+            $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
+
+            throw new \DomainException('Los documentos cambiaron durante la revisión. Solicite una nueva revisión documental.');
+        }
         $resolucion['version_documental_persistida'] = $actual['version_documental_persistida']
-            ?? $this->huellaDocumentosPersistidos($modelo);
+            ?? $huellaActual;
         $metadatos['revision_documental'] = [...$actual, ...$resolucion];
         $historial = $metadatos['revision_documental_historial'] ?? [];
         $historial[] = $metadatos['revision_documental'];

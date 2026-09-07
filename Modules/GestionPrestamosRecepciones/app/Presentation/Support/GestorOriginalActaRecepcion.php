@@ -28,6 +28,9 @@ final class GestorOriginalActaRecepcion
         if (! $reemitir && $actual->acta_original_referencia !== null) {
             return $this->obtenerVerificado($solicitudId);
         }
+        if ($reemitir && $versionEsperada === null) {
+            throw new \DomainException('Indique la versión del original que desea reemitir y actualice la pantalla.');
+        }
         if ($reemitir && $actual->acta_firmada_ruta !== null) {
             throw new \DomainException('No se puede reemitir un acta que ya fue firmada.');
         }
@@ -39,7 +42,7 @@ final class GestorOriginalActaRecepcion
         $this->almacenamiento->guardarContenido($ruta, $contenido, 'application/pdf');
 
         try {
-            $resultado = DB::transaction(function () use ($solicitudId, $actorId, $reemitir, $referencia, $ruta, $sha256): array {
+            $resultado = DB::transaction(function () use ($solicitudId, $actorId, $reemitir, $versionEsperada, $referencia, $ruta, $sha256): array {
                 $lote = RecepcionLoteEloquentModel::query()
                     ->where('solicitud_deposito_id', $solicitudId)
                     ->lockForUpdate()
