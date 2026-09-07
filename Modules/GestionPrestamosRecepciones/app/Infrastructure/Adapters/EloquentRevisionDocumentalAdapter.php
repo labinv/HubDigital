@@ -44,6 +44,12 @@ final class EloquentRevisionDocumentalAdapter implements RevisionDocumentalPort
         }
         $resolucion['version_documental_persistida'] = $actual['version_documental_persistida']
             ?? $huellaActual;
+        // La decisión favorable queda limitada a las advertencias que el curador
+        // vio en esta versión; un cambio o un hallazgo nuevo nunca queda cubierto.
+        $resolucion['advertencias_resueltas'] = array_values(array_filter(
+            $actual['advertencias'] ?? [],
+            static fn (mixed $advertencia): bool => is_string($advertencia) && trim($advertencia) !== '',
+        ));
         $metadatos['revision_documental'] = [...$actual, ...$resolucion];
         $historial = $metadatos['revision_documental_historial'] ?? [];
         $historial[] = $metadatos['revision_documental'];

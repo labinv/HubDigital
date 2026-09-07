@@ -921,15 +921,23 @@ final class RegistroSolicitudDeposito extends Component
     {
         if (isset($this->documentosCargados[$nombre])) {
             $ruta = $this->documentosCargados[$nombre];
+            $documentosActualizados = $this->documentosCargados;
+            $nombresActualizados = $this->nombresArchivosOriginales;
+            unset($documentosActualizados[$nombre], $nombresActualizados[$nombre]);
+
+            // Primero se hace durable la nueva versión del expediente y se invalida
+            // cualquier decisión humana asociada. Solo después se retira el objeto;
+            // así una caída de almacenamiento nunca deja a la base apuntando a una
+            // revisión de archivos que ya no representa el expediente.
+            $this->persistirRetiroDocumento($documentosActualizados, $nombresActualizados);
+            $this->documentosCargados = $documentosActualizados;
+            $this->nombresArchivosOriginales = $nombresActualizados;
             app(AlmacenamientoDepositos::class)->eliminar($ruta);
-            unset($this->documentosCargados[$nombre]);
-            unset($this->nombresArchivosOriginales[$nombre]);
         }
 
         $this->estadoValidacionContenido = '';
         $this->erroresDocumentales = [];
         $this->advertenciasDocumentales = [];
-        $this->invalidarRevisionDocumentalPorCambio('El consultor eliminó documentación del expediente.');
         $this->invalidarFirmaSolicitud();
 
         $propiedad = $this->propiedadParaDocumento($nombre);
@@ -2144,8 +2152,20 @@ final class RegistroSolicitudDeposito extends Component
 
         $version = $revision['version_documental_persistida'] ?? $revision['version_documental'] ?? null;
 
-        return is_string($version)
-            && hash_equals($version, ExtraccionDatosDocumentoJob::huellaDocumental($this->documentosCargados));
+        if (! is_string($version) || ! hash_equals($version, ExtraccionDatosDocumentoJob::huellaDocumental($this->documentosCargados))) {
+            return false;
+        }
+
+        // Una aprobación humana no es una dispensa general: solo cubre las
+        // advertencias concretas que quedaron registradas al resolverla.
+        $alcance = $revision['advertencias_resueltas'] ?? [];
+        if (! is_array($alcance) || $alcance === []) {
+            return false;
+        }
+
+        return collect($this->erroresDocumentales)->every(
+            static fn (string $error): bool => in_array($error, $alcance, true),
+        );
     }
 
     /** @return array<string, mixed> */
@@ -2221,6 +2241,33 @@ final class RegistroSolicitudDeposito extends Component
             $metadatos['revision_documental'] = $invalida;
             $metadatos['revision_documental_historial'] = [...($metadatos['revision_documental_historial'] ?? []), $invalida];
             $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
+        });
+    }
+
+    /** @param array<string, string> $documentos @param array<string, string> $nombres */
+    private function persistirRetiroDocumento(array $documentos, array $nombres): void
+    {
+        if ($this->solicitudId === null) return;
+
+        DB::transaction(function () use ($documentos, $nombres): void {
+            $modelo = SolicitudDepositoEloquentModel::query()
+                ->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())
+                ->lockForUpdate()->firstOrFail();
+            $metadatos = $modelo->extraccion_metadatos ?? [];
+            $revision = $metadatos['revision_documental'] ?? null;
+            if (is_array($revision) && ($revision['estado'] ?? null) !== 'invalidada') {
+                $invalida = [...$revision, 'estado' => 'invalidada', 'invalidada_en' => now()->toIso8601String(), 'motivo_invalidacion' => 'El consultor eliminó documentación del expediente.'];
+                $metadatos['revision_documental'] = $invalida;
+                $metadatos['revision_documental_historial'] = [...($metadatos['revision_documental_historial'] ?? []), $invalida];
+            }
+            $modelo->forceFill([
+                'documentos_cargados' => $documentos,
+                'nombres_archivos_originales' => $nombres,
+                'documentos_procesados' => [],
+                'extraccion_estado' => null,
+                'extraccion_metadatos' => $metadatos,
+            ])->save();
         });
     }
 
