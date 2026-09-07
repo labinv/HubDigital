@@ -15,8 +15,8 @@ if [[ -f "${codespaces_secret_env}" ]]; then
     set +a
 
     # Los secretos de este Codespace fueron cargados originalmente como Base64
-    # para evitar interpretaciÃ³n del shell. Se reconocen por el valor conocido
-    # y no sensible de COMPOSE_PROJECT_NAME; la decodificaciÃ³n ocurre solo en
+    # para evitar interpretación del shell. Se reconocen por el valor conocido
+    # y no sensible de COMPOSE_PROJECT_NAME; la decodificación ocurre solo en
     # memoria y nunca se imprime.
     if [[ "${COMPOSE_PROJECT_NAME:-}" == "aHViZGlnaXRhbC1kZXY=" ]]; then
         for clave_codificada in CLOUDFLARE_TUNNEL_TOKEN DEPOSIT_STORAGE_DRIVER R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY; do
@@ -39,7 +39,7 @@ fi
 
 # Codespaces entrega secretos como variables del proceso; Docker Compose, en
 # cambio, consume el archivo .env. Copiamos solo la lista permitida y nunca la
-# mostramos en consola. La configuraciÃ³n local que no tiene secretos conserva
+# mostramos en consola. La configuración local que no tiene secretos conserva
 # su fallback para permitir desarrollo sin infraestructura remota.
 actualizar_env_secreto() {
     local clave="$1"
