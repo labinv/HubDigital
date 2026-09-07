@@ -74,7 +74,7 @@
                     No se puede firmar una versión regenerada silenciosamente. Emita una nueva versión y revísela completa antes de firmar.
                 </flux:callout.text>
                 <x-slot name="actions">
-                    <flux:button wire:click="reemitirOriginal" wire:loading.attr="disabled" variant="primary" icon="document-arrow-path">
+                    <flux:button wire:click="reemitirOriginal({{ $originalVersion }})" wire:loading.attr="disabled" variant="primary" icon="document-arrow-path">
                         Reemitir versión para revisión
                     </flux:button>
                 </x-slot>
@@ -92,6 +92,8 @@
                     x-data="hubDigitalFirmador({
                         documentUrl: @js(route('prestamos.deposito.acta-recepcion', $this->id)),
                         uploadUrl: @js(route('prestamos.curador.deposito.acta.firmar', $this->id)),
+                        originalReference: @js($originalReferencia),
+                        originalSha256: @js($originalSha256),
                         signatureProfile: 'acta-recepcion:curador:v1',
                         reason: 'Aprobación del acta final de recepción de especímenes',
                         location: 'Laboratorio de Invertebrados EPN, Quito, Ecuador'

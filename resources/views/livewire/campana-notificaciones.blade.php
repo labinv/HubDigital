@@ -31,7 +31,8 @@
         @foreach($notificacionesPendientes as $pendiente)
             <span
                 wire:key="aviso-pwa-{{ $pendiente->id }}"
-                data-hub-notification-id="{{ $pendiente->id }}"
+                data-hub-notification-id="{{ $pendiente->data['eventoId'] ?? $pendiente->id }}"
+                data-hub-notification-record-id="{{ $pendiente->id }}"
                 data-hub-notification-title="HubDigital · Laboratorio de Invertebrados"
                 data-hub-notification-body="{{ $pendiente->data['mensaje'] ?? '' }}"
                 data-hub-notification-url="{{ $pendiente->data['url'] ?? '' }}"

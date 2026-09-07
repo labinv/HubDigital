@@ -17,7 +17,25 @@ final class CampanaNotificaciones extends Component
 {
     /** @var string[] Identidades ya entregadas al navegador durante la sesión. */
     #[Session]
-    public array $notificacionesEntregadas = [];
+    public array $notificacionesPresentadas = [];
+
+    /** @var string[] Lote enviado que queda elegible nuevamente si el cliente no confirma. */
+    #[Session]
+    public array $notificacionesEnTransito = [];
+
+    /** Confirma la presentación visual sin convertir el aviso en leído. */
+    public function confirmarEntrega(array $ids): void
+    {
+        $ids = array_values(array_unique(array_filter($ids, 'is_string')));
+        if ($ids === []) {
+            return;
+        }
+
+        $propias = auth()->user()?->notifications()->whereIn('id', $ids)->pluck('id')
+            ->map(static fn (mixed $id): string => (string) $id)->all() ?? [];
+        $this->notificacionesPresentadas = array_values(array_unique([...$this->notificacionesPresentadas, ...$propias]));
+        $this->notificacionesEnTransito = array_values(array_diff($this->notificacionesEnTransito, $propias));
+    }
 
     /**
      * Marca una notificación como leída y navega a su recurso.
@@ -56,20 +74,14 @@ final class CampanaNotificaciones extends Component
         if ($usuario !== null) {
             $notificacionesPendientes = $usuario->unreadNotifications()
                 ->when(
-                    $this->notificacionesEntregadas !== [],
-                    fn ($query) => $query->whereNotIn('id', $this->notificacionesEntregadas),
+                    [...$this->notificacionesPresentadas, ...$this->notificacionesEnTransito] !== [],
+                    fn ($query) => $query->whereNotIn('id', [...$this->notificacionesPresentadas, ...$this->notificacionesEnTransito]),
                 )
                 ->orderBy('created_at')
                 ->orderBy('id')
                 ->limit(10)
                 ->get();
 
-            if ($notificacionesPendientes->isNotEmpty()) {
-                $this->notificacionesEntregadas = array_slice(array_values(array_unique([
-                    ...$this->notificacionesEntregadas,
-                    ...$notificacionesPendientes->pluck('id')->map(static fn (mixed $id): string => (string) $id)->all(),
-                ])), -80);
-            }
         }
 
         return view('livewire.campana-notificaciones', [

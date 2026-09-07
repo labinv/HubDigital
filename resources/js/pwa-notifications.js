@@ -59,6 +59,7 @@ async function showLatest(element) {
     // en el borde inferior, similar a una conversación de mensajería. No depende
     // de permisos del navegador y conserva la misma ruta accionable del push.
     showInAppToast(element);
+    confirmDelivery(element);
 
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     if (wasRemembered(STORAGE_KEY, id) || presentingNatively.has(id)) return;
@@ -81,6 +82,15 @@ async function showLatest(element) {
     } finally {
         presentingNatively.delete(id);
     }
+}
+
+function confirmDelivery(element) {
+    const recordId = element?.dataset.hubNotificationRecordId;
+    const component = element?.closest('[wire\\:id]');
+    const componentId = component?.getAttribute('wire:id');
+    if (!recordId || !componentId || !window.Livewire?.find) return;
+
+    window.Livewire.find(componentId)?.call('confirmarEntrega', [recordId]);
 }
 
 function showInAppToast(element) {
@@ -279,6 +289,7 @@ function observe() {
         attributes: true,
         attributeFilter: [
             'data-hub-notification-id',
+            'data-hub-notification-record-id',
             'data-hub-notification-body',
             'data-hub-notification-url',
             'data-hub-notification-action',

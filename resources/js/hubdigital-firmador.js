@@ -72,6 +72,8 @@ window.hubDigitalFirmador = (config) => ({
 
             const formulario = new FormData();
             formulario.append('pdf_firmado', new Blob([resultado.pdf], { type: 'application/pdf' }), 'documento-firmado.pdf');
+            formulario.append('original_referencia', config.originalReference ?? '');
+            formulario.append('original_sha256', config.originalSha256 ?? '');
 
             const respuesta = await fetch(config.uploadUrl, {
                 method: 'POST',

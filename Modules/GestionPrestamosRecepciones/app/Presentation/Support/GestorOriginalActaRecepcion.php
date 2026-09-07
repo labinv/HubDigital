@@ -22,6 +22,7 @@ final class GestorOriginalActaRecepcion
         ConsultarDetalleRecepcionOutput $recepcion,
         GeneradorPdfActaRecepcion $generador,
         bool $reemitir = false,
+        ?int $versionEsperada = null,
     ): array {
         $actual = RecepcionLoteEloquentModel::query()->where('solicitud_deposito_id', $solicitudId)->firstOrFail();
         if (! $reemitir && $actual->acta_original_referencia !== null) {
@@ -46,6 +47,14 @@ final class GestorOriginalActaRecepcion
 
                 if (! $reemitir && $lote->acta_original_referencia !== null) {
                     return $this->obtenerVerificado($solicitudId);
+                }
+
+                if ($reemitir && $versionEsperada !== null && (int) $lote->acta_original_version !== $versionEsperada) {
+                    throw new \DomainException('El original cambió antes de la reemisión. Actualice la pantalla y revise la versión vigente.');
+                }
+
+                if ($reemitir && $lote->acta_firmada_ruta !== null) {
+                    throw new \DomainException('No se puede reemitir un acta que ya fue firmada.');
                 }
 
                 $historial = $lote->acta_original_historial ?? [];
@@ -81,7 +90,11 @@ final class GestorOriginalActaRecepcion
 
             return $resultado;
         } catch (\Throwable $exception) {
-            $this->almacenamiento->eliminar($ruta);
+            // El objeto sólo se elimina si la transacción no alcanzó a referenciarlo.
+            // Un fallo posterior al commit se conserva para no borrar evidencia oficial.
+            if (! $this->estaReferenciado($solicitudId, $ruta)) {
+                $this->almacenamiento->eliminar($ruta);
+            }
             throw $exception;
         }
     }
@@ -115,8 +128,23 @@ final class GestorOriginalActaRecepcion
         try {
             $this->obtenerVerificado($solicitudId);
             return true;
-        } catch (\Throwable) {
+        } catch (\DomainException) {
             return false;
         }
+    }
+
+    public function versionActual(string $solicitudId): int
+    {
+        return (int) (RecepcionLoteEloquentModel::query()
+            ->where('solicitud_deposito_id', $solicitudId)
+            ->value('acta_original_version') ?? 0);
+    }
+
+    private function estaReferenciado(string $solicitudId, string $ruta): bool
+    {
+        return RecepcionLoteEloquentModel::query()
+            ->where('solicitud_deposito_id', $solicitudId)
+            ->where('acta_original_ruta', $ruta)
+            ->exists();
     }
 }

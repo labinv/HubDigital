@@ -23,6 +23,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\RevisionDocumentalPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\SolicitudFirmadaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
@@ -46,6 +47,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentColaRevi
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentGeneradorCodigoPrestamoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentSolicitudFirmadaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentRevisionDocumentalAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionCatalogoCuraduriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEspecimenesAdapter;
@@ -122,6 +124,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         ColaRevisionCuratorialPort::class => EloquentColaRevisionCuratorialAdapter::class,
         ValidacionFirmaElectronicaPort::class => PdfsigValidacionFirmaElectronicaAdapter::class,
         SolicitudFirmadaPort::class => EloquentSolicitudFirmadaAdapter::class,
+        RevisionDocumentalPort::class => EloquentRevisionDocumentalAdapter::class,
         HistorialPort::class => EloquentHistorialAdapter::class,
         RecordatorioDevolucionRepositoryInterface::class => EloquentRecordatorioDevolucionRepository::class,
         ConfiguracionGlobalRecordatoriosRepositoryInterface::class => EloquentConfiguracionGlobalRecordatoriosRepository::class,

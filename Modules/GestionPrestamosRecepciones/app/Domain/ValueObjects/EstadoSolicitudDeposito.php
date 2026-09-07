@@ -18,6 +18,7 @@ enum EstadoSolicitudDeposito: string
     case EnBorrador = 'En Borrador';
     case Rechazada = 'Rechazada';
     case RetenidaParaAsesoriaCuratorial = 'Pausada para Asesoría';
+    case PendienteDeRevisionDocumentalPrevia = 'Pendiente de Revisión Documental Previa';
     case PendienteDeRevisionPorCuraduria = 'Pendiente de Revisión por Curaduría';
     case AprobadaDocumentalmente = 'Aprobada Documentalmente';
     case RequiereCorreccion = 'Requiere Corrección';

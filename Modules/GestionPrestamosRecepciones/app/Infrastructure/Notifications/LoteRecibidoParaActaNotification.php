@@ -63,6 +63,7 @@ final class LoteRecibidoParaActaNotification extends Notification implements Sho
         $numero = $this->numero ? ' '.$this->numero : '';
 
         return [
+            'eventoId' => $this->eventoId(),
             'tipo' => 'lote_recibido_acta_pendiente',
             'solicitudId' => $this->solicitudId,
             'numero' => $this->numero,
@@ -83,10 +84,16 @@ final class LoteRecibidoParaActaNotification extends Notification implements Sho
             ->body('Un depósito recibido requiere revisión curatorial y firma del acta.')
             ->icon('/images/hub-icon.png')
             ->badge('/images/hub-icon.png')
-            ->tag('deposito-acta-'.$this->solicitudId)
+            ->tag($this->eventoId())
             ->data([
+                'notificationId' => $this->eventoId(),
                 'url' => route('prestamos.curador.deposito.acta', $this->solicitudId),
             ])
             ->options(['TTL' => 86400, 'urgency' => 'high']);
+    }
+
+    private function eventoId(): string
+    {
+        return 'deposito-acta-'.$this->solicitudId;
     }
 }

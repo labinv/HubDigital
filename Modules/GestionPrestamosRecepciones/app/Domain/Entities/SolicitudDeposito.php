@@ -375,12 +375,43 @@ final class SolicitudDeposito
             || $this->estado->equals(EstadoSolicitudDeposito::RequiereCorreccion);
 
         if (! $puedeSolicitarse) {
-            throw TransicionEstadoInvalida::de($this->estado->value, EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value);
+            throw TransicionEstadoInvalida::de($this->estado->value, EstadoSolicitudDeposito::PendienteDeRevisionDocumentalPrevia->value);
         }
 
-        $this->estado = EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria;
+        $this->estado = EstadoSolicitudDeposito::PendienteDeRevisionDocumentalPrevia;
         $this->events[] = new SolicitudDepositoPendienteDeRevision(
             solicitudId: $this->id,
+        );
+    }
+
+    /** Resuelve una incertidumbre documental sin convertirla en aprobación del trámite. */
+    public function resolverRevisionDocumentalPrevia(string $curadorId, bool $favorable, string $motivo = '', bool $definitiva = false): void
+    {
+        if (! $this->estado->equals(EstadoSolicitudDeposito::PendienteDeRevisionDocumentalPrevia)) {
+            throw TransicionEstadoInvalida::de($this->estado->value, 'resolverRevisionDocumentalPrevia');
+        }
+        $this->garantizarCuradorId($curadorId);
+        $ahora = new DateTimeImmutable;
+
+        if ($favorable) {
+            $this->estado = EstadoSolicitudDeposito::EnBorrador;
+            $this->comentarioCurador = trim($motivo) !== '' ? trim($motivo) : 'Documentación revisada. Continúe con la preparación y firma de la solicitud.';
+            return;
+        }
+
+        if (trim($motivo) === '') {
+            throw new \DomainException('La decisión documental requiere un motivo para el depositante.');
+        }
+
+        $this->estado = $definitiva ? EstadoSolicitudDeposito::RechazoPermanente : EstadoSolicitudDeposito::RequiereCorreccion;
+        $this->curadorResponsable = $curadorId;
+        $this->rechazadaEn = $ahora;
+        $this->comentarioCurador = trim($motivo);
+        $this->events[] = new SolicitudRequiereCorreccion(
+            solicitudId: $this->id,
+            curadorId: $curadorId,
+            comentario: $this->comentarioCurador,
+            ocurridoEn: $ahora,
         );
     }
 

@@ -137,7 +137,10 @@ final class BandejaDepositos extends Component
         } elseif ($esResueltas) {
             $query->whereIn('estado', $estadosResueltas);
         } else {
-            $query->where('estado', EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value);
+            $query->whereIn('estado', [
+                EstadoSolicitudDeposito::PendienteDeRevisionDocumentalPrevia->value,
+                EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value,
+            ]);
         }
 
         $solicitudes = ($esResueltas || $esActas)
@@ -160,7 +163,10 @@ final class BandejaDepositos extends Component
 
         // Total de pendientes por revisar (independiente de los filtros) para el contador.
         $totalPendientes = SolicitudDepositoEloquentModel::query()
-            ->where('estado', EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value)
+            ->whereIn('estado', [
+                EstadoSolicitudDeposito::PendienteDeRevisionDocumentalPrevia->value,
+                EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value,
+            ])
             ->count();
 
         $totalActasPendientes = $recepcionesPendientes->count();

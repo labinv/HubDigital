@@ -28,6 +28,9 @@ interface SolicitudDepositoRepositoryInterface
     /** Recupera la solicitud por su identificador, o null si no existe. */
     public function buscarPorId(SolicitudDepositoId $id): ?SolicitudDeposito;
 
+    /** Recupera la solicitud bajo bloqueo exclusivo dentro de una transacción. */
+    public function buscarPorIdParaActualizar(SolicitudDepositoId $id): ?SolicitudDeposito;
+
     /** Recupera la solicitud por el Código QR del lote que la rotula, o null si no existe. */
     public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?SolicitudDeposito;
 

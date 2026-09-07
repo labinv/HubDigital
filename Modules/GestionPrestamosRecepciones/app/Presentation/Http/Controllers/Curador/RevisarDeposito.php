@@ -23,6 +23,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalm
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalmenteSolicitud\RechazarDocumentalmenteSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ResolverRevisionDocumentalPrevia\ResolverRevisionDocumentalPreviaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ResolverRevisionDocumentalPrevia\ResolverRevisionDocumentalPreviaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarDevolucionDeposito\RegistrarDevolucionDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarDevolucionDeposito\RegistrarDevolucionDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidacionManualCuraduria\ValidacionManualCuraduriaHandler;
@@ -45,6 +47,7 @@ final class RevisarDeposito extends Component
     public string $id;
 
     public string $nombreInvestigador = '';
+    public bool $esRevisionDocumentalPrevia = false;
 
     // ── Modal: confirmación de aprobación ────────────────────────────────────
     public bool $showConfirmacionModal = false;
@@ -121,6 +124,7 @@ final class RevisarDeposito extends Component
         $this->nombreInvestigador = $usuarios->obtenerNombre($deposito->investigador_id)
             ?? $deposito->nombre_investigador_documento
             ?? $deposito->investigador_id;
+        $this->esRevisionDocumentalPrevia = $deposito->estado === 'Pendiente de Revisión Documental Previa';
     }
 
     /**
@@ -139,6 +143,7 @@ final class RevisarDeposito extends Component
         AprobarDocumentalmenteSolicitudHandler $aprobarHandler,
         AprobarDonacionConTransferenciaHandler $donacionHandler,
         AceptarJustificacionesAlertasHandler $justificacionesHandler,
+        ResolverRevisionDocumentalPreviaHandler $revisionPreviaHandler,
     ): void {
         $this->showConfirmacionModal = false;
 
@@ -146,6 +151,7 @@ final class RevisarDeposito extends Component
             'deposito' => $this->aprobar($aprobarHandler),
             'donacion' => $this->aprobarDonacion($donacionHandler),
             'justificaciones' => $this->aceptarJustificaciones($justificacionesHandler),
+            'revision-previa' => $this->aprobarRevisionPrevia($revisionPreviaHandler),
             default => null,
         };
     }
@@ -159,7 +165,6 @@ final class RevisarDeposito extends Component
             solicitudId: $this->id,
             curadorId: (string) auth()->id(),
         ));
-        $this->resolverRevisionDocumental('favorable', 'Documentación revisada y aprobada por curaduría.');
 
         $this->dispatch('toast', message: 'Solicitud aprobada documentalmente. Código QR asignado.');
     }
@@ -173,7 +178,6 @@ final class RevisarDeposito extends Component
             solicitudId: $this->id,
             curadorId: (string) auth()->id(),
         ));
-        $this->resolverRevisionDocumental('favorable', 'Documentación revisada y aprobada por curaduría.');
 
         $this->dispatch('toast', message: 'Donación aprobada. Acta de transferencia y código QR generados.');
     }
@@ -187,7 +191,6 @@ final class RevisarDeposito extends Component
             solicitudId: $this->id,
             curadorId: (string) auth()->id(),
         ));
-        $this->resolverRevisionDocumental('favorable', 'Justificaciones y documentación aceptadas por curaduría.');
 
         $this->dispatch('toast', message: 'Justificaciones aceptadas. Solicitud aprobada documentalmente.');
     }
@@ -207,7 +210,6 @@ final class RevisarDeposito extends Component
             curadorId: (string) auth()->id(),
             justificacionesRechazadas: array_values($this->justificacionesRechazadas),
         ));
-        $this->resolverRevisionDocumental('requiere_correccion', 'Curaduría solicitó correcciones documentales.');
 
         $this->redirectRoute('prestamos.curador.depositos', navigate: true);
     }
@@ -215,20 +217,22 @@ final class RevisarDeposito extends Component
     /**
      * Rechaza documentalmente la solicitud indicando tipo (Subsanable/Definitivo) y motivo.
      */
-    public function rechazar(RechazarDocumentalmenteSolicitudHandler $handler): void
+    public function rechazar(RechazarDocumentalmenteSolicitudHandler $handler, ResolverRevisionDocumentalPreviaHandler $revisionPreviaHandler): void
     {
         $this->validate();
 
-        ($handler)(new RechazarDocumentalmenteSolicitudInput(
-            solicitudId: $this->id,
-            curadorId: (string) auth()->id(),
-            tipoRechazo: $this->tipoRechazo,
-            motivo: $this->motivoRechazo,
-        ));
-        $this->resolverRevisionDocumental(
-            $this->tipoRechazo === 'Definitivo' ? 'rechazada' : 'requiere_correccion',
-            $this->motivoRechazo,
-        );
+        if ($this->esRevisionDocumentalPrevia) {
+            ($revisionPreviaHandler)(new ResolverRevisionDocumentalPreviaInput(
+                $this->id, (string) auth()->id(), false, $this->motivoRechazo, $this->tipoRechazo === 'Definitivo',
+            ));
+        } else {
+            ($handler)(new RechazarDocumentalmenteSolicitudInput(
+                solicitudId: $this->id,
+                curadorId: (string) auth()->id(),
+                tipoRechazo: $this->tipoRechazo,
+                motivo: $this->motivoRechazo,
+            ));
+        }
 
         $this->redirectRoute('prestamos.curador.depositos', navigate: true);
     }
@@ -249,24 +253,11 @@ final class RevisarDeposito extends Component
         ];
     }
 
-    /** Conserva la decisión humana junto a la huella documental que se revisó. */
-    private function resolverRevisionDocumental(string $estado, string $motivo): void
+    /** Devuelve al consultor un borrador que aún debe completar, firmar y enviar. */
+    public function aprobarRevisionPrevia(ResolverRevisionDocumentalPreviaHandler $handler): void
     {
-        $deposito = SolicitudDepositoEloquentModel::find($this->id);
-        $metadatos = $deposito?->extraccion_metadatos ?? [];
-        $revision = $metadatos['revision_documental'] ?? null;
-        if (! is_array($revision) || ($revision['estado'] ?? null) !== 'pendiente') {
-            return;
-        }
-
-        $metadatos['revision_documental'] = [
-            ...$revision,
-            'estado' => $estado,
-            'resuelta_por' => (string) auth()->id(),
-            'resuelta_en' => now()->toIso8601String(),
-            'decision' => $motivo,
-        ];
-        $deposito?->forceFill(['extraccion_metadatos' => $metadatos])->save();
+        ($handler)(new ResolverRevisionDocumentalPreviaInput($this->id, (string) auth()->id(), true));
+        $this->redirectRoute('prestamos.curador.depositos', navigate: true);
     }
 
     /**
@@ -445,6 +436,7 @@ final class RevisarDeposito extends Component
         $hayAlertasPendientes = $alertas->contains('estado_revision', 'Pendiente de Revisión');
         $esDonacion = $deposito->tipo_tramite === TipoTramite::Donacion->value;
         $esPendiente = $deposito->estado === 'Pendiente de Revisión por Curaduría';
+        $esRevisionDocumentalPrevia = $deposito->estado === 'Pendiente de Revisión Documental Previa';
         $rutaActaTransferencia = $deposito->acta_transferencia_dominio['ruta'] ?? null;
         $actaTransferenciaDisponible = is_string($rutaActaTransferencia)
             && trim($rutaActaTransferencia) !== ''
@@ -468,6 +460,7 @@ final class RevisarDeposito extends Component
             'hayAlertasPendientes' => $hayAlertasPendientes,
             'esDonacion' => $esDonacion,
             'esPendiente' => $esPendiente,
+            'esRevisionDocumentalPrevia' => $esRevisionDocumentalPrevia,
             'matriz' => $matriz,
             'hallazgosMatriz' => $hallazgosMatriz,
             'actaTransferenciaDisponible' => $actaTransferenciaDisponible,

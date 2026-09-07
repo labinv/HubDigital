@@ -179,6 +179,32 @@
                         </div>
                     </div>
                 </div>
+            @elseif($esRevisionDocumentalPrevia)
+                <div class="rounded-lg border border-amber-300 bg-amber-50 shadow-sm overflow-hidden flex flex-col lg:h-full">
+                    <div class="px-5 py-4 border-b border-amber-200 flex items-center gap-3">
+                        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-amber-600 text-white shrink-0">
+                            <flux:icon name="document-magnifying-glass" class="size-3.5" />
+                        </div>
+                        <flux:heading size="base" level="2" class="font-display">Revisión documental previa</flux:heading>
+                    </div>
+                    <div class="p-5 flex flex-col flex-1">
+                        <div class="space-y-4">
+                            <flux:text class="text-text-secondary text-sm">
+                                Esta revisión atiende incertidumbres de los documentos. Una decisión favorable devuelve el expediente al consultor: todavía debe completar sus datos, generar, firmar y enviar la solicitud antes de la decisión final.
+                            </flux:text>
+                            <div class="flex flex-col gap-2">
+                                <flux:button variant="primary" icon="arrow-uturn-left"
+                                    wire:click="pedirConfirmacion('revision-previa')">
+                                    Validar y devolver al consultor
+                                </flux:button>
+                                <flux:button variant="ghost" icon="exclamation-triangle"
+                                    wire:click="$set('showRechazoModal', true)">
+                                    Solicitar corrección o rechazar
+                                </flux:button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             @endif
 
             {{-- Panel de confirmación de aprobación (sin QR: el QR es del depositante) --}}

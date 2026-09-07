@@ -6,10 +6,10 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarRevi
 
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\RevisionDocumentalPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 /** Envía una solicitud con documentos cargados a revisión documental curatorial. */
 final class SolicitarRevisionDocumentalHandler
@@ -18,26 +18,19 @@ final class SolicitarRevisionDocumentalHandler
         private readonly SolicitudDepositoRepositoryInterface $repo,
         private readonly TransactionManagerPort $transactionManager,
         private readonly EventPublisherPort $eventPublisher,
+        private readonly RevisionDocumentalPort $revisionDocumental,
     ) {}
 
     public function __invoke(SolicitarRevisionDocumentalInput $input): void
     {
-        $solicitud = $this->repo->buscarPorId(SolicitudDepositoId::from($input->solicitudId));
-        if ($solicitud === null) {
-            throw SolicitudNoEncontradaException::conId($input->solicitudId);
-        }
-
-        $solicitud->solicitarRevisionDocumental();
-
-        $this->transactionManager->executeTransactional(function () use ($solicitud, $input): void {
+        $this->transactionManager->executeTransactional(function () use ($input): void {
+            $solicitud = $this->repo->buscarPorIdParaActualizar(SolicitudDepositoId::from($input->solicitudId));
+            if ($solicitud === null) {
+                throw SolicitudNoEncontradaException::conId($input->solicitudId);
+            }
+            $solicitud->solicitarRevisionDocumental();
             $this->repo->guardar($solicitud);
-            $modelo = SolicitudDepositoEloquentModel::query()
-                ->whereKey((string) $solicitud->id())
-                ->lockForUpdate()
-                ->firstOrFail();
-            $metadatos = $modelo->extraccion_metadatos ?? [];
-            $metadatos['revision_documental'] = $input->revisionDocumental;
-            $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
+            $this->revisionDocumental->registrarSolicitud((string) $solicitud->id(), $input->revisionDocumental);
             foreach ($solicitud->pullEvents() as $event) {
                 $this->eventPublisher->publish($event);
             }

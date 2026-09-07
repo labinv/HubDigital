@@ -138,6 +138,13 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
         return $this->reconstituir($model);
     }
 
+    public function buscarPorIdParaActualizar(SolicitudDepositoId $id): ?SolicitudDeposito
+    {
+        $model = SolicitudDepositoEloquentModel::query()->whereKey((string) $id)->lockForUpdate()->first();
+
+        return $model !== null ? $this->reconstituir($model) : null;
+    }
+
     /**
      * Busca una solicitud de depósito por el Código QR del lote que la rotula.
      */

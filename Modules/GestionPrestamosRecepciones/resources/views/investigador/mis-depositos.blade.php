@@ -75,6 +75,7 @@
                 <flux:select wire:model.live="filtroEstado" size="sm" class="w-full sm:w-52">
                     <flux:select.option value="">Todos</flux:select.option>
                     <flux:select.option value="{{ EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value }}">Pendiente de Revisión</flux:select.option>
+                    <flux:select.option value="{{ EstadoSolicitudDeposito::PendienteDeRevisionDocumentalPrevia->value }}">Revisión documental previa</flux:select.option>
                     <flux:select.option value="{{ EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value }}">Pausada para Asesoría</flux:select.option>
                     <flux:select.option value="{{ EstadoSolicitudDeposito::Rechazada->value }}">Rechazada</flux:select.option>
                 </flux:select>

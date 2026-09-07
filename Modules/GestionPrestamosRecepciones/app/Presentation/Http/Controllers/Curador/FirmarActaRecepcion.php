@@ -28,6 +28,8 @@ final class FirmarActaRecepcion
     ): JsonResponse {
         $request->validate([
             'pdf_firmado' => ['required', 'file', 'mimes:pdf', 'max:15360'],
+            'original_referencia' => ['required', 'uuid'],
+            'original_sha256' => ['required', 'string', 'size:64'],
         ]);
 
         $recepcion = $consultar->handle(new ConsultarDetalleRecepcionInput($id));
@@ -39,6 +41,10 @@ final class FirmarActaRecepcion
         $rutaRelativa = null;
         try {
             $original = $originales->obtenerVerificado($id);
+            if (! hash_equals($original['referencia'], (string) $request->input('original_referencia'))
+                || ! hash_equals($original['sha256'], (string) $request->input('original_sha256'))) {
+                abort(409, 'El original cambió antes de iniciar la firma. Actualice la pantalla y firme la versión vigente.');
+            }
             $pdfOriginal = $original['contenido'];
 
             $originalTemporal = tempnam(sys_get_temp_dir(), 'hubdigital-acta-');
@@ -63,9 +69,11 @@ final class FirmarActaRecepcion
                 rutaRelativa: $rutaRelativa,
                 rutaAbsoluta: $archivo->getRealPath(),
                 rutaOriginalAbsoluta: $originalTemporal,
-                referenciaOriginal: $original['referencia'],
-                sha256Original: $original['sha256'],
+                referenciaOriginal: (string) $request->input('original_referencia'),
+                sha256Original: (string) $request->input('original_sha256'),
             ));
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            throw $e;
         } catch (\DomainException $e) {
             if ($rutaRelativa !== null) {
                 $almacenamiento->eliminar($rutaRelativa);

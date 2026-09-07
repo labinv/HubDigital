@@ -6,6 +6,7 @@ $config = [
     'Rechazada' => ['color' => 'red', 'label' => 'Rechazada'],
     'Pausada para Asesoría' => ['color' => 'orange', 'label' => 'Pausada'],
     'Pendiente de Revisión por Curaduría' => ['color' => 'blue', 'label' => 'Pendiente revisión'],
+    'Pendiente de Revisión Documental Previa' => ['color' => 'amber', 'label' => 'Revisión documental previa'],
     'Aprobada Documentalmente' => ['color' => 'green', 'label' => 'Aprobada documentalmente'],
     'Requiere Corrección' => ['color' => 'amber', 'label' => 'Requiere corrección'],
     'Rechazo Permanente' => ['color' => 'red', 'label' => 'Rechazo permanente'],

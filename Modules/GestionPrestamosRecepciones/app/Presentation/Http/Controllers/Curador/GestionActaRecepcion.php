@@ -43,6 +43,7 @@ final class GestionActaRecepcion extends Component
     }
 
     public function reemitirOriginal(
+        int $versionEsperada,
         ConsultarDetalleRecepcionHandler $consultar,
         GeneradorPdfActaRecepcion $generadorPdf,
         GestorOriginalActaRecepcion $originales,
@@ -53,7 +54,7 @@ final class GestionActaRecepcion extends Component
             $originales->obtenerVerificado($this->id);
             abort(409, 'El original oficial todavía está disponible.');
         } catch (\DomainException) {
-            $originales->materializar($this->id, (string) auth()->id(), $recepcion, $generadorPdf, true);
+            $originales->materializar($this->id, (string) auth()->id(), $recepcion, $generadorPdf, true, $versionEsperada);
         }
         $this->dispatch('toast', message: 'Se emitió una nueva versión del original. Revísela completa antes de firmar.');
     }
@@ -67,11 +68,21 @@ final class GestionActaRecepcion extends Component
         $recepcion = $consultar->handle(new ConsultarDetalleRecepcionInput($this->id));
         abort_if($recepcion === null, 404);
 
+        $original = null;
+        try {
+            $original = $originales->obtenerVerificado($this->id);
+        } catch (\DomainException) {
+            // La vista muestra una reemisión explícita únicamente si el error es documental.
+        }
+
         return view('gestionprestamosrecepciones::curador.gestion-acta-recepcion', [
             'recepcion' => $recepcion,
             'depositante' => $usuarios->obtenerNombre($recepcion->investigadorId),
             'receptor' => $recepcion->recibidoPor !== null ? $usuarios->obtenerNombre($recepcion->recibidoPor) : null,
-            'originalDisponible' => $originales->disponible($this->id),
+            'originalDisponible' => $original !== null,
+            'originalReferencia' => $original['referencia'] ?? null,
+            'originalSha256' => $original['sha256'] ?? null,
+            'originalVersion' => $original['version'] ?? $originales->versionActual($this->id),
         ]);
     }
 }

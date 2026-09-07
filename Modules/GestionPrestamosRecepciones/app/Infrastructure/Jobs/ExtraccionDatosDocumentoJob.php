@@ -253,12 +253,25 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 
             // Persistir firmas después de la integración de dominio para evitar
             // inconsistencia si la transacción anterior falla.
-            SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
-                ->update([
-                    'firmas_electronicas' => json_encode($firmas),
-                    'extraccion_metadatos' => json_encode($metadatosExtraccion),
+            DB::transaction(function () use ($firmas, $metadatosExtraccion): void {
+                $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->firstOrFail();
+                $metadatosVigentes = $modelo->extraccion_metadatos ?? [];
+                $revisionHumana = $metadatosVigentes['revision_documental'] ?? null;
+                $historialRevision = $metadatosVigentes['revision_documental_historial'] ?? [];
+
+                // Una extracción tardía puede enriquecer sus resultados, pero nunca
+                // reemplazar una resolución humana de la misma versión documental.
+                if (is_array($revisionHumana) && in_array($revisionHumana['estado'] ?? null, ['favorable', 'requiere_correccion', 'rechazada'], true)) {
+                    $metadatosExtraccion['revision_documental'] = $revisionHumana;
+                    $metadatosExtraccion['revision_documental_historial'] = $historialRevision;
+                }
+
+                $modelo->forceFill([
+                    'firmas_electronicas' => $firmas,
+                    'extraccion_metadatos' => $metadatosExtraccion,
                     'extraccion_estado' => 'completada',
-                ]);
+                ])->save();
+            });
         } catch (ModeloIANoDisponibleException $e) {
             Log::warning('ExtraccionDatosDocumentoJob: modelo de IA no disponible', [
                 'solicitudId' => $this->solicitudId,
