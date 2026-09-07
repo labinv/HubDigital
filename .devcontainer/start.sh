@@ -85,15 +85,31 @@ else
 fi
 
 build_flag="--build"
-if [[ "${1:-}" == "--no-build" ]]; then
-    build_flag=""
-fi
+verificar_r2=false
+
+for opcion in "$@"; do
+    case "${opcion}" in
+        --no-build)
+            build_flag=""
+            ;;
+        --verificar-r2)
+            verificar_r2=true
+            ;;
+        *)
+            echo "Opción no reconocida: ${opcion}" >&2
+            echo "Uso: bash .devcontainer/start.sh [--no-build] [--verificar-r2]" >&2
+            exit 64
+            ;;
+    esac
+done
 
 docker compose --profile development up -d ${build_flag} postgres mailpit app worker scheduler nginx
 docker compose exec -T app php artisan migrate --force
 
-if [[ ${r2_presentes} -eq 4 ]]; then
+if [[ ${r2_presentes} -eq 4 && "${verificar_r2}" == true ]]; then
     docker compose exec -T app php artisan depositos:verificar-almacenamiento --exigir-r2
+elif [[ ${r2_presentes} -eq 4 ]]; then
+    echo "R2 configurado. La verificación de escritura se ejecuta solo con --verificar-r2."
 else
     echo "R2 no configurado: se usa fallback local solo para esta sesion de desarrollo."
 fi
