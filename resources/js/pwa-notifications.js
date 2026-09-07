@@ -6,6 +6,7 @@ const CONFIG_URL = '/pwa/configuracion';
 const SUBSCRIPTIONS_URL = '/pwa/suscripciones';
 const TOAST_TRAY_ID = 'hub-in-app-toast-tray';
 let observerInitialized = false;
+const presentingNatively = new Set();
 
 function emitStatus(status, message) {
     window.dispatchEvent(new CustomEvent('hub-pwa-status', {
@@ -60,21 +61,26 @@ async function showLatest(element) {
     showInAppToast(element);
 
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    if (wasRemembered(STORAGE_KEY, id)) return;
+    if (wasRemembered(STORAGE_KEY, id) || presentingNatively.has(id)) return;
 
-    const serviceWorker = await registration();
-    await serviceWorker?.showNotification(
-        element.dataset.hubNotificationTitle || 'HubDigital',
-        {
-            body,
-            icon: '/images/hub-icon.png',
-            badge: '/images/hub-icon.png',
-            tag: `hubdigital-${id}`,
-            renotify: true,
-            data: { url: element.dataset.hubNotificationUrl || '/dashboard' },
-        },
-    );
-    remember(STORAGE_KEY, id);
+    presentingNatively.add(id);
+    try {
+        const serviceWorker = await registration();
+        await serviceWorker?.showNotification(
+            element.dataset.hubNotificationTitle || 'HubDigital',
+            {
+                body,
+                icon: '/images/hub-icon.png',
+                badge: '/images/hub-icon.png',
+                tag: `hubdigital-${id}`,
+                renotify: false,
+                data: { notificationId: id, url: element.dataset.hubNotificationUrl || '/dashboard' },
+            },
+        );
+        remember(STORAGE_KEY, id);
+    } finally {
+        presentingNatively.delete(id);
+    }
 }
 
 function showInAppToast(element) {

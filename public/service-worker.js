@@ -26,14 +26,15 @@ self.addEventListener('activate', (event) => event.waitUntil(
 
 self.addEventListener('push', (event) => {
     const payload = readPushPayload(event.data);
+    const notificationId = payload.notificationId ?? payload.data?.notificationId ?? payload.id ?? null;
     event.waitUntil(self.registration.showNotification(payload.title ?? 'HubDigital', {
         body: payload.body ?? 'Tienes una nueva notificación.',
         icon: payload.icon ?? '/images/hub-icon.png',
         badge: payload.badge ?? '/images/hub-icon.png',
-        tag: payload.tag ?? 'hubdigital',
-        renotify: true,
+        tag: payload.tag ?? (notificationId ? `hubdigital-${notificationId}` : 'hubdigital'),
+        renotify: false,
         actions: payload.actions ?? [{ action: 'open', title: 'Abrir expediente' }],
-        data: { url: payload.data?.url ?? payload.url ?? '/dashboard' },
+        data: { notificationId, url: payload.data?.url ?? payload.url ?? '/dashboard' },
     }));
 });
 

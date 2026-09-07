@@ -362,6 +362,29 @@ final class SolicitudDeposito
     }
 
     /**
+     * Envía documentos existentes pero inciertos a la revisión documental. Este
+     * recorrido es distinto a la asesoría solicitada cuando no hay documentos.
+     */
+    public function solicitarRevisionDocumental(): void
+    {
+        if ($this->documentosAdjuntos === []) {
+            throw new DocumentacionInsuficiente('La revisión documental requiere al menos un documento cargado.');
+        }
+
+        $puedeSolicitarse = $this->estado->equals(EstadoSolicitudDeposito::EnBorrador)
+            || $this->estado->equals(EstadoSolicitudDeposito::RequiereCorreccion);
+
+        if (! $puedeSolicitarse) {
+            throw TransicionEstadoInvalida::de($this->estado->value, EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value);
+        }
+
+        $this->estado = EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria;
+        $this->events[] = new SolicitudDepositoPendienteDeRevision(
+            solicitudId: $this->id,
+        );
+    }
+
+    /**
      * Avanza la solicitud a revisión por curaduría. Requiere que no queden datos
      * faltantes y que esté en estado EnBorrador.
      *

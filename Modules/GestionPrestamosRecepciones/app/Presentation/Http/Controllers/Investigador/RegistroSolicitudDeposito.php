@@ -42,6 +42,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RevertirSugerenciaT
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RevertirSugerenciaTaxonomica\RevertirSugerenciaTaxonomicaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarIntervencionCuratoria\SolicitarIntervencionCuratoriaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarIntervencionCuratoria\SolicitarIntervencionCuratoriaInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarRevisionDocumental\SolicitarRevisionDocumentalHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarRevisionDocumental\SolicitarRevisionDocumentalInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacionInicial\ValidarDocumentacionInicialHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacionInicial\ValidarDocumentacionInicialInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudHandler;
@@ -927,6 +929,7 @@ final class RegistroSolicitudDeposito extends Component
     public function solicitarIntervencion(
         DeclararSinDocumentacionHandler $declarar,
         SolicitarIntervencionCuratoriaHandler $escalar,
+        SolicitarRevisionDocumentalHandler $revisionDocumental,
     ): void {
         // Esta ruta conserva su significado original cuando no hay documentos.
         // Si ya se cargaron, el caso se registra como revisión documental y nunca
@@ -934,25 +937,26 @@ final class RegistroSolicitudDeposito extends Component
         if ($this->documentosCargados === []) {
             ($declarar)(new DeclararSinDocumentacionInput(solicitudId: $this->solicitudId));
         }
-        ($escalar)(new SolicitarIntervencionCuratoriaInput(
-            solicitudId: $this->solicitudId,
-            investigadorId: (string) auth()->id(),
-        ));
+        if ($this->documentosCargados === []) {
+            ($escalar)(new SolicitarIntervencionCuratoriaInput(
+                solicitudId: $this->solicitudId,
+                investigadorId: (string) auth()->id(),
+            ));
+        } else {
+            ($revisionDocumental)(new SolicitarRevisionDocumentalInput($this->solicitudId));
+        }
         $this->registrarSolicitudRevisionDocumental('asistencia solicitada por el depositante');
         $this->intervencionCuratoriaActiva = true;
     }
 
     /** Solicita que curaduría resuelva incertidumbres, sin declarar documentos ausentes. */
-    public function solicitarRevisionDocumental(SolicitarIntervencionCuratoriaHandler $escalar): void
+    public function solicitarRevisionDocumental(SolicitarRevisionDocumentalHandler $handler): void
     {
         if ($this->solicitudId === null || $this->documentosCargados === []) {
             return;
         }
 
-        ($escalar)(new SolicitarIntervencionCuratoriaInput(
-            solicitudId: $this->solicitudId,
-            investigadorId: (string) auth()->id(),
-        ));
+        ($handler)(new SolicitarRevisionDocumentalInput($this->solicitudId));
         $this->registrarSolicitudRevisionDocumental('incertidumbre documental detectada por el analizador');
         $this->intervencionCuratoriaActiva = true;
     }

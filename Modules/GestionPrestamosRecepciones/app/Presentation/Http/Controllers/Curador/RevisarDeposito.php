@@ -159,6 +159,7 @@ final class RevisarDeposito extends Component
             solicitudId: $this->id,
             curadorId: (string) auth()->id(),
         ));
+        $this->resolverRevisionDocumental('favorable', 'Documentación revisada y aprobada por curaduría.');
 
         $this->dispatch('toast', message: 'Solicitud aprobada documentalmente. Código QR asignado.');
     }
@@ -172,6 +173,7 @@ final class RevisarDeposito extends Component
             solicitudId: $this->id,
             curadorId: (string) auth()->id(),
         ));
+        $this->resolverRevisionDocumental('favorable', 'Documentación revisada y aprobada por curaduría.');
 
         $this->dispatch('toast', message: 'Donación aprobada. Acta de transferencia y código QR generados.');
     }
@@ -185,6 +187,7 @@ final class RevisarDeposito extends Component
             solicitudId: $this->id,
             curadorId: (string) auth()->id(),
         ));
+        $this->resolverRevisionDocumental('favorable', 'Justificaciones y documentación aceptadas por curaduría.');
 
         $this->dispatch('toast', message: 'Justificaciones aceptadas. Solicitud aprobada documentalmente.');
     }
@@ -204,6 +207,7 @@ final class RevisarDeposito extends Component
             curadorId: (string) auth()->id(),
             justificacionesRechazadas: array_values($this->justificacionesRechazadas),
         ));
+        $this->resolverRevisionDocumental('requiere_correccion', 'Curaduría solicitó correcciones documentales.');
 
         $this->redirectRoute('prestamos.curador.depositos', navigate: true);
     }
@@ -221,6 +225,10 @@ final class RevisarDeposito extends Component
             tipoRechazo: $this->tipoRechazo,
             motivo: $this->motivoRechazo,
         ));
+        $this->resolverRevisionDocumental(
+            $this->tipoRechazo === 'Definitivo' ? 'rechazada' : 'requiere_correccion',
+            $this->motivoRechazo,
+        );
 
         $this->redirectRoute('prestamos.curador.depositos', navigate: true);
     }
@@ -239,6 +247,26 @@ final class RevisarDeposito extends Component
             'motivoRechazo.required' => 'Debes indicar el motivo del rechazo para el depositante.',
             'motivoRechazo.min' => 'El motivo del rechazo debe tener al menos 10 caracteres.',
         ];
+    }
+
+    /** Conserva la decisión humana junto a la huella documental que se revisó. */
+    private function resolverRevisionDocumental(string $estado, string $motivo): void
+    {
+        $deposito = SolicitudDepositoEloquentModel::find($this->id);
+        $metadatos = $deposito?->extraccion_metadatos ?? [];
+        $revision = $metadatos['revision_documental'] ?? null;
+        if (! is_array($revision) || ($revision['estado'] ?? null) !== 'pendiente') {
+            return;
+        }
+
+        $metadatos['revision_documental'] = [
+            ...$revision,
+            'estado' => $estado,
+            'resuelta_por' => (string) auth()->id(),
+            'resuelta_en' => now()->toIso8601String(),
+            'decision' => $motivo,
+        ];
+        $deposito?->forceFill(['extraccion_metadatos' => $metadatos])->save();
     }
 
     /**
