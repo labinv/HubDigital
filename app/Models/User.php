@@ -189,6 +189,44 @@ class User extends Authenticatable implements MustVerifyEmail
         $this->load('roles');
     }
 
+    /**
+     * Reemplaza las membresías por una selección explícita de administración.
+     *
+     * El rol primario siempre queda dentro de las membresías y conserva la
+     * compatibilidad de la columna histórica `rol`. Las restricciones entre
+     * perfiles internos y de autoservicio se validan antes de escribir.
+     *
+     * @param  list<RolUsuario>  $roles
+     */
+    public function sincronizarRoles(array $roles, RolUsuario $rolPrimario): void
+    {
+        $roles = collect($roles)
+            ->filter(static fn (mixed $rol): bool => $rol instanceof RolUsuario)
+            ->unique(fn (RolUsuario $rol): string => $rol->value)
+            ->values();
+
+        if ($roles->isEmpty() || ! $roles->contains($rolPrimario)) {
+            throw new \DomainException('Selecciona al menos un rol y define un rol operativo principal.');
+        }
+
+        $internos = $roles->filter(
+            static fn (RolUsuario $rol): bool => in_array($rol, RolUsuario::rolesInternos(), true),
+        );
+
+        if ($internos->count() > 1 || ($internos->isNotEmpty() && $roles->count() > 1)) {
+            throw new \DomainException('Un perfil interno de la EPN no puede combinarse con otros roles.');
+        }
+
+        $this->roles()->delete();
+        $this->fill(['rol' => $rolPrimario])->save();
+
+        foreach ($roles as $rol) {
+            $this->roles()->create(['rol' => $rol->value]);
+        }
+
+        $this->load('roles');
+    }
+
     public function esCurador(): bool
     {
         return $this->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN);

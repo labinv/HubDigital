@@ -4,7 +4,7 @@
             <p class="hub-page-kicker">Gobierno de acceso</p>
             <h1 class="mt-1 hub-page-title">Usuarios y perfiles</h1>
             <p class="mt-1 max-w-2xl text-sm text-text-secondary">
-                Consulta las cuentas ciudadanas e internas y crea perfiles con un único rol autorizado.
+                Consulta las cuentas ciudadanas e internas y administra sus perfiles y roles autorizados.
             </p>
         </div>
         <flux:button
@@ -92,7 +92,7 @@
             <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <h2 class="font-display text-lg font-semibold text-blue-navy">Editar perfil institucional</h2>
-                    <p class="text-sm text-text-secondary">El correo es la identidad de la cuenta y se conserva. Actualiza sus datos de perfil y su rol operativo.</p>
+                    <p class="text-sm text-text-secondary">El correo es la identidad de la cuenta y se conserva. Actualiza el perfil, los roles asignados y el rol operativo principal.</p>
                 </div>
                 <flux:button wire:click="cancelarEdicion" variant="ghost" icon="x-mark">Cancelar</flux:button>
             </div>
@@ -100,7 +100,20 @@
             <form wire:submit="actualizar" class="grid gap-4 md:grid-cols-2">
                 <flux:input wire:model="edicionFirstName" label="Nombres" required autocomplete="off" />
                 <flux:input wire:model="edicionLastName" label="Apellidos" required autocomplete="off" />
-                <flux:select wire:model="edicionRol" label="Rol operativo" required>
+                <div class="md:col-span-2 rounded-lg border border-border bg-bg-main/45 p-4">
+                    <p class="text-sm font-semibold text-blue-navy">Roles asignados</p>
+                    <p class="mt-1 text-xs leading-5 text-text-secondary">Los roles internos EPN son exclusivos. Los perfiles externos pueden combinar Depositante y Solicitante.</p>
+                    <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                        @foreach ($roles as $opcionRol)
+                            <label class="flex min-h-11 items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary">
+                                <input type="checkbox" value="{{ $opcionRol->value }}" wire:model="edicionRoles" class="size-4 rounded border-border text-science-blue focus:ring-science-blue" />
+                                <span>{{ $opcionRol->etiqueta() }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('edicionRoles') <p class="mt-2 text-xs text-error">{{ $message }}</p> @enderror
+                </div>
+                <flux:select wire:model="edicionRol" label="Rol operativo principal" required>
                     @foreach ($roles as $opcionRol)
                         <flux:select.option value="{{ $opcionRol->value }}">{{ $opcionRol->etiqueta() }}</flux:select.option>
                     @endforeach

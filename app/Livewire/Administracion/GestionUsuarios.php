@@ -51,6 +51,9 @@ final class GestionUsuarios extends Component
 
     public string $edicionRol = '';
 
+    /** @var list<string> */
+    public array $edicionRoles = [];
+
     public string $edicionCargo = '';
 
     public string $edicionInstitucion = '';
@@ -134,6 +137,10 @@ final class GestionUsuarios extends Component
         $this->edicionFirstName = $usuario->first_name;
         $this->edicionLastName = $usuario->last_name;
         $this->edicionRol = $usuario->rol->value;
+        $this->edicionRoles = $usuario->rolesAsignados()
+            ->map(fn (RolUsuario $rol): string => $rol->value)
+            ->values()
+            ->all();
         $this->edicionCargo = $usuario->cargo ?? '';
         $this->edicionInstitucion = $usuario->institucion ?? '';
         $this->resetValidation();
@@ -150,38 +157,60 @@ final class GestionUsuarios extends Component
 
         $usuario = User::query()->with('roles')->findOrFail($this->usuarioEnEdicion);
         $rol = RolUsuario::tryFrom($this->edicionRol);
+        $rolesSeleccionados = collect($this->edicionRoles)
+            ->map(static fn (mixed $valor): ?RolUsuario => is_string($valor) ? RolUsuario::tryFrom($valor) : null)
+            ->filter()
+            ->values();
 
         $datos = Validator::make([
             'first_name' => trim($this->edicionFirstName),
             'last_name' => trim($this->edicionLastName),
             'rol' => $this->edicionRol,
+            'roles' => $rolesSeleccionados->map(fn (RolUsuario $rol): string => $rol->value)->all(),
             'cargo' => trim($this->edicionCargo),
             'institucion' => trim($this->edicionInstitucion),
         ], [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'rol' => ['required', Rule::enum(RolUsuario::class)],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => [Rule::enum(RolUsuario::class)],
             'cargo' => ['nullable', 'string', 'max:255'],
             'institucion' => ['nullable', 'string', 'max:255'],
         ])->validate();
 
-        if ($rol === null) {
+        if ($rol === null || ! $rolesSeleccionados->contains($rol)) {
+            throw ValidationException::withMessages([
+                'edicionRol' => 'El rol operativo principal debe formar parte de los roles asignados.',
+            ]);
+        }
+
+        $internos = $rolesSeleccionados->filter(
+            fn (RolUsuario $asignado): bool => in_array($asignado, RolUsuario::rolesInternos(), true),
+        );
+        if ($internos->count() > 1 || ($internos->isNotEmpty() && $rolesSeleccionados->count() > 1)) {
+            throw ValidationException::withMessages([
+                'edicionRoles' => 'Un perfil interno de la EPN no puede combinarse con otros roles.',
+            ]);
+        }
+
+        if ($rolesSeleccionados->isEmpty()) {
             return;
         }
 
-        if (in_array($rol, RolUsuario::rolesInternos(), true) && ! $this->esCorreoInstitucional($usuario->email)) {
+        if ($internos->isNotEmpty() && ! $this->esCorreoInstitucional($usuario->email)) {
             throw ValidationException::withMessages([
                 'edicionRol' => 'Los roles internos requieren un correo institucional autorizado.',
             ]);
         }
 
-        if ($usuario->is(auth()->user()) && $rol !== RolUsuario::ADMIN) {
+        if ($usuario->is(auth()->user()) && ! $rolesSeleccionados->contains(RolUsuario::ADMIN)) {
             throw ValidationException::withMessages([
                 'edicionRol' => 'No puedes retirar tu propio rol de administración.',
             ]);
         }
 
-        DB::transaction(function () use ($usuario, $datos, $rol): void {
+        DB::transaction(function () use ($usuario, $datos, $rol, $rolesSeleccionados): void {
             $usuario->fill([
                 'first_name' => $datos['first_name'],
                 'last_name' => $datos['last_name'],
@@ -189,10 +218,7 @@ final class GestionUsuarios extends Component
                 'cargo' => $this->valorOpcional($datos['cargo']),
                 'institucion' => $this->valorOpcional($datos['institucion']),
             ])->save();
-
-            $usuario->roles()->delete();
-            $usuario->unsetRelation('roles');
-            $usuario->asignarRol($rol);
+            $usuario->sincronizarRoles($rolesSeleccionados->all(), $rol);
         });
 
         $this->resetEdicion();
@@ -240,6 +266,7 @@ final class GestionUsuarios extends Component
             'edicionFirstName',
             'edicionLastName',
             'edicionRol',
+            'edicionRoles',
             'edicionCargo',
             'edicionInstitucion',
         ]);
