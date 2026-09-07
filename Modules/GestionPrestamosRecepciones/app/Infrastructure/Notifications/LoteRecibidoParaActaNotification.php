@@ -16,6 +16,9 @@ final class LoteRecibidoParaActaNotification extends Notification implements Sho
 {
     use Queueable;
 
+    /** La cola solo recibe el aviso después de confirmar la constatación física. */
+    public bool $afterCommit = true;
+
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,

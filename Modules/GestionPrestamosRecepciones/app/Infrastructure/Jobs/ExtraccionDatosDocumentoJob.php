@@ -33,7 +33,10 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 1;
+    public int $tries = 3;
+
+    /** @var list<int> */
+    public array $backoff = [30, 120, 300];
 
     public int $timeout = 300;
 
@@ -44,6 +47,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
     public function __construct(
         private readonly string $solicitudId,
         private readonly array $documentos,
+        private readonly string $versionDocumental = '',
     ) {}
 
     /**
@@ -58,6 +62,14 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
         AnalizadorDocumentoAmbiental $analizadorDocumento,
         AlmacenamientoDepositos $almacenamiento,
     ): void {
+        if (! $this->esVersionVigente()) {
+            Log::info('ExtraccionDatosDocumentoJob: se descartó una versión documental obsoleta', [
+                'solicitudId' => $this->solicitudId,
+            ]);
+
+            return;
+        }
+
         SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
             ->update(['extraccion_estado' => 'procesando', 'documentos_procesados' => '[]']);
 
@@ -192,6 +204,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                     DB::table('recepciones.documentos_regulatorios')
                         ->where('solicitud_id', $this->solicitudId)
                         ->where('tipo_esperado', $tipoEsperado)
+                        ->where('ruta', $ruta)
                         ->update([
                             'firma_estado' => $estadoFirma,
                             'firma_verificada_en' => now(),
@@ -260,9 +273,46 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
 
-            SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
-                ->update(['extraccion_estado' => 'fallida']);
+            // La infraestructura de colas conserva el intento y aplica backoff. El
+            // estado final se escribe únicamente desde failed(), una vez agotados.
+            throw $e;
         }
+    }
+
+    public function failed(\Throwable $error): void
+    {
+        if (! $this->esVersionVigente()) {
+            return;
+        }
+
+        Log::error('ExtraccionDatosDocumentoJob: falló tras los reintentos configurados', [
+            'solicitudId' => $this->solicitudId,
+            'error' => $error->getMessage(),
+        ]);
+
+        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
+            ->update(['extraccion_estado' => 'fallida']);
+    }
+
+    private function esVersionVigente(): bool
+    {
+        $actual = SolicitudDepositoEloquentModel::query()
+            ->whereKey($this->solicitudId)
+            ->value('documentos_cargados');
+
+        if (! is_array($actual)) {
+            return false;
+        }
+
+        return self::huellaDocumental($actual) === $this->versionDocumental;
+    }
+
+    /** @param array<string, string> $documentos */
+    public static function huellaDocumental(array $documentos): string
+    {
+        ksort($documentos);
+
+        return hash('sha256', json_encode($documentos, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     /** @param array<string, mixed> $detalleDocumento @param array<string, mixed> $analisis */
@@ -284,14 +334,27 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             'margen_clasificacion', 'requiere_confirmacion_humana', 'evidencias_campos',
         ]));
 
-        DB::table('recepciones.documentos_regulatorios')->upsert([[
-            'id' => (string) Str::uuid(),
+        $sha256 = $almacenamiento->sha256($ruta);
+        $existente = DB::table('recepciones.documentos_regulatorios')
+            ->where('solicitud_id', $this->solicitudId)
+            ->where('tipo_esperado', $tipoEsperado)
+            ->where('sha256', $sha256)
+            ->first();
+
+        $version = $existente?->version ?? ((int) DB::table('recepciones.documentos_regulatorios')
+            ->where('solicitud_id', $this->solicitudId)
+            ->where('tipo_esperado', $tipoEsperado)
+            ->max('version') + 1);
+
+        $registro = [
+            'id' => $existente?->id ?? (string) Str::uuid(),
             'solicitud_id' => $this->solicitudId,
             'tipo_esperado' => $tipoEsperado,
+            'version' => $version,
             'tipo_detectado' => $analisis['tipo_detectado'] ?? AnalizadorDocumentoAmbiental::DESCONOCIDO,
             'nombre_original' => $nombreOriginal ?? $nombre,
             'ruta' => $ruta,
-            'sha256' => $almacenamiento->sha256($ruta),
+            'sha256' => $sha256,
             'motor_ocr' => $detalleDocumento['motor'] ?? null,
             'confianza' => $analisis['confianza'] ?? 0,
             'numero_documento' => $analisis['numero_documento'] ?? null,
@@ -310,12 +373,16 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             'advertencias' => json_encode($analisis['advertencias'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'created_at' => $ahora,
             'updated_at' => $ahora,
-        ]], ['solicitud_id', 'tipo_esperado'], [
-            'tipo_detectado', 'nombre_original', 'ruta', 'sha256', 'motor_ocr', 'confianza',
-            'numero_documento', 'numero_autorizacion_relacionada', 'titular', 'organizacion',
-            'ruc', 'proyecto', 'emitido_en', 'valido_desde', 'valido_hasta',
-            'estado_validacion', 'contenido_extraido', 'indicadores', 'errores', 'advertencias', 'updated_at',
-        ]);
+        ];
+
+        if ($existente !== null) {
+            unset($registro['id'], $registro['created_at']);
+            DB::table('recepciones.documentos_regulatorios')->where('id', $existente->id)->update($registro);
+
+            return;
+        }
+
+        DB::table('recepciones.documentos_regulatorios')->insert($registro);
     }
 
 }

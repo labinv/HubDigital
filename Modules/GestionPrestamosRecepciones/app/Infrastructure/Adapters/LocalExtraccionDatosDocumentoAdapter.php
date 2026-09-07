@@ -73,7 +73,9 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                 'grupoAnimal' => ($analisis['grupos_biologicos'] ?? []) !== []
                     ? implode(', ', $analisis['grupos_biologicos'])
                     : null,
-                'provinciaOrigen' => null,
+                // La provincia se toma solamente de una etiqueta territorial del
+                // documento, nunca de la dirección de la entidad emisora.
+                'provinciaOrigen' => ($this->buscarProvincia($texto))['valor'],
                 'localidad' => $analisis['origen'] ?? null,
                 'origenDonacion' => null,
                 'nombreInvestigador' => $analisis['titular'] ?? null,
@@ -91,6 +93,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                         'nroPermisoRecoleccion' => 'numero_autorizacion',
                         'nroPermisoMovilizacion' => 'numero_documento',
                         'grupoAnimal' => 'grupos_biologicos',
+                        'provinciaOrigen' => null,
                         'localidad' => 'origen',
                         'nombreInvestigador' => 'titular',
                         'nroIndividuos' => 'numero_individuos',
@@ -98,7 +101,12 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                         'nroLotes' => 'numero_lotes',
                         default => null,
                     };
-                    if ($campoAnalisis === null || ! $this->analizador->campoTieneEvidenciaSuficiente($analisis, $campoAnalisis)) {
+                    if ($campo === 'provinciaOrigen') {
+                        $hallazgoProvincia = $this->buscarProvincia($texto);
+                        if ($hallazgoProvincia['confianza'] < 0.9) {
+                            continue;
+                        }
+                    } elseif ($campoAnalisis === null || ! $this->analizador->campoTieneEvidenciaSuficiente($analisis, $campoAnalisis)) {
                         continue;
                     }
                     $valores[$campo] = trim($valor);

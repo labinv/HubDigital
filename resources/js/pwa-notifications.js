@@ -1,6 +1,7 @@
 const SELECTOR = '[data-hub-notification-id]';
-const STORAGE_KEY = 'hubdigital:last-browser-notification';
-const TOAST_STORAGE_KEY = 'hubdigital:last-in-app-notification';
+const STORAGE_KEY = 'hubdigital:browser-notifications-v2';
+const TOAST_STORAGE_KEY = 'hubdigital:in-app-notifications-v2';
+const MAX_REMEMBERED_NOTIFICATIONS = 80;
 const CONFIG_URL = '/pwa/configuracion';
 const SUBSCRIPTIONS_URL = '/pwa/suscripciones';
 
@@ -57,7 +58,7 @@ async function showLatest(element) {
     showInAppToast(element);
 
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    if (localStorage.getItem(STORAGE_KEY) === id) return;
+    if (wasRemembered(STORAGE_KEY, id)) return;
 
     const serviceWorker = await registration();
     await serviceWorker?.showNotification(
@@ -71,13 +72,13 @@ async function showLatest(element) {
             data: { url: element.dataset.hubNotificationUrl || '/dashboard' },
         },
     );
-    localStorage.setItem(STORAGE_KEY, id);
+    remember(STORAGE_KEY, id);
 }
 
 function showInAppToast(element) {
     const id = element?.dataset.hubNotificationId;
     const body = element?.dataset.hubNotificationBody;
-    if (!id || !body || localStorage.getItem(TOAST_STORAGE_KEY) === id) return;
+    if (!id || !body || wasRemembered(TOAST_STORAGE_KEY, id)) return;
 
     document.querySelector(`[data-hub-in-app-toast-id="${CSS.escape(id)}"]`)?.remove();
 
@@ -117,8 +118,31 @@ function showInAppToast(element) {
 
     toast.append(emblem, content, close);
     document.body.append(toast);
-    localStorage.setItem(TOAST_STORAGE_KEY, id);
+    remember(TOAST_STORAGE_KEY, id);
     window.setTimeout(() => toast.remove(), 12000);
+}
+
+function rememberedIds(key) {
+    try {
+        const saved = JSON.parse(localStorage.getItem(key) ?? '[]');
+        return Array.isArray(saved) ? saved.filter((id) => typeof id === 'string') : [];
+    } catch {
+        return [];
+    }
+}
+
+function wasRemembered(key, id) {
+    return rememberedIds(key).includes(id);
+}
+
+function remember(key, id) {
+    const ids = rememberedIds(key).filter((saved) => saved !== id);
+    ids.push(id);
+    try {
+        localStorage.setItem(key, JSON.stringify(ids.slice(-MAX_REMEMBERED_NOTIFICATIONS)));
+    } catch {
+        // Un almacenamiento local no disponible no debe bloquear la bandeja ni el push.
+    }
 }
 
 function safeSameOriginUrl(value) {
@@ -218,7 +242,14 @@ async function disable() {
 }
 
 function observe() {
-    const scan = () => document.querySelectorAll(SELECTOR).forEach(showLatest);
+    const scan = () => document.querySelectorAll(SELECTOR).forEach((element) => {
+        if (element.dataset.hubNotificationObserved === 'true') return;
+        element.dataset.hubNotificationObserved = 'true';
+        showLatest(element).catch(() => {
+            // La notificación nativa es complementaria: la alerta durable permanece
+            // disponible en la bandeja cuando el navegador no puede presentarla.
+        });
+    });
     scan();
     new MutationObserver(scan).observe(document.body, {
         subtree: true,

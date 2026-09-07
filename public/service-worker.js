@@ -1,3 +1,6 @@
+const OFFLINE_CACHE = 'hubdigital-public-offline-v1';
+const OFFLINE_URL = '/offline.html';
+
 function readPushPayload(data) {
     if (!data) return {};
 
@@ -8,8 +11,18 @@ function readPushPayload(data) {
     }
 }
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener('install', (event) => event.waitUntil(
+    caches.open(OFFLINE_CACHE)
+        .then((cache) => cache.add(OFFLINE_URL))
+        .then(() => self.skipWaiting()),
+));
+self.addEventListener('activate', (event) => event.waitUntil(
+    caches.keys()
+        .then((keys) => Promise.all(keys
+            .filter((key) => key.startsWith('hubdigital-public-offline-') && key !== OFFLINE_CACHE)
+            .map((key) => caches.delete(key))))
+        .then(() => self.clients.claim()),
+));
 
 self.addEventListener('push', (event) => {
     const payload = readPushPayload(event.data);
@@ -38,5 +51,10 @@ self.addEventListener('notificationclick', (event) => {
     }));
 });
 
-// Deliberadamente no se intercepta `fetch`: los expedientes y PDF privados nunca
-// deben quedar en una caché offline del service worker.
+self.addEventListener('fetch', (event) => {
+    if (event.request.mode !== 'navigate') return;
+
+    // Solo se conserva una pantalla pública de desconexión; expedientes, sesiones y
+    // PDF privados nunca se escriben en Cache Storage.
+    event.respondWith(fetch(event.request).catch(() => caches.match(OFFLINE_URL)));
+});

@@ -950,7 +950,11 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         if (! $this->extraccionProcesando) {
-            ExtraccionDatosDocumentoJob::dispatch($this->solicitudId, $this->documentosCargados);
+            ExtraccionDatosDocumentoJob::dispatch(
+                $this->solicitudId,
+                $this->documentosCargados,
+                ExtraccionDatosDocumentoJob::huellaDocumental($this->documentosCargados),
+            );
             $this->extraccionProcesando = true;
             $this->extraccionIniciadaEn = now()->timestamp;
             // Persiste el estado para que updated_at refleje el momento del dispatch,
