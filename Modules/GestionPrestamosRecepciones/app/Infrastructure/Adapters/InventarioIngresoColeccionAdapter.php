@@ -42,18 +42,25 @@ final class InventarioIngresoColeccionAdapter implements IngresoColeccionPort
         $solicitud = $this->solicitudRepo->buscarPorId($id);
         $matriz = $this->matrizRepo->buscarPorSolicitudId($solicitudId);
 
-        // Sin solicitud o sin matriz no hay nada que ingresar. No es un error: una
-        // recepción puede aprobarse antes de que exista matriz en escenarios de prueba.
-        if ($solicitud === null || $matriz === null) {
-            return new ResultadoIngresoColeccion(0, 0, 0);
+        if ($solicitud === null) {
+            throw new \DomainException('No es posible ingresar el lote: no existe la solicitud de depósito asociada.');
+        }
+
+        if ($matriz === null) {
+            throw new \DomainException('No es posible ingresar el lote: el expediente no tiene una matriz de especímenes.');
+        }
+
+        if ($matriz->registros() === []) {
+            throw new \DomainException('No es posible ingresar el lote: la matriz de especímenes no contiene filas.');
         }
 
         $filas = [];
-        foreach (array_values($matriz->registros()) as $posicion => $registro) {
+        foreach ($matriz->registros() as $registroId => $registro) {
             $filas[] = [
-                // Correlativo estable dentro del depósito: es la base del código de
-                // catálogo derivado y, con él, de la idempotencia del ingreso.
-                'indice' => $posicion + 1,
+                // El UUID de la fila no cambia al ordenar la matriz. Los códigos de
+                // catálogo nuevos se derivan de él para que una corrección editorial
+                // no altere la identidad de especímenes ya ingresados.
+                'identificadorEstable' => $registroId,
                 'datosDwC' => $registro->datosDwC(),
                 'estadoRegistro' => $registro->estado()->value,
                 'motivoJustificacion' => $registro->motivoJustificacion(),
@@ -130,8 +137,8 @@ final class InventarioIngresoColeccionAdapter implements IngresoColeccionPort
         $numero = (string) $solicitud->numero();
         $codigos = [];
 
-        foreach (array_keys(array_values($matriz->registros())) as $posicion) {
-            $codigos[] = IngresarLoteDepositoHandler::codigoCatalogoPara($numero, $posicion + 1);
+        foreach (array_keys($matriz->registros()) as $registroId) {
+            $codigos[] = IngresarLoteDepositoHandler::codigoCatalogoPara($numero, $registroId);
         }
 
         return $codigos;

@@ -42,7 +42,14 @@ final class DescargarActaRecepcion
         // El depositante no debe recibir una version final aun no firmada.
         abort_if($esDueno, 404);
 
-        return response($generadorPdf->generar($recepcion), 200, [
+        // El original oficial se conserva en almacenamiento privado desde la primera
+        // preparación para firma. Solo los expedientes históricos sin ese objeto se
+        // generan temporalmente al descargarse por curaduría.
+        $original = $almacenamiento->existe($recepcion->actaRuta)
+            ? $almacenamiento->obtener($recepcion->actaRuta)
+            : $generadorPdf->generar($recepcion);
+
+        return response($original, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
             'Cache-Control' => 'private, no-store',

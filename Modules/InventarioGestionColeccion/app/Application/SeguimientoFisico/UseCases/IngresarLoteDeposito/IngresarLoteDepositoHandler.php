@@ -65,7 +65,10 @@ final class IngresarLoteDepositoHandler
         $marcadosParaRevision = 0;
 
         foreach ($input->filas as $fila) {
-            $codigo = $this->codigoCatalogo($input->numeroSolicitud, (int) $fila['indice']);
+            $codigo = $this->codigoCatalogo(
+                $input->numeroSolicitud,
+                (string) ($fila['identificadorEstable'] ?? $fila['indice'] ?? ''),
+            );
 
             if (isset($codigosExistentes[$codigo])) {
                 $omitidos++;
@@ -156,14 +159,24 @@ final class IngresarLoteDepositoHandler
      *
      * Determinista a propósito — es lo que permite reejecutar la ingesta sin duplicar.
      */
-    public static function codigoCatalogoPara(string $numeroSolicitud, int $indice): string
+    public static function codigoCatalogoPara(string $numeroSolicitud, string $identificadorEstable): string
     {
-        return sprintf('%s-%04d', $numeroSolicitud, $indice);
+        $identificadorEstable = trim($identificadorEstable);
+        if ($identificadorEstable === '') {
+            throw new \InvalidArgumentException('La fila de la matriz debe tener una identidad estable para ingresar a colección.');
+        }
+
+        // Compatibilidad con expedientes históricos que persistieron el correlativo.
+        if (ctype_digit($identificadorEstable)) {
+            return sprintf('%s-%04d', $numeroSolicitud, (int) $identificadorEstable);
+        }
+
+        return sprintf('%s-R%s', $numeroSolicitud, strtoupper(substr(hash('sha256', $identificadorEstable), 0, 12)));
     }
 
-    private function codigoCatalogo(string $numeroSolicitud, int $indice): string
+    private function codigoCatalogo(string $numeroSolicitud, string $identificadorEstable): string
     {
-        return self::codigoCatalogoPara($numeroSolicitud, $indice);
+        return self::codigoCatalogoPara($numeroSolicitud, $identificadorEstable);
     }
 
     /**
@@ -174,7 +187,10 @@ final class IngresarLoteDepositoHandler
     private function codigosYaIngresados(IngresarLoteDepositoInput $input): array
     {
         $codigos = array_map(
-            fn (array $fila): string => $this->codigoCatalogo($input->numeroSolicitud, (int) $fila['indice']),
+            fn (array $fila): string => $this->codigoCatalogo(
+                $input->numeroSolicitud,
+                (string) ($fila['identificadorEstable'] ?? $fila['indice'] ?? ''),
+            ),
             $input->filas,
         );
 

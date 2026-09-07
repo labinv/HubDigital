@@ -35,25 +35,40 @@ final class FirmarActaRecepcion
         abort_unless($recepcion->actaEmitida, 409, 'Primero debe generarse el acta final.');
         abort_if($recepcion->actaFirmada, 409, 'El acta ya fue firmada y cerrada.');
 
-        $pdfOriginal = $generadorPdf->generar($recepcion);
-        $originalTemporal = tempnam(sys_get_temp_dir(), 'hubdigital-acta-');
-        if ($originalTemporal === false) {
-            abort(500, 'No se pudo preparar el documento para validar.');
-        }
-        @chmod($originalTemporal, 0600);
-        if (file_put_contents($originalTemporal, $pdfOriginal, LOCK_EX) === false) {
-            @unlink($originalTemporal);
-            abort(500, 'No se pudo preparar el documento para validar.');
-        }
-
-        // Un nombre no predecible evita que dos intentos concurrentes o un archivo
-        // rechazado sobrescriban un acta previamente validada.
-        $rutaRelativa = 'actas/recepcion-firmada/'.$id.'-'.Str::uuid().'.pdf';
-        $archivo = $request->file('pdf_firmado');
-        $rutaGuardada = $almacenamiento->guardarSubidoComo($archivo, $rutaRelativa);
-        abort_unless($rutaGuardada === $rutaRelativa, 500, 'No se pudo guardar el acta firmada.');
-
+        $originalTemporal = null;
+        $rutaRelativa = null;
         try {
+            $rutaOriginal = $recepcion->actaRuta;
+            if ($rutaOriginal === null) {
+                abort(409, 'El expediente no conserva la referencia del acta oficial. Genere una nueva versión antes de firmar.');
+            }
+            $pdfOriginal = $almacenamiento->existe($rutaOriginal)
+                ? $almacenamiento->obtener($rutaOriginal)
+                : $generadorPdf->generar($recepcion);
+
+            // La primera preparación materializa el original oficial. Desde este
+            // instante descarga, firma y comparación usan exactamente sus mismos
+            // bytes; no se vuelve a regenerar con datos actuales de perfiles.
+            if (! $almacenamiento->existe($rutaOriginal)) {
+                $almacenamiento->guardarContenido($rutaOriginal, $pdfOriginal, 'application/pdf');
+            }
+
+            $originalTemporal = tempnam(sys_get_temp_dir(), 'hubdigital-acta-');
+            if ($originalTemporal === false) {
+                abort(500, 'No se pudo preparar el documento oficial para validar.');
+            }
+            @chmod($originalTemporal, 0600);
+            if (file_put_contents($originalTemporal, $pdfOriginal, LOCK_EX) === false) {
+                abort(500, 'No se pudo preparar el documento oficial para validar.');
+            }
+
+            // Un nombre no predecible evita que dos intentos concurrentes o un archivo
+            // rechazado sobrescriban un acta previamente validada.
+            $rutaRelativa = 'actas/recepcion-firmada/'.$id.'-'.Str::uuid().'.pdf';
+            $archivo = $request->file('pdf_firmado');
+            $rutaGuardada = $almacenamiento->guardarSubidoComo($archivo, $rutaRelativa);
+            abort_unless($rutaGuardada === $rutaRelativa, 500, 'No se pudo guardar el acta firmada.');
+
             ($guardarFirma)(new SubirActaRecepcionFirmadaInput(
                 solicitudId: $id,
                 curadorId: (string) $request->user()->id,
@@ -62,13 +77,17 @@ final class FirmarActaRecepcion
                 rutaOriginalAbsoluta: $originalTemporal,
             ));
         } catch (\DomainException $e) {
-            $almacenamiento->eliminar($rutaRelativa);
+            if ($rutaRelativa !== null) {
+                $almacenamiento->eliminar($rutaRelativa);
+            }
 
             return response()->json([
                 'message' => 'La firma fue rechazada: '.$e->getMessage(),
             ], 422);
         } catch (\Throwable $e) {
-            $almacenamiento->eliminar($rutaRelativa);
+            if ($rutaRelativa !== null) {
+                $almacenamiento->eliminar($rutaRelativa);
+            }
             Log::error('No se pudo validar o persistir el acta firmada', [
                 'solicitud_id' => $id,
                 'curador_id' => (string) $request->user()->id,
@@ -79,7 +98,9 @@ final class FirmarActaRecepcion
                 'message' => 'No fue posible validar y guardar el acta firmada.',
             ], 500);
         } finally {
-            @unlink($originalTemporal);
+            if (is_string($originalTemporal)) {
+                @unlink($originalTemporal);
+            }
         }
 
         return response()->json([
