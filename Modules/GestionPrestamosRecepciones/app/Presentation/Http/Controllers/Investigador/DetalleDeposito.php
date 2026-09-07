@@ -99,8 +99,10 @@ final class DetalleDeposito extends Component
         $matriz = $deposito ? $matrizRepo->buscarPorSolicitudId($this->id) : null;
         // Estado de la recepción física (para exponer la descarga del Acta de Recepción).
         $recepcion = $deposito ? $recepcionHandler->handle(new ConsultarDetalleRecepcionInput($this->id)) : null;
-        $actaTransferenciaDisponible = $deposito?->acta_transferencia_dominio !== null
-            && $almacenamiento->existe((string) ($deposito->acta_transferencia_dominio['ruta'] ?? ''));
+        $rutaActaTransferencia = $deposito?->acta_transferencia_dominio['ruta'] ?? null;
+        $actaTransferenciaDisponible = is_string($rutaActaTransferencia)
+            && trim($rutaActaTransferencia) !== ''
+            && $almacenamiento->existe($rutaActaTransferencia);
 
         return view('gestionprestamosrecepciones::investigador.detalle-deposito', compact(
             'deposito',

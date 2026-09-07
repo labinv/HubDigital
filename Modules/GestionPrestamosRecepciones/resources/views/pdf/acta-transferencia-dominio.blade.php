@@ -33,11 +33,9 @@
         .registros { font-size: 8pt; margin: 13px 0 18px; }
         .registros th, .registros td { border: 1px solid #b9c7d2; padding: 5px; vertical-align: top; }
         .registros th { background: #eef4f8; color: #102b46; text-align: left; }
-        .firmas { margin-top: 38px; page-break-inside: avoid; }
-        .firmas td { padding: 42px 18px 0; text-align: center; vertical-align: top; width: 50%; }
-        .linea { border-top: 1px solid #25384b; margin: 0 auto 6px; width: 86%; }
-        .firma-nombre { font-size: 9pt; font-weight: bold; }
-        .firma-cargo { color: #435366; font-size: 8pt; line-height: 1.35; }
+        .responsables { margin-top: 24px; page-break-inside: avoid; }
+        .responsables th, .responsables td { border: 1px solid #b9c7d2; padding: 7px 9px; text-align: left; }
+        .responsables th { background: #edf4f0; color: #102b46; width: 30%; }
         .pie { bottom: -1.35cm; color: #526576; font-size: 7pt; left: 0; position: fixed; right: 0; text-align: center; }
     </style>
 </head>
@@ -95,19 +93,10 @@
         </table>
     @endif
 
-    <table class="firmas">
-        <tr>
-            <td>
-                <div class="linea"></div>
-                <div class="firma-nombre">{{ $nombreDepositante }}</div>
-                <div class="firma-cargo">Depositante / titular del material</div>
-            </td>
-            <td>
-                <div class="linea"></div>
-                <div class="firma-nombre">{{ $nombreCurador }}</div>
-                <div class="firma-cargo">Curaduría · Laboratorio de Invertebrados · EPN</div>
-            </td>
-        </tr>
+    <table class="responsables">
+        <tr><th>Depositante responsable</th><td>{{ $nombreDepositante }}</td></tr>
+        <tr><th>Curaduría responsable</th><td>{{ $nombreCurador }}</td></tr>
+        <tr><th>Condición del documento</th><td>Generado por el sistema al aprobar la donación; la firma electrónica corresponde al acta final de recepción.</td></tr>
     </table>
 </body>
 </html>

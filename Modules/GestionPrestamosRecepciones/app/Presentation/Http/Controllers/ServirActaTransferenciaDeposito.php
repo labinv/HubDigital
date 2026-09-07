@@ -29,7 +29,7 @@ final class ServirActaTransferenciaDeposito
         abort_unless($esCurador || $esDueno, 403);
 
         $ruta = $deposito->acta_transferencia_dominio['ruta'] ?? null;
-        abort_if($ruta === null || ! $almacenamiento->existe($ruta), 404);
+        abort_if(! is_string($ruta) || trim($ruta) === '' || ! $almacenamiento->existe($ruta), 404);
 
         $disposicion = request()->boolean('descargar') ? 'attachment' : 'inline';
 

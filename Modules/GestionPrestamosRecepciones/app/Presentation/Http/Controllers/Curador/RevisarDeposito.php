@@ -417,8 +417,10 @@ final class RevisarDeposito extends Component
         $hayAlertasPendientes = $alertas->contains('estado_revision', 'Pendiente de Revisión');
         $esDonacion = $deposito->tipo_tramite === TipoTramite::Donacion->value;
         $esPendiente = $deposito->estado === 'Pendiente de Revisión por Curaduría';
-        $actaTransferenciaDisponible = $deposito->acta_transferencia_dominio !== null
-            && $almacenamiento->existe((string) ($deposito->acta_transferencia_dominio['ruta'] ?? ''));
+        $rutaActaTransferencia = $deposito->acta_transferencia_dominio['ruta'] ?? null;
+        $actaTransferenciaDisponible = is_string($rutaActaTransferencia)
+            && trim($rutaActaTransferencia) !== ''
+            && $almacenamiento->existe($rutaActaTransferencia);
 
         $matriz = $matrizRepo->buscarPorSolicitudId($this->id);
 
