@@ -2,6 +2,7 @@
     <div class="pointer-events-auto flex w-full max-w-sm flex-col items-end gap-3">
         @if($abierto)
             <section
+                id="chat-bot-panel"
                 aria-label="Chat de consulta a la colección"
                 class="flex h-[32rem] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
             >
@@ -16,6 +17,8 @@
                     <button
                         type="button"
                         wire:click="alternar"
+                        wire:loading.attr="disabled"
+                        wire:target="alternar"
                         class="rounded-md p-1.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                         aria-label="Cerrar chat"
                     >
@@ -99,7 +102,10 @@
                 'bg-blue-navy text-white hover:bg-blue-navy/90' => ! $abierto,
                 'bg-error text-white hover:bg-error/90' => $abierto,
             ])
-            :aria-label="$abierto ? 'Cerrar chat' : 'Abrir chat de consulta'"
+            wire:loading.attr="disabled"
+            wire:target="alternar"
+            aria-controls="chat-bot-panel"
+            aria-label="{{ $abierto ? 'Cerrar chat' : 'Abrir chat de consulta' }}"
             aria-expanded="{{ $abierto ? 'true' : 'false' }}"
         >
             <flux:icon :name="$abierto ? 'x-mark' : 'chat-bubble-left-right'" class="h-6 w-6" />

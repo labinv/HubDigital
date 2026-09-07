@@ -2,6 +2,28 @@
 
 Fecha de corte: 5 de septiembre de 2026.
 
+## Correcciones posteriores a la aceptación funcional
+
+La aceptación funcional de Luna sobre la versión `ff385887` reprodujo dos
+defectos de presentación que bloqueaban o degradaban el recorrido:
+
+- El menú de usuario del layout lateral pasaba `variant="sidebar"` a un
+  componente propio. Esa propiedad colisionaba con la variante interna de los
+  iconos Flux y terminaba siendo evaluada como una variante de icono no válida
+  (`sidebar`), provocando `UnhandledMatchError` en el área autenticada. El
+  contexto visual del menú ahora se expresa mediante la propiedad propia
+  `context`, separada de los atributos de Flux.
+- El botón del chat público usaba `:aria-label` con una variable Livewire. El
+  prefijo `:` hacía que Alpine intentara evaluar `$abierto` fuera de un
+  `x-data`. La etiqueta, `aria-expanded`, el panel controlado y el estado de
+  apertura se derivan ahora del mismo estado Livewire; durante el cambio el
+  botón queda deshabilitado para evitar solicitudes duplicadas.
+
+Estas correcciones describen código preparado para desplegar. No acreditan por
+sí solas la aceptación funcional del trámite, extracción, R2, notificaciones,
+firma electrónica, recepción, acta o ingreso a colección. Esos recorridos
+deben repetirse en desarrollo después del despliegue.
+
 ## Estado de disponibilidad
 
 - **Codificado:** portal público, trámite guiado, extracción local, catálogos

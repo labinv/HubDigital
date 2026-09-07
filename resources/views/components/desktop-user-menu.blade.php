@@ -1,9 +1,13 @@
 @use('App\Enums\RolUsuario')
 
+@props([
+    'context' => 'header',
+])
+
 @php
     $usuarioMenu = auth()->user();
     $rolActivoMenu = $usuarioMenu->rolActivo();
-    $enSidebar = ($variant ?? 'header') === 'sidebar';
+    $enSidebar = $context === 'sidebar';
     [$badgeRol, $iconoRol] = match ($rolActivoMenu) {
         RolUsuario::DEPOSITANTE => ['bg-bio-green/10 text-bio-green', 'archive-box'],
         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
