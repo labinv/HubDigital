@@ -4,6 +4,7 @@
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-bg-main">
+        <x-estado-conectividad />
 
         <flux:header container class="border-b border-blue-navy/80 bg-blue-navy! shadow-sm">
             <flux:sidebar.toggle class="mr-2 text-white/70 hover:text-white lg:hidden" icon="bars-2" inset="left" />

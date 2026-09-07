@@ -1,5 +1,6 @@
 import './hubdigital-firmador';
 import './pwa-notifications';
+import './connectivity-status';
 import Chart from 'chart.js/auto';
 
 // Disponible para los paneles Livewire sin depender de scripts externos.

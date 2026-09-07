@@ -5,6 +5,7 @@
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-bg-main">
+        <x-estado-conectividad />
         <flux:sidebar sticky collapsible="mobile" class="border-e border-border bg-blue-navy">
 
             {{-- Brand header --}}

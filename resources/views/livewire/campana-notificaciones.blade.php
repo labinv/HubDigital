@@ -1,9 +1,4 @@
 <div wire:poll.30s
-    data-hub-notification-id="{{ $ultimaNoLeida?->id }}"
-    data-hub-notification-title="HubDigital · Laboratorio de Invertebrados"
-    data-hub-notification-body="{{ $ultimaNoLeida?->data['mensaje'] ?? '' }}"
-    data-hub-notification-url="{{ $ultimaNoLeida?->data['url'] ?? '' }}"
-    data-hub-notification-action="{{ $ultimaNoLeida?->data['accion'] ?? 'Abrir expediente' }}"
     x-data="{
         open: false,
         pwaStatus: 'checking',
@@ -29,6 +24,21 @@
     x-on:keydown.escape.window="open = false"
     x-on:hub-pwa-status.window="pwaStatus = $event.detail.status; pwaMessage = $event.detail.message || ''"
     class="relative">
+
+    {{-- Cada identidad pendiente se observa por separado. El atributo no vive
+         en el contenedor Livewire porque puede cambiar sin que el nodo cambie. --}}
+    <div class="sr-only" aria-hidden="true">
+        @foreach($notificacionesPendientes as $pendiente)
+            <span
+                wire:key="aviso-pwa-{{ $pendiente->id }}"
+                data-hub-notification-id="{{ $pendiente->id }}"
+                data-hub-notification-title="HubDigital · Laboratorio de Invertebrados"
+                data-hub-notification-body="{{ $pendiente->data['mensaje'] ?? '' }}"
+                data-hub-notification-url="{{ $pendiente->data['url'] ?? '' }}"
+                data-hub-notification-action="{{ $pendiente->data['accion'] ?? 'Abrir expediente' }}"
+            ></span>
+        @endforeach
+    </div>
 
     <button type="button" x-ref="trigger" x-on:click="toggle()"
         class="inline-flex items-center justify-center size-9 rounded-lg text-current transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70" aria-label="Notificaciones">

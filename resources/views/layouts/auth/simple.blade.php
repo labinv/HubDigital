@@ -4,6 +4,7 @@
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-bg-main antialiased">
+        <x-estado-conectividad />
         {{-- Subtle background radial touches --}}
         <div class="hub-auth-bg pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true"></div>
 

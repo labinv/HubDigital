@@ -1,10 +1,15 @@
-<div class="pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6">
+<div
+    class="pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6"
+    x-data
+    x-on:chat-cerrado.window="$nextTick(() => document.getElementById('chat-bot-trigger')?.focus())"
+>
     <div class="pointer-events-auto flex w-full max-w-sm flex-col items-end gap-3">
         @if($abierto)
             <section
                 id="chat-bot-panel"
                 aria-label="Chat de consulta a la colección"
-                class="flex h-[32rem] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
+                wire:keydown.escape.window="alternar"
+                class="flex h-[min(32rem,calc(100dvh-7rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
             >
                 <header class="flex items-center justify-between gap-2 border-b border-border bg-blue-navy px-4 py-3 text-white">
                     <div class="flex items-center gap-2">
@@ -95,6 +100,7 @@
         @endif
 
         <button
+            id="chat-bot-trigger"
             type="button"
             wire:click="alternar"
             @class([

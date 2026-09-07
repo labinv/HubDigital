@@ -4,6 +4,8 @@ const TOAST_STORAGE_KEY = 'hubdigital:in-app-notifications-v2';
 const MAX_REMEMBERED_NOTIFICATIONS = 80;
 const CONFIG_URL = '/pwa/configuracion';
 const SUBSCRIPTIONS_URL = '/pwa/suscripciones';
+const TOAST_TRAY_ID = 'hub-in-app-toast-tray';
+let observerInitialized = false;
 
 function emitStatus(status, message) {
     window.dispatchEvent(new CustomEvent('hub-pwa-status', {
@@ -117,9 +119,22 @@ function showInAppToast(element) {
     close.addEventListener('click', () => toast.remove());
 
     toast.append(emblem, content, close);
-    document.body.append(toast);
+    toastTray().append(toast);
     remember(TOAST_STORAGE_KEY, id);
     window.setTimeout(() => toast.remove(), 12000);
+}
+
+function toastTray() {
+    let tray = document.getElementById(TOAST_TRAY_ID);
+    if (tray) return tray;
+
+    tray = document.createElement('div');
+    tray.id = TOAST_TRAY_ID;
+    tray.className = 'hub-in-app-toast-tray';
+    tray.setAttribute('aria-label', 'Avisos operativos');
+    document.body.append(tray);
+
+    return tray;
 }
 
 function rememberedIds(key) {
@@ -242,9 +257,10 @@ async function disable() {
 }
 
 function observe() {
+    if (observerInitialized) return;
+    observerInitialized = true;
+
     const scan = () => document.querySelectorAll(SELECTOR).forEach((element) => {
-        if (element.dataset.hubNotificationObserved === 'true') return;
-        element.dataset.hubNotificationObserved = 'true';
         showLatest(element).catch(() => {
             // La notificación nativa es complementaria: la alerta durable permanece
             // disponible en la bandeja cuando el navegador no puede presentarla.
@@ -269,3 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
     observe();
     status().catch(() => emitStatus('error', 'No fue posible consultar el estado de los avisos.'));
 }, { once: true });
+
+document.addEventListener('livewire:navigated', () => {
+    observe();
+});

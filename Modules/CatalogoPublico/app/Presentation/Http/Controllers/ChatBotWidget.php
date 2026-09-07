@@ -23,6 +23,10 @@ final class ChatBotWidget extends Component
     public function alternar(): void
     {
         $this->abierto = ! $this->abierto;
+
+        if (! $this->abierto) {
+            $this->dispatch('chat-cerrado');
+        }
     }
 
     public function enviar(ConsultarChatBotHandler $handler): void
