@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Comando Artisan para limpiar borradores de solicitudes de depósito antiguos.
@@ -24,7 +24,7 @@ final class LimpiarBorradoresAbandonadosCommand extends Command
     /**
      * Ejecuta el comando.
      */
-    public function handle(): int
+    public function handle(AlmacenamientoDepositos $almacenamiento): int
     {
         $dias = (int) $this->option('dias');
 
@@ -43,7 +43,9 @@ final class LimpiarBorradoresAbandonadosCommand extends Command
         foreach ($borradores as $borrador) {
             $documentos = $borrador->documentos_cargados ?? [];
             foreach ($documentos as $ruta) {
-                Storage::disk('public')->delete($ruta);
+                if (is_string($ruta) && trim($ruta) !== '') {
+                    $almacenamiento->eliminar($ruta);
+                }
             }
 
             $borrador->delete();

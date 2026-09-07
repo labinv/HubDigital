@@ -27,6 +27,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInter
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ReiterarRecordatorioVencimiento\ReiterarRecordatorioVencimientoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ReiterarRecordatorioVencimiento\ReiterarRecordatorioVencimientoInput;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Componente Livewire para la auditoría y gestión de detalles de un préstamo.
@@ -169,6 +170,7 @@ final class AuditarPrestamo extends Component
     public function habilitarEnvio(
         ConsultarDetallePrestamoHandler $detalleHandler,
         HabilitarEnvioInternacionalHandler $handler,
+        AlmacenamientoDepositos $almacenamiento,
     ): void {
         $this->validate(['documentoExportacion' => 'required|file|mimes:pdf|max:10240']);
 
@@ -178,7 +180,7 @@ final class AuditarPrestamo extends Component
             abort(404);
         }
 
-        $ruta = $this->documentoExportacion->store('exportaciones', 'public');
+        $ruta = $almacenamiento->guardarArchivo($this->documentoExportacion, 'prestamos/exportaciones');
 
         $handler->handle(new HabilitarEnvioInternacionalInput(
             actaId: $detalle->actaId,

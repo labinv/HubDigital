@@ -6,11 +6,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Enums\Lab;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Exceptions\ModeloIANoDisponibleException;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Smalot\PdfParser\Parser;
 
 /**
@@ -22,6 +22,7 @@ use Smalot\PdfParser\Parser;
  */
 final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocumentoPort
 {
+    private readonly AlmacenamientoDepositos $almacenamiento;
     private const TIPO_SOLICITUD = 'solicitud';
 
     private const TIPO_AUTORIZACION = 'autorizacion';
@@ -48,7 +49,10 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
      */
     public function __construct(
         private readonly string $modelo,
-    ) {}
+        ?AlmacenamientoDepositos $almacenamiento = null,
+    ) {
+        $this->almacenamiento = $almacenamiento ?? app(AlmacenamientoDepositos::class);
+    }
 
     /**
      * Extrae datos estructurados de una lista de documentos PDF.
@@ -104,9 +108,7 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
 
     private function leerPdf(Parser $parser, string $nombre, string $ruta): ?string
     {
-        $rutaAbsoluta = Storage::disk('public')->path($ruta);
-
-        if (! file_exists($rutaAbsoluta)) {
+        if (! $this->almacenamiento->existe($ruta)) {
             Log::warning('GroqExtraccion: archivo no encontrado', [
                 'documento' => $nombre,
                 'ruta' => $ruta,
@@ -115,8 +117,10 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
             return null;
         }
 
+        $copia = $this->almacenamiento->copiaLocal($ruta);
+
         try {
-            $texto = trim($parser->parseFile($rutaAbsoluta)->getText());
+            $texto = trim($parser->parseFile($copia->ruta())->getText());
 
             if (empty($texto)) {
                 Log::warning('GroqExtraccion: PDF sin texto extraíble (posible escaneo sin OCR)', [
@@ -134,6 +138,8 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
             ]);
 
             return null;
+        } finally {
+            $copia->limpiar();
         }
     }
 

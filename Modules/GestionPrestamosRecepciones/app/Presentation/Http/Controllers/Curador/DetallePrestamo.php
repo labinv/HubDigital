@@ -19,6 +19,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificaci
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalInput;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Componente Livewire para la visualización de los detalles de un préstamo.
@@ -58,6 +59,7 @@ final class DetallePrestamo extends Component
     public function habilitarEnvio(
         ConsultarDetallePrestamoHandler $detalleHandler,
         HabilitarEnvioInternacionalHandler $handler,
+        AlmacenamientoDepositos $almacenamiento,
     ): void {
         $this->validate(['documentoExportacion' => 'required|file|mimes:pdf|max:10240']);
 
@@ -67,7 +69,7 @@ final class DetallePrestamo extends Component
             abort(404);
         }
 
-        $ruta = $this->documentoExportacion->store('exportaciones', 'public');
+        $ruta = $almacenamiento->guardarArchivo($this->documentoExportacion, 'prestamos/exportaciones');
 
         $handler->handle(new HabilitarEnvioInternacionalInput(
             actaId: $detalle->actaId,

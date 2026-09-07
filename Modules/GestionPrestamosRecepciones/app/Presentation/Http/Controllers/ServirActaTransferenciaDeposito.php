@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Sirve, mediante streaming autenticado, el Acta de Transferencia de Dominio de una
@@ -17,7 +17,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\Solici
  */
 final class ServirActaTransferenciaDeposito
 {
-    public function __invoke(string $id): Response
+    public function __invoke(string $id, AlmacenamientoDepositos $almacenamiento): Response
     {
         $user = auth()->user();
 
@@ -29,12 +29,12 @@ final class ServirActaTransferenciaDeposito
         abort_unless($esCurador || $esDueno, 403);
 
         $ruta = $deposito->acta_transferencia_dominio['ruta'] ?? null;
-        abort_if($ruta === null || ! Storage::disk('public')->exists($ruta), 404);
+        abort_if($ruta === null || ! $almacenamiento->existe($ruta), 404);
 
         $disposicion = request()->boolean('descargar') ? 'attachment' : 'inline';
 
-        return response(Storage::disk('public')->get($ruta), 200, [
-            'Content-Type' => 'application/pdf',
+        return response($almacenamiento->obtener($ruta), 200, [
+            'Content-Type' => $almacenamiento->mimeType($ruta),
             'Content-Disposition' => $disposicion.'; filename="acta-transferencia-'.$id.'.pdf"',
         ]);
     }

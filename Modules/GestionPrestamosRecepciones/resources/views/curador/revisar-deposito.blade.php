@@ -221,8 +221,7 @@
                         @endif
 
                         @if($esDonacion && $deposito->acta_transferencia_dominio)
-                            @php $actaDisponible = \Illuminate\Support\Facades\Storage::disk('public')->exists($deposito->acta_transferencia_dominio['ruta'] ?? ''); @endphp
-                            @if($actaDisponible)
+                            @if($actaTransferenciaDisponible)
                                 <a href="{{ route('prestamos.deposito.acta', $deposito->id) }}"
                                     target="_blank" rel="noopener"
                                     class="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 hover:border-science-blue transition-colors">

@@ -15,6 +15,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRec
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\EntregaFisicaAnunciadaNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Componente Livewire para el detalle de un depósito.
@@ -92,12 +93,20 @@ final class DetalleDeposito extends Component
     public function render(
         MatrizEspeciesRepositoryInterface $matrizRepo,
         ConsultarDetalleRecepcionHandler $recepcionHandler,
+        AlmacenamientoDepositos $almacenamiento,
     ): View {
         $deposito = SolicitudDepositoEloquentModel::find($this->id);
         $matriz = $deposito ? $matrizRepo->buscarPorSolicitudId($this->id) : null;
         // Estado de la recepción física (para exponer la descarga del Acta de Recepción).
         $recepcion = $deposito ? $recepcionHandler->handle(new ConsultarDetalleRecepcionInput($this->id)) : null;
+        $actaTransferenciaDisponible = $deposito?->acta_transferencia_dominio !== null
+            && $almacenamiento->existe((string) ($deposito->acta_transferencia_dominio['ruta'] ?? ''));
 
-        return view('gestionprestamosrecepciones::investigador.detalle-deposito', compact('deposito', 'matriz', 'recepcion'));
+        return view('gestionprestamosrecepciones::investigador.detalle-deposito', compact(
+            'deposito',
+            'matriz',
+            'recepcion',
+            'actaTransferenciaDisponible',
+        ));
     }
 }

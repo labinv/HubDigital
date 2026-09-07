@@ -31,6 +31,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesReposi
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrioridadSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Componente Livewire para la revisión y decisión documental de una solicitud de
@@ -403,7 +404,11 @@ final class RevisarDeposito extends Component
     /**
      * Recarga la solicitud, sus alertas y deriva el estado de la pantalla.
      */
-    public function render(MatrizEspeciesRepositoryInterface $matrizRepo, CatalogoCuraduriaPort $catalogo): View
+    public function render(
+        MatrizEspeciesRepositoryInterface $matrizRepo,
+        CatalogoCuraduriaPort $catalogo,
+        AlmacenamientoDepositos $almacenamiento,
+    ): View
     {
         $deposito = SolicitudDepositoEloquentModel::with('alertas')->find($this->id);
         abort_if($deposito === null, 404);
@@ -412,6 +417,8 @@ final class RevisarDeposito extends Component
         $hayAlertasPendientes = $alertas->contains('estado_revision', 'Pendiente de Revisión');
         $esDonacion = $deposito->tipo_tramite === TipoTramite::Donacion->value;
         $esPendiente = $deposito->estado === 'Pendiente de Revisión por Curaduría';
+        $actaTransferenciaDisponible = $deposito->acta_transferencia_dominio !== null
+            && $almacenamiento->existe((string) ($deposito->acta_transferencia_dominio['ruta'] ?? ''));
 
         $matriz = $matrizRepo->buscarPorSolicitudId($this->id);
 
@@ -433,6 +440,7 @@ final class RevisarDeposito extends Component
             'esPendiente' => $esPendiente,
             'matriz' => $matriz,
             'hallazgosMatriz' => $hallazgosMatriz,
+            'actaTransferenciaDisponible' => $actaTransferenciaDisponible,
         ];
 
         return view(

@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoActa\ConsultarDocumentoActaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoActa\ConsultarDocumentoActaInput;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Controlador para servir el documento de exportación de un acta de préstamo.
  */
 final class ServirDocumentoExportacion
 {
-    public function __invoke(string $id, ConsultarDocumentoActaHandler $handler): Response
+    public function __invoke(
+        string $id,
+        ConsultarDocumentoActaHandler $handler,
+        AlmacenamientoDepositos $almacenamiento,
+    ): Response
     {
         $user = auth()->user();
 
@@ -32,12 +36,12 @@ final class ServirDocumentoExportacion
             abort(403);
         }
 
-        if (! $documento->documentoExportacionRuta || ! Storage::disk('public')->exists($documento->documentoExportacionRuta)) {
+        if (! $documento->documentoExportacionRuta || ! $almacenamiento->existe($documento->documentoExportacionRuta)) {
             abort(404);
         }
 
-        return response(Storage::disk('public')->get($documento->documentoExportacionRuta), 200, [
-            'Content-Type' => 'application/pdf',
+        return response($almacenamiento->obtener($documento->documentoExportacionRuta), 200, [
+            'Content-Type' => $almacenamiento->mimeType($documento->documentoExportacionRuta),
             'Content-Disposition' => 'inline; filename="documento-exportacion.pdf"',
         ]);
     }
