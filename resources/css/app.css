@@ -161,14 +161,11 @@ body {
     color: var(--color-text-primary);
     background: var(--color-bg-main);
     text-rendering: optimizeLegibility;
-    overflow-x: clip;
 }
 
 /* Base fluida para los portales y las superficies operativas.
    El zoom del navegador reduce el viewport CSS: estos límites evitan que una
    columna, una tabla o una acción crítica fuerce el ancho de toda la página. */
-html { overflow-x: clip; }
-
 img, svg, video, canvas, iframe, embed, object {
     max-inline-size: 100%;
 }
@@ -221,13 +218,13 @@ img, svg, video, canvas, iframe, embed, object {
     flex: 1 1 13rem;
 }
 
-/* Los workspace internos no se estrechan artificialmente en pantallas grandes
-   ni cuando se reduce el zoom. Los límites de lectura quedan en cada bloque. */
+/* Los workspace internos ocupan el ancho operativo disponible. Los límites de
+   lectura deben vivir en tarjetas y párrafos, no en la superficie completa. */
 .hub-workspace {
     width: 100%;
     max-width: none;
     min-width: 0;
-    margin-inline: 0;
+    margin-inline: auto;
     padding-inline: clamp(1rem, 2.25vw, 2rem) !important;
 }
 
@@ -383,11 +380,6 @@ img, svg, video, canvas, iframe, embed, object {
 
 /* Superficies de trabajo: bordes deliberados, sombras discretas y una
    jerarquía tipográfica consistente para formularios, bandejas y tableros. */
-.hub-workspace {
-    max-width: 108rem;
-    margin-inline: auto;
-}
-
 .hub-page-header {
     display: flex;
     flex-wrap: wrap;

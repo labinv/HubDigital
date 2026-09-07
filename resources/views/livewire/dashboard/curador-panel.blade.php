@@ -102,7 +102,7 @@
             <x-stat-tile
                 label="Registros en matrices" :value="$depRegistrosMatriz"
                 icon="table-cells" tone="blue"
-                hint="Filas validadas contra Darwin Core" />
+                hint="Filas estructuradas de las matrices" />
         </div>
 
         <div class="grid gap-4 pt-1 lg:grid-cols-2">
@@ -112,7 +112,7 @@
                 :filas="$graficoDepositosPorMes" />
             <x-bar-chart
                 titulo="Estado de los depósitos"
-                subtitulo="Distribución actual del trabajo documental y curatorial"
+                :subtitulo="'Distribución documental durante '.$periodoAnaliticoEtiqueta"
                 :filas="$graficoEstadosDepositos" />
         </div>
 
@@ -128,7 +128,7 @@
                     @endforeach
                 </dl>
                 <div class="mt-5 grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
-                    <div><p class="text-xs uppercase tracking-wide text-text-secondary">Tiempo medio documental</p><p class="mt-1 text-lg font-semibold text-blue-navy">{{ number_format($indicadoresDepositos['diasRevision'], 1, ',', '.') }} días</p><p class="text-xs text-text-secondary">Registro a aprobación</p></div>
+                    <div><p class="text-xs uppercase tracking-wide text-text-secondary">Tiempo medio documental</p><p class="mt-1 text-lg font-semibold text-blue-navy">{{ number_format($indicadoresDepositos['diasRevision'], 1, ',', '.') }} días</p><p class="text-xs text-text-secondary">Creación del expediente a aprobación</p></div>
                     <div><p class="text-xs uppercase tracking-wide text-text-secondary">Tiempo medio de constatación</p><p class="mt-1 text-lg font-semibold text-blue-navy">{{ number_format($indicadoresDepositos['diasConstatacion'], 1, ',', '.') }} días</p><p class="text-xs text-text-secondary">Apertura a constatación</p></div>
                 </div>
             </article>

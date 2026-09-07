@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Enums\RolUsuario;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -47,35 +48,43 @@ class Dashboard extends Component
         abort_unless(auth()->user()?->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN), 403);
 
         $inicio = $this->inicioAnalisis();
-        $solicitudes = SolicitudDepositoEloquentModel::query()
-            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
-            ->where('created_at', '>=', $inicio)
-            ->orderByDesc('created_at')
-            ->get(['id', 'numero', 'tipo_tramite', 'estado', 'nro_lotes', 'nro_individuos', 'aprobada_en', 'created_at']);
-        $recepciones = RecepcionLoteEloquentModel::query()
-            ->whereIn('solicitud_deposito_id', $solicitudes->pluck('id'))
-            ->get(['solicitud_deposito_id', 'estado', 'verificado_en', 'acta_firmada_ruta'])
-            ->keyBy('solicitud_deposito_id');
-
-        return response()->streamDownload(function () use ($solicitudes, $recepciones): void {
+        return response()->streamDownload(function () use ($inicio): void {
             $salida = fopen('php://output', 'wb');
             // BOM UTF-8 para que Excel conserve tildes y nombres taxonómicos.
             fwrite($salida, "\xEF\xBB\xBF");
             fputcsv($salida, ['Número', 'Trámite', 'Estado documental', 'Estado de recepción', 'Lotes', 'Individuos', 'Fecha de registro', 'Aprobación documental', 'Constatación física', 'Acta firmada'], ';');
 
-            foreach ($solicitudes as $solicitud) {
-                $recepcion = $recepciones->get($solicitud->id);
+            $filas = SolicitudDepositoEloquentModel::query()
+                ->leftJoin('recepciones.recepcion_lotes as recepcion', 'recepcion.solicitud_deposito_id', '=', 'recepciones.solicitudes_deposito.id')
+                ->where('recepciones.solicitudes_deposito.estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
+                ->where('recepciones.solicitudes_deposito.created_at', '>=', $inicio)
+                ->orderByDesc('recepciones.solicitudes_deposito.created_at')
+                ->select([
+                    'recepciones.solicitudes_deposito.numero',
+                    'recepciones.solicitudes_deposito.tipo_tramite',
+                    'recepciones.solicitudes_deposito.estado as estado_documental',
+                    'recepciones.solicitudes_deposito.nro_lotes',
+                    'recepciones.solicitudes_deposito.nro_individuos',
+                    DB::raw("TO_CHAR(recepciones.solicitudes_deposito.created_at AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as registrado_en"),
+                    DB::raw("TO_CHAR(recepciones.solicitudes_deposito.aprobada_en AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as aprobada_en"),
+                    'recepcion.estado as estado_recepcion',
+                    DB::raw("TO_CHAR(recepcion.verificado_en AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as verificado_en"),
+                    'recepcion.acta_firmada_ruta',
+                ])
+                ->cursor();
+
+            foreach ($filas as $fila) {
                 fputcsv($salida, [
-                    $solicitud->numero,
-                    $solicitud->tipo_tramite,
-                    $solicitud->estado,
-                    $recepcion?->estado ?? 'Pendiente de entrega',
-                    $solicitud->nro_lotes,
-                    $solicitud->nro_individuos,
-                    $solicitud->created_at?->format('Y-m-d H:i'),
-                    $solicitud->aprobada_en?->format('Y-m-d H:i'),
-                    $recepcion?->verificado_en?->format('Y-m-d H:i'),
-                    $recepcion?->acta_firmada_ruta ? 'Sí' : 'No',
+                    $fila->numero,
+                    $fila->tipo_tramite,
+                    $fila->estado_documental,
+                    $fila->estado_recepcion ?? 'Pendiente de entrega',
+                    $fila->nro_lotes,
+                    $fila->nro_individuos,
+                    $fila->registrado_en,
+                    $fila->aprobada_en,
+                    $fila->verificado_en,
+                    $fila->acta_firmada_ruta ? 'Sí' : 'No',
                 ], ';');
             }
 
@@ -106,7 +115,9 @@ class Dashboard extends Component
                     ->whereNotNull('codigo_qr')
                     ->whereNotIn('id', RecepcionLoteEloquentModel::query()->select('solicitud_deposito_id'))
                     ->count(),
-                'lotesRecibidos' => RecepcionLoteEloquentModel::query()->count(),
+                'lotesRecibidos' => RecepcionLoteEloquentModel::query()
+                    ->whereIn('estado', ['Verificado Físicamente', 'Verificado con Observaciones'])
+                    ->count(),
             ]),
             RolUsuario::PRESTAMISTA => view(
                 'livewire.dashboard.prestamista-panel',
@@ -158,7 +169,9 @@ class Dashboard extends Component
             // Recepción y validación
             'depPorRevisar' => (int) $depositos->por_revisar,
             'depEnviadas' => (int) $depositos->enviadas,
-            'depLotesRecibidos' => RecepcionLoteEloquentModel::query()->count(),
+            'depLotesRecibidos' => RecepcionLoteEloquentModel::query()
+                ->whereIn('estado', ['Verificado Físicamente', 'Verificado con Observaciones'])
+                ->count(),
             'depRegistrosMatriz' => RegistroEspecimenEloquentModel::query()->count(),
 
             // Préstamos
@@ -188,16 +201,28 @@ class Dashboard extends Component
      */
     private function graficoFamilias(): array
     {
-        return EspecimenEloquentModel::query()
-            ->join('taxonomia.taxones as t', 't.id', '=', 'taxonomia.especimenes.taxon_id')
-            ->where('t.rango', 'familia')
-            ->selectRaw('t.nombre_cientifico AS etiqueta, COUNT(*) AS valor')
-            ->groupBy('t.nombre_cientifico')
-            ->orderByDesc('valor')
-            ->limit(8)
-            ->get()
-            ->map(fn ($f) => ['etiqueta' => (string) $f->etiqueta, 'valor' => (int) $f->valor])
-            ->all();
+        $filas = DB::select(<<<'SQL'
+            WITH RECURSIVE linaje AS (
+                SELECT e.id AS especimen_id, t.id, t.padre_id, t.rango, t.nombre_cientifico
+                FROM taxonomia.especimenes e
+                INNER JOIN taxonomia.taxones t ON t.id = e.taxon_id
+                UNION ALL
+                SELECT linaje.especimen_id, padre.id, padre.padre_id, padre.rango, padre.nombre_cientifico
+                FROM linaje
+                INNER JOIN taxonomia.taxones padre ON padre.id = linaje.padre_id
+            )
+            SELECT nombre_cientifico AS etiqueta, COUNT(DISTINCT especimen_id) AS valor
+            FROM linaje
+            WHERE rango = 'familia'
+            GROUP BY nombre_cientifico
+            ORDER BY valor DESC, etiqueta ASC
+            LIMIT 8
+        SQL);
+
+        return array_map(
+            static fn (object $fila): array => ['etiqueta' => (string) $fila->etiqueta, 'valor' => (int) $fila->valor],
+            $filas,
+        );
     }
 
     /**
@@ -266,8 +291,10 @@ class Dashboard extends Component
     /** @return list<array{etiqueta: string, valor: int}> */
     private function graficoEstadosDepositos(): array
     {
+        $inicio = $this->inicioAnalisis();
         $conteos = SolicitudDepositoEloquentModel::query()
             ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
+            ->where('created_at', '>=', $inicio)
             ->selectRaw('estado, COUNT(*) AS total')
             ->groupBy('estado')
             ->pluck('total', 'estado');
@@ -334,13 +361,7 @@ class Dashboard extends Component
                 ],
             )->first();
 
-        $estadosGrafico = [
-            'En constatación' => (int) $recepciones->iniciadas - (int) $recepciones->constatadas - (int) $recepciones->suspendidas,
-            'Constatadas' => (int) $recepciones->constatadas,
-            'Con observaciones' => (int) $recepciones->con_observaciones,
-            'Suspendidas' => (int) $recepciones->suspendidas,
-            'Actas firmadas' => (int) $recepciones->actas_firmadas,
-        ];
+        $estadosGrafico = $this->estadosRecepcionExcluyentes($inicio, $estadosConstatados);
 
         return [
             'periodoAnaliticoEtiqueta' => 'Últimos '.((int) $this->periodoAnalisis).' meses',
@@ -369,7 +390,6 @@ class Dashboard extends Component
     private function colaCuratorial(\DateTimeInterface $inicio, array $estadosConstatados): array
     {
         $documentales = SolicitudDepositoEloquentModel::query()
-            ->where('created_at', '>=', $inicio)
             ->whereIn('estado', [
                 EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value,
                 EstadoSolicitudDeposito::RequiereCorreccion->value,
@@ -389,17 +409,20 @@ class Dashboard extends Component
             ]);
 
         $actas = RecepcionLoteEloquentModel::query()
+            ->join('recepciones.solicitudes_deposito as solicitud', 'solicitud.id', '=', 'recepciones.recepcion_lotes.solicitud_deposito_id')
             ->whereIn('estado', $estadosConstatados)
             ->whereNull('acta_firmada_ruta')
-            ->where('verificado_en', '>=', $inicio)
             ->latest('verificado_en')
             ->limit(8)
-            ->get(['solicitud_deposito_id', 'estado', 'verificado_en'])
+            ->get([
+                'recepciones.recepcion_lotes.solicitud_deposito_id',
+                'recepciones.recepcion_lotes.estado',
+                'recepciones.recepcion_lotes.verificado_en',
+                'solicitud.numero as numero_solicitud',
+            ])
             ->map(function (RecepcionLoteEloquentModel $recepcion): array {
-                $solicitud = SolicitudDepositoEloquentModel::query()->find($recepcion->solicitud_deposito_id);
-
                 return [
-                    'numero' => (string) ($solicitud?->numero ?? 'Expediente'),
+                    'numero' => (string) ($recepcion->numero_solicitud ?? 'Expediente'),
                     'detalle' => $recepcion->estado,
                     'estado' => 'Acta pendiente de firma',
                     'fecha' => $recepcion->verificado_en?->format('d/m/Y H:i') ?? '—',
@@ -423,6 +446,41 @@ class Dashboard extends Component
             : 12;
 
         return now()->startOfMonth()->subMonths($meses - 1);
+    }
+
+    /**
+     * Estados excluyentes de la recepción para no contar un mismo lote en
+     * constatación y nuevamente como acta firmada.
+     *
+     * @param list<string> $estadosConstatados
+     * @return array<string, int>
+     */
+    private function estadosRecepcionExcluyentes(\DateTimeInterface $inicio, array $estadosConstatados): array
+    {
+        $conteos = RecepcionLoteEloquentModel::query()
+            ->where('created_at', '>=', $inicio)
+            ->selectRaw(
+                "COUNT(*) FILTER (WHERE estado = 'En Verificación') AS en_verificacion,
+                 COUNT(*) FILTER (WHERE estado = 'Recepción Suspendida') AS suspendidas,
+                 COUNT(*) FILTER (WHERE estado = ? AND acta_firmada_ruta IS NULL) AS conforme_pendiente,
+                 COUNT(*) FILTER (WHERE estado = ? AND acta_firmada_ruta IS NULL) AS observada_pendiente,
+                 COUNT(*) FILTER (WHERE estado IN (?, ?) AND acta_firmada_ruta IS NOT NULL) AS actas_firmadas",
+                [
+                    $estadosConstatados[0],
+                    $estadosConstatados[1],
+                    $estadosConstatados[0],
+                    $estadosConstatados[1],
+                ],
+            )
+            ->first();
+
+        return [
+            'En verificación' => (int) $conteos->en_verificacion,
+            'Constatados conformes · acta pendiente' => (int) $conteos->conforme_pendiente,
+            'Constatados con observaciones · acta pendiente' => (int) $conteos->observada_pendiente,
+            'Recepciones suspendidas' => (int) $conteos->suspendidas,
+            'Actas firmadas' => (int) $conteos->actas_firmadas,
+        ];
     }
 
     /** @return array<string, int> */
