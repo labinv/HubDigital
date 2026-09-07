@@ -100,7 +100,7 @@
                         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
                         x-transition:leave-end="opacity-0 -translate-y-1 scale-[0.97]"
                         :style="'position:fixed;left:'+x+'px;top:'+y+'px;z-index:9999'"
-                        class="w-64 max-w-[calc(100vw-2rem)] origin-top-right overflow-hidden rounded-lg bg-surface shadow-lg ring-1 ring-science-blue/30 sm:w-72"
+                        class="w-64 max-w-[calc(100dvi-2rem)] origin-top-right overflow-hidden rounded-lg bg-surface shadow-lg ring-1 ring-science-blue/30 sm:w-72"
                     >
                         <div class="flex gap-2.5 p-3">
                             <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/15 ring-1 ring-science-blue/20">

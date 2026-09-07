@@ -1,4 +1,4 @@
-<div class="p-4 sm:p-6 space-y-5">
+<div class="hub-workspace p-4 sm:p-6 space-y-5">
     <div>
         <flux:heading size="xl" level="1" class="font-display">Recepción física de lotes</flux:heading>
         <flux:text class="mt-1 text-sm text-text-secondary">Verifica el código QR, el inventario entregado, el embalaje, el estado y el rotulado.</flux:text>

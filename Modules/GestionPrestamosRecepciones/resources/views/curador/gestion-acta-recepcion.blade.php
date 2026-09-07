@@ -3,7 +3,7 @@
     $firma = $recepcion->firmaMetadata;
 @endphp
 
-<div class="p-4 sm:p-6 space-y-6" @toast.window="$flux.toast($event.detail.message)">
+<div class="hub-workspace p-4 sm:p-6 space-y-6" @toast.window="$flux.toast($event.detail.message)">
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.depositos') }}">Depósitos</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $recepcion->numeroSolicitud }}</flux:breadcrumbs.item>
@@ -84,8 +84,8 @@
                         reason: 'Aprobación del acta final de recepción de especímenes',
                         location: 'Laboratorio de Invertebrados EPN, Quito, Ecuador'
                     })">
-                    <div class="min-h-[32rem] overflow-hidden rounded-lg border border-border bg-bg-main">
-                        <iframe title="Vista previa del acta final" class="h-[32rem] w-full"
+                    <div class="min-h-0 overflow-hidden rounded-lg border border-border bg-bg-main">
+                        <iframe title="Vista previa del acta final" class="hub-document-viewer w-full"
                             src="{{ route('prestamos.deposito.acta-recepcion', $this->id) }}"></iframe>
                     </div>
 

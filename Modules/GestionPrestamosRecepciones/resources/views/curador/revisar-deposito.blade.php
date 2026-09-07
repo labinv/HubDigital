@@ -1,4 +1,4 @@
-<div class="p-4 sm:p-6 space-y-5"
+<div class="hub-workspace p-4 sm:p-6 space-y-5"
     x-data
     @toast.window="$flux.toast($event.detail.message)"
     @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">

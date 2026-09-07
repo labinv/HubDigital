@@ -45,7 +45,7 @@
     <div x-ref="panel" x-show="open" x-cloak x-transition.origin.top.left
         x-on:click.outside="open = false"
         :style="`left: ${coords.left}px; top: ${coords.top}px`"
-        class="fixed z-50 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border border-border bg-surface shadow-[0_18px_42px_rgba(16,43,70,.18)]">
+        class="fixed z-50 w-80 max-w-[calc(100dvi-1rem)] overflow-hidden rounded-xl border border-border bg-surface shadow-[0_18px_42px_rgba(16,43,70,.18)]">
 
         <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div><span class="font-display text-base font-semibold text-blue-navy">Notificaciones</span><p class="mt-0.5 text-[11px] text-text-secondary">Actividad del laboratorio</p></div>

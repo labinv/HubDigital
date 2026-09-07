@@ -1,4 +1,4 @@
-<div class="space-y-5">
+<div class="hub-workspace space-y-5 p-4 sm:p-6">
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-actas') }}">
@@ -218,7 +218,7 @@
 
         @if($esFirmaDigital)
             <div x-data="{ tab: 'firmada' }" class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <div class="flex items-center gap-1 border-b border-border bg-bg-main px-2">
+                <div class="flex min-w-0 items-center gap-1 overflow-x-auto border-b border-border bg-bg-main px-2">
                     <button @click="tab = 'firmada'"
                         :class="tab === 'firmada' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
                         class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
@@ -276,7 +276,7 @@
 
         @else
             <div x-data="{ tab: 'firmada' }" class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <div class="flex items-center gap-1 border-b border-border bg-bg-main px-2">
+                <div class="flex min-w-0 items-center gap-1 overflow-x-auto border-b border-border bg-bg-main px-2">
                     <button @click="tab = 'firmada'"
                         :class="tab === 'firmada' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
                         class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">

@@ -1,17 +1,17 @@
 @component('layouts.portal', ['title' => 'Laboratorio de Invertebrados · Escuela Politécnica Nacional'])
     <div class="overflow-hidden bg-white text-text-primary">
         <section class="relative isolate border-b border-blue-navy/10 bg-white" aria-labelledby="titulo-portada">
-            <div class="mx-auto grid max-w-[96rem] lg:min-h-[42rem] lg:grid-cols-[0.86fr_1.14fr]">
-                <div class="relative z-10 flex items-center px-5 py-14 sm:px-8 sm:py-18 lg:px-12 lg:py-24 xl:pl-[max(3rem,calc((100vw-80rem)/2))]">
+            <div class="portal-hero-grid lg:min-h-[42rem]">
+                <div class="portal-container portal-hero-copy relative z-10 flex items-center">
                     <div class="max-w-2xl">
-                        <h1 id="titulo-portada" class="font-display text-[2.65rem] font-bold leading-[1.04] tracking-[-0.035em] text-blue-navy sm:text-6xl lg:text-[4.35rem]">
+                        <h1 id="titulo-portada" class="portal-hero-title font-display font-bold leading-[1.04] tracking-[-0.035em] text-blue-navy">
                             Ciencia, colecciones y biodiversidad del Ecuador
                         </h1>
                         <p class="mt-6 max-w-xl text-base leading-7 text-text-secondary sm:text-lg sm:leading-8">
                             El Laboratorio de Invertebrados de la Escuela Politécnica Nacional conserva, estudia y conecta con la sociedad el patrimonio biológico que custodia el Museo de Historia Natural Gustavo Orcés V.
                         </p>
 
-                        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                        <div class="portal-responsive-actions mt-8">
                             <a
                                 href="{{ route('portal.catalogo') }}"
                                 class="inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-science-blue px-5 py-3 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#1266b8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
@@ -49,7 +49,7 @@
         </section>
 
         <section class="border-b border-blue-navy/10 bg-[#F5F8FC]" aria-label="Propósitos del laboratorio">
-            <div class="mx-auto grid max-w-7xl grid-cols-2 px-5 sm:px-8 lg:grid-cols-4">
+            <div class="portal-container mx-auto grid grid-cols-2 lg:grid-cols-4">
                 @foreach([
                     ['Preservar', 'Patrimonio biológico'],
                     ['Documentar', 'Datos verificables'],
@@ -65,7 +65,7 @@
         </section>
 
         <section id="colecciones" class="scroll-mt-28 bg-white" aria-labelledby="titulo-colecciones">
-            <div class="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-24">
+            <div class="portal-container mx-auto py-16 lg:py-24">
                 <div class="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
                     <div>
                         <div class="h-1 w-14 bg-bio-green" aria-hidden="true"></div>
@@ -105,7 +105,7 @@
         </section>
 
         <section id="catalogo" class="scroll-mt-28 bg-blue-navy text-white" aria-labelledby="titulo-catalogo">
-            <div class="mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-20 lg:py-24">
+            <div class="portal-container mx-auto grid gap-12 py-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] lg:items-center lg:gap-20 lg:py-24">
                 <div>
                     <h2 id="titulo-catalogo" class="font-display text-3xl font-bold tracking-[-0.02em] sm:text-4xl">Datos abiertos con contexto científico</h2>
                     <p class="mt-5 max-w-2xl text-base leading-8 text-white/75">
@@ -135,7 +135,7 @@
         </section>
 
         <section id="investigacion" class="scroll-mt-28 bg-white" aria-labelledby="titulo-investigacion">
-            <div class="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-24">
+            <div class="portal-container mx-auto py-16 lg:py-24">
                 <div class="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-20">
                     <div>
                         <h2 id="titulo-investigacion" class="font-display text-3xl font-bold tracking-[-0.02em] text-blue-navy sm:text-4xl">Investigación que parte de los ejemplares</h2>
@@ -166,7 +166,7 @@
         </section>
 
         <section id="servicios" class="scroll-mt-28 border-y border-blue-navy/10 bg-[#F5F8FC]" aria-labelledby="titulo-servicios">
-            <div class="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-24">
+            <div class="portal-container mx-auto py-16 lg:py-24">
                 <div class="flex flex-col gap-5 border-b border-blue-navy/15 pb-9 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                         <h2 id="titulo-servicios" class="font-display text-3xl font-bold tracking-[-0.02em] text-blue-navy sm:text-4xl">Servicios para la comunidad</h2>
@@ -196,7 +196,7 @@
         </section>
 
         <section id="depositos" class="scroll-mt-28 bg-white" aria-labelledby="titulo-depositos">
-            <div class="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-24">
+            <div class="portal-container mx-auto py-16 lg:py-24">
                 <div class="grid gap-12 lg:grid-cols-[0.78fr_1.22fr] lg:items-start lg:gap-20">
                     <div>
                         <div class="h-1 w-14 bg-bio-green" aria-hidden="true"></div>
@@ -227,7 +227,7 @@
         </section>
 
         <section id="divulgacion" class="scroll-mt-28 bg-[#EAF2EC]" aria-labelledby="titulo-divulgacion">
-            <div class="mx-auto grid max-w-7xl gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-20 lg:py-20">
+            <div class="portal-container mx-auto grid gap-10 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:items-center lg:gap-20 lg:py-20">
                 <div>
                     <h2 id="titulo-divulgacion" class="font-display text-3xl font-bold tracking-[-0.02em] text-blue-navy sm:text-4xl">Una colección también es una herramienta educativa</h2>
                     <p class="mt-5 max-w-2xl leading-8 text-text-secondary">La documentación de los ejemplares ayuda a explicar cómo se reconoce una especie, por qué importa su procedencia y cómo las colecciones sostienen la memoria ambiental del país.</p>
@@ -239,7 +239,7 @@
         </section>
 
         <section id="equipo" class="scroll-mt-28 bg-white" aria-labelledby="titulo-equipo">
-            <div class="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-24">
+            <div class="portal-container mx-auto py-16 lg:py-24">
                 <div class="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
                     <div>
                         <h2 id="titulo-equipo" class="font-display text-3xl font-bold tracking-[-0.02em] text-blue-navy sm:text-4xl">Equipo y responsabilidades</h2>
@@ -264,7 +264,7 @@
         </section>
 
         <section id="contacto" class="scroll-mt-28 border-t border-blue-navy/10 bg-[#F5F8FC]" aria-labelledby="titulo-contacto">
-            <div class="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-8 lg:grid-cols-[1fr_auto] lg:items-center lg:py-16">
+            <div class="portal-container mx-auto grid gap-10 py-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:py-16">
                 <div>
                     <h2 id="titulo-contacto" class="font-display text-3xl font-bold text-blue-navy">Laboratorio de Invertebrados</h2>
                     <p class="mt-4 flex max-w-2xl items-start gap-3 leading-7 text-text-secondary">

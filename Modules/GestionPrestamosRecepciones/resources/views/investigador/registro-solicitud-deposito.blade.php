@@ -1,5 +1,5 @@
 <div
-    class="space-y-5 pb-8"
+    class="hub-workspace space-y-5 pb-8"
     x-data="{
         domainError: null,
         tipoTramite: $wire.entangle('tipoTramite'),
@@ -336,7 +336,7 @@
                 ? 'border-error/50 bg-error/5 ring-1 ring-error/20'
                 : 'border-warning/50 bg-warning/5 ring-1 ring-warning/20'"
             class="rounded-xl border bg-surface px-5 py-4 flex items-start gap-3"
-            style="display: none; position: fixed; top: 1.25rem; right: 1.5rem; z-index: 9999; width: 22rem; max-width: calc(100vw - 3rem); box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.1);"
+            style="display: none; position: fixed; top: 1.25rem; right: 1.5rem; z-index: 9999; width: 22rem; max-width: calc(100dvi - 3rem); box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.1);"
         >
             <div x-show="variant === 'error'" class="flex-shrink-0 mt-0.5">
                 <div class="flex items-center justify-center size-8 rounded-full bg-error/10">

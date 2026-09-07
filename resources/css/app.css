@@ -161,6 +161,139 @@ body {
     color: var(--color-text-primary);
     background: var(--color-bg-main);
     text-rendering: optimizeLegibility;
+    overflow-x: clip;
+}
+
+/* Base fluida para los portales y las superficies operativas.
+   El zoom del navegador reduce el viewport CSS: estos límites evitan que una
+   columna, una tabla o una acción crítica fuerce el ancho de toda la página. */
+html { overflow-x: clip; }
+
+img, svg, video, canvas, iframe, embed, object {
+    max-inline-size: 100%;
+}
+
+.portal-container {
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 4vw, 5rem);
+}
+
+.portal-header-container {
+    min-width: 0;
+    gap: clamp(.75rem, 1.5vw, 1.5rem);
+    padding-inline: clamp(1rem, 3vw, 4rem);
+}
+
+.portal-hero-grid {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
+}
+
+.portal-hero-copy {
+    min-width: 0;
+    padding-block: clamp(3rem, 7vw, 7rem);
+}
+
+.portal-hero-title {
+    max-width: 18ch;
+    font-size: clamp(2.45rem, 4.8vw, 5rem);
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+
+.portal-responsive-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: .75rem;
+}
+
+.portal-responsive-actions > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.portal-responsive-actions > a,
+.portal-responsive-actions > button {
+    flex: 1 1 13rem;
+}
+
+/* Los workspace internos no se estrechan artificialmente en pantallas grandes
+   ni cuando se reduce el zoom. Los límites de lectura quedan en cada bloque. */
+.hub-workspace {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin-inline: 0;
+    padding-inline: clamp(1rem, 2.25vw, 2rem) !important;
+}
+
+[data-flux-main],
+[data-flux-main] > *,
+[data-flux-main] :is(.grid, .flex) {
+    min-width: 0;
+}
+
+[data-flux-main] :is(input, select, textarea, button, [data-flux-button]) {
+    max-inline-size: 100%;
+}
+
+.hub-table-shell {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+}
+
+.hub-table-shell table,
+[data-flux-main] .overflow-x-auto > table {
+    min-width: max-content;
+}
+
+[role="dialog"],
+[data-flux-modal] {
+    max-inline-size: calc(100dvi - 2rem) !important;
+    max-block-size: calc(100dvb - 2rem);
+}
+
+/* Visores PDF y controles del firmador: el alto anterior combinaba 100vh con
+   un mínimo fijo de 520px, por lo que con zoom alto se salía del viewport. */
+[data-flux-main] iframe[title*="Acta"],
+[data-flux-main] iframe[title*="Documento"] {
+    block-size: clamp(22rem, 62dvb, 48rem) !important;
+    min-block-size: 0 !important;
+    max-inline-size: 100%;
+}
+
+.hub-document-viewer {
+    block-size: clamp(22rem, 62dvb, 48rem);
+    min-block-size: 0;
+    max-inline-size: 100%;
+}
+
+/* Herramientas, pestañas y acciones curatoriales pueden envolver sus controles
+   sin desplazar el panel o el visor completo fuera del área de trabajo. */
+[data-flux-main] :is([role="tablist"], .hub-responsive-actions) {
+    max-inline-size: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+}
+
+[data-flux-main] :is(.hub-panel, .hub-table-shell, .rounded-lg, .rounded-xl) {
+    min-width: 0;
+}
+
+@media (max-width: 1023px) {
+    .portal-hero-grid { grid-template-columns: minmax(0, 1fr); }
+    .portal-hero-copy { padding-block: clamp(2.5rem, 8vw, 4.5rem); }
+}
+
+@media (max-width: 639px) {
+    .portal-container { padding-inline: 1rem; }
+    .portal-responsive-actions > a,
+    .portal-responsive-actions > button { flex-basis: 100%; }
 }
 
 /* Sistema visual operativo del Laboratorio de Invertebrados.
@@ -174,6 +307,12 @@ body {
     background: var(--color-blue-navy) !important;
     border-color: rgba(255, 255, 255, .14) !important;
     color: rgba(255, 255, 255, .8);
+    max-inline-size: min(20rem, 100dvi);
+}
+
+[data-flux-main] {
+    inline-size: 100%;
+    max-inline-size: 100%;
 }
 
 [data-flux-sidebar] [data-flux-sidebar-header],
@@ -358,7 +497,7 @@ select:focus[data-flux-control] {
     z-index: 2147483647;
     display: flex;
     gap: .75rem;
-    width: min(24.375rem, calc(100vw - 2rem));
+    width: min(24.375rem, calc(100dvi - 2rem));
     padding: .875rem;
     border: 1px solid rgba(23, 55, 94, .16);
     border-radius: 1rem;

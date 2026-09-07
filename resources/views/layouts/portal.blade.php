@@ -9,17 +9,7 @@
     </a>
 
     <header x-data="{ abierto: false }" class="sticky top-0 z-50 border-b border-blue-navy/10 bg-white/95 backdrop-blur-md">
-        <div class="hidden bg-blue-navy text-white/75 sm:block">
-            <div class="mx-auto flex h-8 max-w-7xl items-center justify-between gap-5 px-8 text-[0.68rem] font-semibold uppercase tracking-[0.09em]">
-                <span>Facultad de Ciencias · Departamento de Biología</span>
-                <a href="https://www.epn.edu.ec/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 !text-white/75 hover:!text-white">
-                    Escuela Politécnica Nacional
-                    <svg viewBox="0 0 24 24" aria-hidden="true" class="size-3.5 fill-none stroke-current stroke-2"><path d="M14 5h5v5M10 14 19 5M19 14v5H5V5h5" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                </a>
-            </div>
-        </div>
-
-        <div class="mx-auto flex h-[4.75rem] max-w-7xl items-center justify-between gap-5 px-5 sm:px-8">
+        <div class="portal-header-container mx-auto flex h-[4.75rem] w-full items-center justify-between">
             <a href="{{ route('home') }}" class="group flex min-w-0 items-center gap-3 !text-blue-navy" aria-label="Inicio del Laboratorio de Invertebrados EPN">
                 <img src="{{ asset('images/logo-epn.png') }}" alt="" class="h-12 w-auto shrink-0 object-contain" />
                 <span class="h-10 w-px shrink-0 bg-blue-navy/20" aria-hidden="true"></span>
@@ -29,16 +19,16 @@
                 </span>
             </a>
 
-            <nav class="hidden h-full items-center gap-0 xl:flex" aria-label="Navegación principal">
-                <a href="{{ route('home') }}" class="inline-flex h-full items-center border-b-2 px-3 text-sm font-semibold transition {{ request()->routeIs('home') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">Inicio</a>
-                <a href="{{ route('home') }}#colecciones" class="inline-flex h-full items-center border-b-2 border-transparent px-3 text-sm font-semibold !text-text-secondary transition hover:!text-blue-navy">Colecciones</a>
-                <a href="{{ route('portal.catalogo') }}" class="inline-flex h-full items-center border-b-2 px-3 text-sm font-semibold transition {{ request()->routeIs('portal.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">Catálogo</a>
-                <a href="{{ route('home') }}#investigacion" class="inline-flex h-full items-center border-b-2 border-transparent px-3 text-sm font-semibold !text-text-secondary transition hover:!text-blue-navy">Investigación</a>
-                <a href="{{ route('home') }}#servicios" class="inline-flex h-full items-center border-b-2 border-transparent px-3 text-sm font-semibold !text-text-secondary transition hover:!text-blue-navy">Servicios</a>
-                <a href="{{ route('depositos.portal') }}" class="inline-flex h-full items-center border-b-2 px-3 text-sm font-semibold transition {{ request()->routeIs('depositos.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">Depósitos</a>
+            <nav class="hidden h-full min-w-0 items-center gap-0 lg:flex" aria-label="Navegación principal">
+                <a href="{{ route('home') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('home') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">Inicio</a>
+                <a href="{{ route('home') }}#colecciones" class="inline-flex h-full items-center border-b-2 border-transparent px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold !text-text-secondary transition hover:!text-blue-navy">Colecciones</a>
+                <a href="{{ route('portal.catalogo') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('portal.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">Catálogo</a>
+                <a href="{{ route('home') }}#investigacion" class="inline-flex h-full items-center border-b-2 border-transparent px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold !text-text-secondary transition hover:!text-blue-navy">Investigación</a>
+                <a href="{{ route('home') }}#servicios" class="inline-flex h-full items-center border-b-2 border-transparent px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold !text-text-secondary transition hover:!text-blue-navy">Servicios</a>
+                <a href="{{ route('depositos.portal') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('depositos.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">Depósitos</a>
             </nav>
 
-            <div class="hidden shrink-0 xl:block">
+            <div class="hidden shrink-0 lg:block">
                 @auth
                     <a href="{{ route('dashboard') }}" wire:navigate class="inline-flex min-h-11 items-center gap-2 rounded-md border border-blue-navy px-4 py-2 text-sm font-semibold !text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue">
                         <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
@@ -62,7 +52,7 @@
                 @click="abierto = !abierto"
                 :aria-expanded="abierto.toString()"
                 aria-controls="menu-portal-movil"
-                class="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-blue-navy/20 text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue xl:hidden"
+                class="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-blue-navy/20 text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue lg:hidden"
             >
                 <span class="sr-only">Abrir menú principal</span>
                 <svg x-show="!abierto" viewBox="0 0 24 24" aria-hidden="true" class="size-6 fill-none stroke-current stroke-2"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" /></svg>
@@ -77,10 +67,10 @@
             x-transition.opacity.duration.150ms
             @click.outside="abierto = false"
             @keydown.escape.window="abierto = false"
-            class="border-t border-blue-navy/10 bg-white px-5 py-4 shadow-lg xl:hidden"
+            class="border-t border-blue-navy/10 bg-white px-5 py-4 shadow-lg lg:hidden"
             aria-label="Navegación principal móvil"
         >
-            <div class="mx-auto grid max-w-7xl gap-1">
+            <div class="portal-container mx-auto grid gap-1">
                 <a href="{{ route('home') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">Inicio</a>
                 <a href="{{ route('home') }}#colecciones" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">Colecciones</a>
                 <a href="{{ route('portal.catalogo') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">Catálogo</a>
@@ -104,7 +94,7 @@
     </main>
 
     <footer class="border-t-4 border-bio-green bg-[#102B4E] text-white/75">
-        <div class="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.15fr_0.7fr_0.9fr]">
+        <div class="portal-container mx-auto grid gap-10 py-12 lg:grid-cols-[1.15fr_0.7fr_0.9fr]">
             <div>
                 <div class="flex items-center gap-3">
                     <img src="{{ asset('images/logo-epn.png') }}" alt="Escudo de la Escuela Politécnica Nacional" class="h-14 w-auto object-contain brightness-0 invert" />
@@ -136,7 +126,7 @@
             </div>
         </div>
         <div class="border-t border-white/10">
-            <div class="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-5 text-xs text-white/55 sm:px-8 md:flex-row md:items-center md:justify-between">
+            <div class="portal-container mx-auto flex flex-col gap-2 py-5 text-xs text-white/55 md:flex-row md:items-center md:justify-between">
                 <p>© {{ now()->year }} Escuela Politécnica Nacional. Todos los derechos reservados.</p>
                 <p>Los registros públicos respetan las políticas de divulgación y protección de datos sensibles de la colección.</p>
             </div>

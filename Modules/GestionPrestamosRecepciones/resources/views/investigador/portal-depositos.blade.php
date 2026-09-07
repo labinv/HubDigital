@@ -1,10 +1,10 @@
 <div class="overflow-hidden bg-white text-text-primary">
     <section class="relative isolate border-b border-blue-navy/10 bg-white" aria-labelledby="titulo-depositos">
-        <div class="mx-auto grid min-w-0 max-w-7xl lg:min-h-[34rem] lg:grid-cols-[0.9fr_1.1fr]">
-            <div class="relative z-10 flex min-w-0 items-center px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div class="portal-hero-grid min-w-0 lg:min-h-[34rem]">
+            <div class="portal-container portal-hero-copy relative z-10 flex items-center">
                 <div class="min-w-0 max-w-2xl">
-                    <h1 id="titulo-depositos" class="font-display text-4xl font-bold leading-[1.08] tracking-[-0.025em] text-blue-navy sm:text-5xl lg:text-[3.5rem]">
-                        <span class="block lg:whitespace-nowrap">Depósito de colecciones</span>
+                    <h1 id="titulo-depositos" class="portal-hero-title font-display font-bold leading-[1.08] tracking-[-0.025em] text-blue-navy">
+                        <span class="block">Depósito de colecciones</span>
                         <span class="block">biológicas</span>
                     </h1>
                     <div class="mt-5 h-1 w-14 rounded-full bg-bio-green" aria-hidden="true"></div>
@@ -12,7 +12,7 @@
                         Registra el depósito temporal o la donación de especímenes. El sistema lee tus documentos, recupera los datos útiles y te acompaña hasta la firma y el envío al equipo curatorial.
                     </p>
 
-                    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <div class="portal-responsive-actions mt-8">
                         @auth
                             <a
                                 href="{{ auth()->user()->esDepositante() || auth()->user()->esAdministrador() ? route('depositos.solicitud.crear') : route('dashboard') }}"
@@ -74,7 +74,7 @@
     </section>
 
     <section class="border-b border-blue-navy/10 bg-[#F5F8FC]" aria-labelledby="proceso-deposito">
-        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-14">
+        <div class="portal-container mx-auto py-12 lg:py-14">
             <div class="max-w-2xl">
                 <h2 id="proceso-deposito" class="font-display text-3xl font-bold tracking-tight text-blue-navy">Tu solicitud, paso a paso</h2>
                 <p class="mt-3 leading-7 text-text-secondary">La entrega física se coordina únicamente cuando la documentación ha sido revisada.</p>
@@ -105,7 +105,7 @@
     </section>
 
     <section class="bg-white" aria-labelledby="preparar-expediente">
-        <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_1px_1fr] lg:gap-12 lg:px-8 lg:py-16">
+        <div class="portal-container mx-auto grid gap-10 py-14 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:gap-12 lg:py-16">
             <article>
                 <div class="flex items-center gap-3">
                     <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-science-blue/10 text-science-blue">
@@ -142,7 +142,7 @@
     </section>
 
     <section class="bg-blue-navy text-white">
-        <div class="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-4 py-9 sm:px-6 md:flex-row md:items-center lg:px-8">
+        <div class="portal-container mx-auto flex flex-col items-start justify-between gap-6 py-9 md:flex-row md:items-center">
             <div class="flex items-start gap-4">
                 <div class="hidden size-11 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 sm:flex">
                     <flux:icon name="document-plus" class="size-6" />

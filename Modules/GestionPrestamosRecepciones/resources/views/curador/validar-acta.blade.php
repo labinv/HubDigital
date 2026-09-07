@@ -1,4 +1,4 @@
-<div class="space-y-5">
+<div class="hub-workspace space-y-5 p-4 sm:p-6">
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.actas') }}">
