@@ -107,8 +107,20 @@
                 <ul class="list-disc space-y-1 pl-5 text-sm">
                     @foreach($advertenciasDocumentales as $advertencia)
                         <li>{{ $advertencia }}</li>
-                    @endforeach
+                @endforeach
                 </ul>
+                <div class="mt-4">
+                    <flux:button
+                        variant="outline"
+                        size="sm"
+                        wire:click="solicitarRevisionDocumental"
+                        wire:loading.attr="disabled"
+                        wire:target="solicitarRevisionDocumental"
+                        icon="user-group"
+                    >
+                        Solicitar revisión documental
+                    </flux:button>
+                </div>
             </flux:callout>
         @endif
 

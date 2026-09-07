@@ -928,11 +928,32 @@ final class RegistroSolicitudDeposito extends Component
         DeclararSinDocumentacionHandler $declarar,
         SolicitarIntervencionCuratoriaHandler $escalar,
     ): void {
-        ($declarar)(new DeclararSinDocumentacionInput(solicitudId: $this->solicitudId));
+        // Esta ruta conserva su significado original cuando no hay documentos.
+        // Si ya se cargaron, el caso se registra como revisión documental y nunca
+        // como una declaración falsa de ausencia de documentación.
+        if ($this->documentosCargados === []) {
+            ($declarar)(new DeclararSinDocumentacionInput(solicitudId: $this->solicitudId));
+        }
         ($escalar)(new SolicitarIntervencionCuratoriaInput(
             solicitudId: $this->solicitudId,
             investigadorId: (string) auth()->id(),
         ));
+        $this->registrarSolicitudRevisionDocumental('asistencia solicitada por el depositante');
+        $this->intervencionCuratoriaActiva = true;
+    }
+
+    /** Solicita que curaduría resuelva incertidumbres, sin declarar documentos ausentes. */
+    public function solicitarRevisionDocumental(SolicitarIntervencionCuratoriaHandler $escalar): void
+    {
+        if ($this->solicitudId === null || $this->documentosCargados === []) {
+            return;
+        }
+
+        ($escalar)(new SolicitarIntervencionCuratoriaInput(
+            solicitudId: $this->solicitudId,
+            investigadorId: (string) auth()->id(),
+        ));
+        $this->registrarSolicitudRevisionDocumental('incertidumbre documental detectada por el analizador');
         $this->intervencionCuratoriaActiva = true;
     }
 
@@ -2088,6 +2109,26 @@ final class RegistroSolicitudDeposito extends Component
             $metadatos['registros_sugeridos'] ?? [],
             static fn (mixed $registro): bool => is_array($registro) && ! empty($registro['recordNumber']),
         ));
+    }
+
+    private function registrarSolicitudRevisionDocumental(string $motivo): void
+    {
+        if ($this->solicitudId === null) {
+            return;
+        }
+
+        $this->metadatosExtraccion['revision_documental'] = [
+            'estado' => 'pendiente',
+            'solicitada_por' => (string) auth()->id(),
+            'solicitada_en' => now()->toIso8601String(),
+            'motivo' => $motivo,
+            'advertencias' => $this->advertenciasDocumentales,
+            'version_documental' => ExtraccionDatosDocumentoJob::huellaDocumental($this->documentosCargados),
+        ];
+
+        SolicitudDepositoEloquentModel::whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->update(['extraccion_metadatos' => $this->metadatosExtraccion]);
     }
 
     private function registrarConfirmacionExtraccion(): void

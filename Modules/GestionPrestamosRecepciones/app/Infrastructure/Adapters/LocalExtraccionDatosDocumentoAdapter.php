@@ -47,7 +47,9 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
         $metadata = ['motor' => 'pdftotext+tesseract-5', 'requiere_revision_humana' => true, 'documentos' => [], 'campos' => []];
 
         foreach ($documentos as $nombre => $ruta) {
-            [$texto, $motor] = $this->leerTexto($ruta);
+            $lectura = $this->leerTexto($ruta);
+            $texto = $lectura['texto'];
+            $motor = $lectura['motor'];
             $analisis = $this->analizador->analizar($texto);
             $tipoEsperado = $this->analizador->tipoEsperadoParaNombre($nombre);
             $contenidoCompatible = $tipoEsperado === null
@@ -59,7 +61,9 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                 'caracteres' => mb_strlen($texto),
                 'texto_sha256' => hash('sha256', $texto),
                 'procesado_localmente' => true,
-                'modelo_ocr' => str_starts_with($motor, 'tesseract') ? 'Tesseract 5 spa+eng' : null,
+                'modelo_ocr' => $lectura['uso_ocr'] ? 'Tesseract 5 spa+eng' : null,
+                'paginas' => $lectura['paginas'],
+                'procesamiento_parcial' => $lectura['procesamiento_parcial'],
                 'contenido_compatible_con_casilla' => $contenidoCompatible,
                 'contenido_autocompletable' => $contenidoAutocompletable,
                 'analisis' => $analisis,
@@ -75,7 +79,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                     : null,
                 // La provincia se toma solamente de una etiqueta territorial del
                 // documento, nunca de la dirección de la entidad emisora.
-                'provinciaOrigen' => ($this->buscarProvincia($texto))['valor'],
+                'provinciaOrigen' => ($hallazgoProvincia = $this->buscarProvincia($texto))['valor'],
                 'localidad' => $analisis['origen'] ?? null,
                 'origenDonacion' => null,
                 'nombreInvestigador' => $analisis['titular'] ?? null,
@@ -102,7 +106,6 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                         default => null,
                     };
                     if ($campo === 'provinciaOrigen') {
-                        $hallazgoProvincia = $this->buscarProvincia($texto);
                         if ($hallazgoProvincia['confianza'] < 0.9) {
                             continue;
                         }
@@ -110,12 +113,18 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                         continue;
                     }
                     $valores[$campo] = trim($valor);
+                    $evidencia = $campo === 'provinciaOrigen'
+                        ? $hallazgoProvincia['evidencia']
+                        : ($analisis['evidencias_campos'][$campoAnalisis] ?? null);
                     $metadata['campos'][$campo] = [
-                        'confianza' => $analisis['confianzas_campos'][$campoAnalisis] ?? 0.0,
+                        'confianza' => $campo === 'provinciaOrigen'
+                            ? $hallazgoProvincia['confianza']
+                            : ($analisis['confianzas_campos'][$campoAnalisis] ?? 0.0),
                         'fuente' => $nombre,
                         'motor' => $motor,
-                        'metodo' => 'clasificador_ambiental',
-                        'evidencia' => $analisis['evidencias_campos'][$campoAnalisis] ?? null,
+                        'metodo' => $campo === 'provinciaOrigen' ? 'etiqueta_territorial' : 'clasificador_ambiental',
+                        'evidencia' => $evidencia,
+                        'pagina' => $this->paginaDeEvidencia($evidencia, $lectura['paginas']),
                         'requiere_confirmacion_humana' => true,
                     ];
                 }
@@ -176,26 +185,76 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
         );
     }
 
-    /** @return array{string, string} */
+    /**
+     * @return array{
+     *     texto: string,
+     *     motor: string,
+     *     uso_ocr: bool,
+     *     procesamiento_parcial: bool,
+     *     paginas: list<array{numero: int, metodo: string, caracteres: int, estado: string}>
+     * }
+     */
     private function leerTexto(string $ruta): array
     {
         $copia = $this->almacenamiento->copiaLocal($ruta);
         $archivo = $copia->ruta();
         if (! is_file($archivo)) {
-            return ['', 'archivo-no-encontrado'];
+            return [
+                'texto' => '',
+                'motor' => 'archivo-no-encontrado',
+                'uso_ocr' => false,
+                'procesamiento_parcial' => true,
+                'paginas' => [],
+            ];
         }
 
         try {
-            $this->validarPdfSeguro($archivo);
-            $texto = $this->ejecutar(new Process(['pdftotext', '-layout', '-nopgbrk', $archivo, '-']));
-            if (mb_strlen(trim($texto)) < config('document-extraction.minimum_text_length', 80)) {
-                $ocr = $this->aplicarOcr($archivo);
-                if (mb_strlen(trim($ocr)) > mb_strlen(trim($texto))) {
-                    return [$ocr, 'tesseract-5-spa-eng'];
+            $totalPaginas = $this->validarPdfSeguro($archivo);
+            $minimo = max(1, (int) config('document-extraction.minimum_text_length', 80));
+            $paginas = [];
+            $fragmentos = [];
+            $usoOcr = false;
+            $procesamientoParcial = false;
+
+            for ($numero = 1; $numero <= $totalPaginas; $numero++) {
+                $textoNativo = trim($this->ejecutar(new Process([
+                    'pdftotext', '-layout', '-f', (string) $numero, '-l', (string) $numero, $archivo, '-',
+                ])));
+                $metodo = 'pdftotext';
+                $textoPagina = $textoNativo;
+                $estado = 'texto_nativo';
+
+                if ($this->textoInsuficiente($textoNativo, $minimo)) {
+                    $ocr = trim($this->aplicarOcrPagina($archivo, $numero));
+                    $usoOcr = true;
+                    if ($ocr !== '') {
+                        $textoPagina = $ocr;
+                        $metodo = 'tesseract-5-spa-eng';
+                        $estado = 'ocr';
+                    } elseif ($textoNativo === '') {
+                        $estado = 'sin_texto';
+                        $procesamientoParcial = true;
+                    } else {
+                        $estado = 'texto_nativo_insuficiente';
+                        $procesamientoParcial = true;
+                    }
                 }
+
+                if ($textoPagina !== '') {
+                    // La marca conserva la procedencia para que cualquier evidencia
+                    // extraída pueda asociarse al folio y método real de lectura.
+                    $fragmentos[] = sprintf('[Página %d · %s]%s%s', $numero, $metodo, PHP_EOL, $textoPagina);
+                }
+                $paginas[] = [
+                    'numero' => $numero,
+                    'metodo' => $metodo,
+                    'caracteres' => mb_strlen($textoPagina),
+                    'estado' => $estado,
+                ];
             }
 
-            if (trim($texto) === '') {
+            $texto = trim(implode(PHP_EOL.PHP_EOL, $fragmentos));
+            if ($texto === '') {
                 try {
                     $texto = (new Parser)->parseFile($archivo)->getText();
                 } catch (\Throwable $e) {
@@ -203,7 +262,13 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                 }
             }
 
-            return [trim($texto), 'pdftotext'];
+            return [
+                'texto' => trim($texto),
+                'motor' => $usoOcr ? 'pdftotext+tesseract-5' : 'pdftotext',
+                'uso_ocr' => $usoOcr,
+                'procesamiento_parcial' => $procesamientoParcial,
+                'paginas' => $paginas,
+            ];
         } finally {
             $copia->limpiar();
         }
@@ -213,7 +278,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
      * Rechaza documentos patológicos antes de entregarlos a Poppler/Tesseract.
      * El peso del archivo no limita el tamaño descomprimido de una página PDF.
      */
-    private function validarPdfSeguro(string $archivo): void
+    private function validarPdfSeguro(string $archivo): int
     {
         $maxPaginas = max(1, (int) config('document-extraction.ocr_max_pages', 25));
         $maxPoints = max(842, (int) config('document-extraction.max_page_points', 1440));
@@ -260,9 +325,11 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
         if (($maxPixelesPagina * $paginas) > $maxPixeles) {
             throw new \RuntimeException('El PDF excede el límite seguro de procesamiento gráfico.');
         }
+
+        return $paginas;
     }
 
-    private function aplicarOcr(string $archivo): string
+    private function aplicarOcrPagina(string $archivo, int $numeroPagina): string
     {
         $directorio = storage_path('app/private/tmp/ocr/'.Str::uuid());
         File::ensureDirectoryExists($directorio, 0700, true);
@@ -270,7 +337,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
 
         try {
             $this->ejecutar(new Process([
-                'pdftoppm', '-f', '1', '-l', (string) config('document-extraction.ocr_max_pages', 25),
+                'pdftoppm', '-f', (string) $numeroPagina, '-l', (string) $numeroPagina,
                 '-r', (string) config('document-extraction.ocr_dpi', 200), '-jpeg', $archivo, $prefijo,
             ], timeout: 180));
 
@@ -298,6 +365,25 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
             Log::notice('Motor local de documentos no disponible', ['error' => $e->getMessage()]);
             return '';
         }
+    }
+
+    private function textoInsuficiente(string $texto, int $minimo): bool
+    {
+        $legible = preg_replace('/[^\p{L}\p{N}]+/u', '', $texto) ?? '';
+
+        return mb_strlen($legible) < $minimo;
+    }
+
+    /**
+     * @param list<array{numero: int, metodo: string, caracteres: int, estado: string}> $paginas
+     */
+    private function paginaDeEvidencia(?string $evidencia, array $paginas): ?int
+    {
+        if ($evidencia !== null && preg_match('/\[Página\s+(\d+)\s+·/u', $evidencia, $coincidencia) === 1) {
+            return (int) $coincidencia[1];
+        }
+
+        return count($paginas) === 1 ? $paginas[0]['numero'] : null;
     }
 
     /** @return array<string, array{valor: ?string, confianza: float, evidencia: ?string}> */

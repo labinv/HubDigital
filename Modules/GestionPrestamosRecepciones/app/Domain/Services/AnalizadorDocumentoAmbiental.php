@@ -224,13 +224,13 @@ final class AnalizadorDocumentoAmbiental
             $errores[] = 'El contenido no permite identificar inequívocamente una autorización de recolección ni una guía de movilización.';
         }
         if ($tipo !== self::DESCONOCIDO && $numeroDocumentoHallazgo['valor'] === null) {
-            $errores[] = 'No se pudo identificar el número oficial del documento con evidencia suficiente.';
+            $advertencias[] = 'No se pudo identificar el número oficial del documento con evidencia suficiente; requiere revisión humana.';
         }
         if ($tipo !== self::DESCONOCIDO && $autorizacion['valor'] === null) {
-            $errores[] = 'No se pudo identificar el número de la autorización de recolección relacionada con evidencia suficiente.';
+            $advertencias[] = 'No se pudo identificar el número de la autorización de recolección relacionada con evidencia suficiente; requiere revisión humana.';
         }
         if (($oficio['ambiguo'] ?? false) || ($autorizacion['ambiguo'] ?? false) || ($guia['ambiguo'] ?? false)) {
-            $errores[] = 'Se detectaron códigos oficiales contradictorios para un mismo campo; se requiere revisión humana sin autocompletar.';
+            $advertencias[] = 'Se detectaron varios candidatos para un código oficial; requiere revisión humana y no se autocompletará ese campo.';
         }
         if (preg_match($this->patronAutoridad(), $texto) !== 1) {
             $advertencias[] = 'No se reconoció inequívocamente a la autoridad ambiental nacional como entidad emisora.';
