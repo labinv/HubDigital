@@ -31,8 +31,9 @@ self.addEventListener('push', (event) => {
         // Con una sesión abierta la campana durable entrega el aviso inferior;
         // así no se duplica una alerta nativa por el mismo evento.
         const curadorActivo = windows.find((client) => client.focused
+            && client.visibilityState === 'visible'
             && new URL(client.url).origin === self.location.origin
-            && /\/(curador|depositos)/.test(new URL(client.url).pathname));
+            && /^\/(curador|prestamos|dashboard)(?:\/|$)/.test(new URL(client.url).pathname));
         if (curadorActivo) {
             curadorActivo.postMessage({ type: 'hubdigital-push-pendiente', notificationId });
             return undefined;

@@ -64,6 +64,11 @@ final class RevisarDeposito extends Component
     #[Validate('required|string|min:10')]
     public string $motivoRechazo = '';
 
+    /** @var list<string> Hallazgos de la revisión previa que el curador resuelve. */
+    public array $hallazgosRevisionResueltos = [];
+
+    public string $justificacionRevisionPrevia = '';
+
     // ── Modal: rechazo de justificaciones de alertas ─────────────────────────
     public bool $showRechazoJustificacionesModal = false;
 
@@ -256,7 +261,18 @@ final class RevisarDeposito extends Component
     /** Devuelve al consultor un borrador que aún debe completar, firmar y enviar. */
     public function aprobarRevisionPrevia(ResolverRevisionDocumentalPreviaHandler $handler): void
     {
-        ($handler)(new ResolverRevisionDocumentalPreviaInput($this->id, (string) auth()->id(), true));
+        $this->validate([
+            'hallazgosRevisionResueltos' => ['required', 'array', 'min:1'],
+            'justificacionRevisionPrevia' => ['required', 'string', 'min:10'],
+        ]);
+        ($handler)(new ResolverRevisionDocumentalPreviaInput(
+            $this->id,
+            (string) auth()->id(),
+            true,
+            $this->justificacionRevisionPrevia,
+            false,
+            array_values($this->hallazgosRevisionResueltos),
+        ));
         $this->redirectRoute('prestamos.curador.depositos', navigate: true);
     }
 

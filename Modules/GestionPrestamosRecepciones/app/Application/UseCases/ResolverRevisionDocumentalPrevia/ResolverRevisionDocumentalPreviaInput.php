@@ -12,5 +12,7 @@ final readonly class ResolverRevisionDocumentalPreviaInput
         public bool $favorable,
         public string $motivo = '',
         public bool $definitiva = false,
+        /** @var list<string> */
+        public array $hallazgosResueltos = [],
     ) {}
 }

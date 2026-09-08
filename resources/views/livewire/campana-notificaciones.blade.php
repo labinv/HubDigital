@@ -23,7 +23,8 @@
     x-on:scroll.window.capture="open && reposition()"
     x-on:keydown.escape.window="open = false"
     x-on:hub-pwa-status.window="pwaStatus = $event.detail.status; pwaMessage = $event.detail.message || ''"
-    class="relative">
+    class="relative"
+    data-hub-notification-root>
 
     {{-- Cada identidad pendiente se observa por separado. El atributo no vive
          en el contenedor Livewire porque puede cambiar sin que el nodo cambie. --}}

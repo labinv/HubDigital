@@ -70,8 +70,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             return;
         }
 
-        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
-            ->update(['extraccion_estado' => 'procesando', 'documentos_procesados' => '[]']);
+        $this->actualizarEstadoSiVersionVigente('procesando', []);
 
         try {
             $acumulado = [
@@ -242,42 +241,29 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 return;
             }
 
-            $id = SolicitudDepositoId::from($this->solicitudId);
-            $solicitud = $repo->buscarPorId($id);
-
-            if ($solicitud === null) {
-                throw SolicitudNoEncontradaException::conId($this->solicitudId);
-            }
-
-            $solicitud->integrarDatosDeDocumentos(
-                datos: $datosIntegrados,
-                nombresDocumentos: array_keys($this->documentos),
-            );
-
-            $transactionManager->executeTransactional(function () use ($solicitud, $repo, $eventPublisher): void {
-                if (! $this->esVersionVigente()) {
-                    return;
-                }
-                $repo->guardar($solicitud);
-                foreach ($solicitud->pullEvents() as $event) {
-                    $eventPublisher->publish($event);
-                }
-            });
+            $eventos = [];
+            $aplicada = false;
 
             // Persistir firmas después de la integración de dominio para evitar
             // inconsistencia si la transacción anterior falla.
-            DB::transaction(function () use ($firmas, $metadatosExtraccion): void {
+            $transactionManager->executeTransactional(function () use ($repo, $datosIntegrados, $firmas, &$metadatosExtraccion, &$eventos, &$aplicada): void {
                 $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->firstOrFail();
                 if (self::huellaDocumental($modelo->documentos_cargados ?? []) !== $this->versionDocumental) {
                     return;
                 }
+                $solicitud = $repo->buscarPorIdParaActualizar(SolicitudDepositoId::from($this->solicitudId));
+                if ($solicitud === null) {
+                    throw SolicitudNoEncontradaException::conId($this->solicitudId);
+                }
+                $solicitud->integrarDatosDeDocumentos($datosIntegrados, array_keys($this->documentos));
+                $repo->guardar($solicitud);
                 $metadatosVigentes = $modelo->extraccion_metadatos ?? [];
                 $revisionHumana = $metadatosVigentes['revision_documental'] ?? null;
                 $historialRevision = $metadatosVigentes['revision_documental_historial'] ?? [];
 
                 // Una extracción tardía puede enriquecer sus resultados, pero nunca
                 // reemplazar una resolución humana de la misma versión documental.
-                if (is_array($revisionHumana) && in_array($revisionHumana['estado'] ?? null, ['favorable', 'requiere_correccion', 'rechazada'], true)) {
+                if (is_array($revisionHumana)) {
                     $metadatosExtraccion['revision_documental'] = $revisionHumana;
                     $metadatosExtraccion['revision_documental_historial'] = $historialRevision;
                 }
@@ -287,15 +273,21 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                     'extraccion_metadatos' => $metadatosExtraccion,
                     'extraccion_estado' => 'completada',
                 ])->save();
+                $eventos = $solicitud->pullEvents();
+                $aplicada = true;
             });
+            if ($aplicada) {
+                foreach ($eventos as $event) {
+                    $eventPublisher->publish($event);
+                }
+            }
         } catch (ModeloIANoDisponibleException $e) {
             Log::warning('ExtraccionDatosDocumentoJob: modelo de IA no disponible', [
                 'solicitudId' => $this->solicitudId,
                 'error' => $e->getMessage(),
             ]);
 
-            SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
-                ->update(['extraccion_estado' => 'error_modelo']);
+            $this->actualizarEstadoSiVersionVigente('error_modelo');
         } catch (\Throwable $e) {
             Log::error('ExtraccionDatosDocumentoJob: error al procesar documentos', [
                 'solicitudId' => $this->solicitudId,
@@ -319,8 +311,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             'error' => $error->getMessage(),
         ]);
 
-        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
-            ->update(['extraccion_estado' => 'fallida']);
+        $this->actualizarEstadoSiVersionVigente('fallida');
     }
 
     private function esVersionVigente(): bool
@@ -334,6 +325,22 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
         }
 
         return self::huellaDocumental($actual) === $this->versionDocumental;
+    }
+
+    /** @param list<string>|null $procesados */
+    private function actualizarEstadoSiVersionVigente(string $estado, ?array $procesados = null): void
+    {
+        DB::transaction(function () use ($estado, $procesados): void {
+            $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->first();
+            if ($modelo === null || self::huellaDocumental($modelo->documentos_cargados ?? []) !== $this->versionDocumental) {
+                return;
+            }
+            $cambios = ['extraccion_estado' => $estado];
+            if ($procesados !== null) {
+                $cambios['documentos_procesados'] = $procesados;
+            }
+            $modelo->forceFill($cambios)->save();
+        });
     }
 
     /** @param array<string, string> $documentos */
@@ -354,6 +361,9 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
         array $analisis,
         AlmacenamientoDepositos $almacenamiento,
     ): void {
+        if (! $this->esVersionVigente()) {
+            return;
+        }
         $ahora = now();
         $contenido = array_intersect_key($analisis, array_flip([
             'numero_documento', 'numero_autorizacion', 'titular', 'organizacion', 'ruc',

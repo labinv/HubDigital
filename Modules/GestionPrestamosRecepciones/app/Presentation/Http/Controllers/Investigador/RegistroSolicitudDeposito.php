@@ -875,20 +875,19 @@ final class RegistroSolicitudDeposito extends Component
             ]
         );
 
-        if (isset($this->documentosCargados[$nombre])) {
-            $rutaAnterior = $this->documentosCargados[$nombre];
-            app(AlmacenamientoDepositos::class)->eliminar($rutaAnterior);
-        }
-
         $ruta = app(AlmacenamientoDepositos::class)->guardarArchivo($archivo, 'depositos/'.$this->solicitudId);
-        $this->documentosCargados[$nombre] = $ruta;
-        $this->nombresArchivosOriginales[$nombre] = $archivo->getClientOriginalName();
+        $rutaAnterior = $this->documentosCargados[$nombre] ?? null;
+        $documentosActualizados = $this->documentosCargados;
+        $nombresActualizados = $this->nombresArchivosOriginales;
+        $documentosActualizados[$nombre] = $ruta;
+        $nombresActualizados[$nombre] = $archivo->getClientOriginalName();
         $this->extraccionProcesando = false;
         $this->documentosProcesados = [];
         $this->estadoValidacionContenido = '';
         $this->erroresDocumentales = [];
         $this->advertenciasDocumentales = [];
-        DB::transaction(function (): void {
+        try {
+        DB::transaction(function () use ($documentosActualizados, $nombresActualizados): void {
             $modelo = SolicitudDepositoEloquentModel::query()
                 ->whereKey($this->solicitudId)
                 ->where('investigador_id', (string) auth()->id())
@@ -901,17 +900,26 @@ final class RegistroSolicitudDeposito extends Component
                 $historial[] = [...$revision, 'estado' => 'invalidada', 'invalidada_en' => now()->toIso8601String(), 'motivo_invalidacion' => 'El consultor sustituyó documentación del expediente.'];
             }
             $modelo->forceFill([
+                'documentos_cargados' => $documentosActualizados,
+                'nombres_archivos_originales' => $nombresActualizados,
                 'extraccion_estado' => null,
-                'extraccion_metadatos' => [
+                'extraccion_metadatos' => [...$metadatos,
                     'revision_documental' => is_array($revision) ? [...$revision, 'estado' => 'invalidada'] : null,
-                    'revision_documental_historial' => $historial,
-                ],
+                    'revision_documental_historial' => $historial],
                 'documentos_procesados' => [],
             ])->save();
         });
+        } catch (\Throwable $error) {
+            app(AlmacenamientoDepositos::class)->eliminar($ruta);
+            throw $error;
+        }
+        $this->documentosCargados = $documentosActualizados;
+        $this->nombresArchivosOriginales = $nombresActualizados;
+        if (is_string($rutaAnterior) && $rutaAnterior !== '') {
+            app(AlmacenamientoDepositos::class)->eliminar($rutaAnterior);
+        }
         $this->invalidarFirmaSolicitud();
 
-        $this->persistirEstadoWizard();
     }
 
     /**

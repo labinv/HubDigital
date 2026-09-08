@@ -14,6 +14,7 @@ final class EloquentRevisionDocumentalAdapter implements RevisionDocumentalPort
         $modelo = SolicitudDepositoEloquentModel::query()->whereKey($solicitudId)->lockForUpdate()->firstOrFail();
         $metadatos = $modelo->extraccion_metadatos ?? [];
         $revision['version_documental_persistida'] = $this->huellaDocumentosPersistidos($modelo);
+        $revision['hallazgos'] = $this->hallazgosEstructurados($revision, $revision['version_documental_persistida']);
         $revision['version'] = count($metadatos['revision_documental_historial'] ?? []) + 1;
         $historial = $metadatos['revision_documental_historial'] ?? [];
         $historial[] = $revision;
@@ -27,36 +28,26 @@ final class EloquentRevisionDocumentalAdapter implements RevisionDocumentalPort
         $modelo = SolicitudDepositoEloquentModel::query()->whereKey($solicitudId)->lockForUpdate()->firstOrFail();
         $metadatos = $modelo->extraccion_metadatos ?? [];
         $actual = $metadatos['revision_documental'] ?? [];
+        if (! is_array($actual) || ($actual['estado'] ?? null) !== 'pendiente' || ! is_string($actual['version_documental_persistida'] ?? null)) {
+            throw new \DomainException('No existe una revisión documental pendiente, identificable y versionada para resolver.');
+        }
         $huellaActual = $this->huellaDocumentosPersistidos($modelo);
-        if (is_array($actual)
-            && isset($actual['version_documental_persistida'])
-            && ! hash_equals((string) $actual['version_documental_persistida'], $huellaActual)) {
-            $historial = $metadatos['revision_documental_historial'] ?? [];
-            $historial[] = [...$actual, 'estado' => 'invalidada', 'invalidada_en' => now()->toIso8601String(), 'motivo_invalidacion' => 'Los documentos fueron sustituidos antes de resolver la revisión.'];
-            $metadatos['revision_documental_historial'] = $historial;
-            $metadatos['revision_documental'] = [...$actual, 'estado' => 'invalidada'];
+        if (! hash_equals($actual['version_documental_persistida'], $huellaActual)) {
+            $invalida = [...$actual, 'estado' => 'invalidada', 'invalidada_en' => now()->toIso8601String(), 'motivo_invalidacion' => 'Los documentos fueron sustituidos antes de resolver la revisión.'];
+            $metadatos['revision_documental'] = $invalida;
+            $metadatos['revision_documental_historial'] = [...($metadatos['revision_documental_historial'] ?? []), $invalida];
             $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
-
             return false;
         }
-        if (! is_array($actual) || ($actual['estado'] ?? null) !== 'pendiente' || empty($actual['version_documental_persistida'])) {
-            throw new \DomainException('No existe una revisión documental pendiente y versionada para resolver.');
+        $permitidos = array_column(is_array($actual['hallazgos'] ?? null) ? $actual['hallazgos'] : [], 'id');
+        $seleccionados = array_values(array_unique(array_filter($resolucion['hallazgos_resueltos'] ?? [], 'is_string')));
+        if ($seleccionados === [] || array_diff($seleccionados, $permitidos) !== []) {
+            throw new \DomainException('La resolución debe identificar únicamente hallazgos de la revisión documental vigente.');
         }
-        $resolucion['version_documental_persistida'] = $actual['version_documental_persistida']
-            ?? $huellaActual;
-        // La decisión favorable queda limitada a los hallazgos que el curador vio
-        // en esta versión; un cambio o un hallazgo nuevo nunca queda cubierto.
-        $resolucion['hallazgos_resueltos'] = array_values(array_unique(array_filter(
-            [
-                ...(is_array($actual['errores'] ?? null) ? $actual['errores'] : []),
-                ...(is_array($actual['advertencias'] ?? null) ? $actual['advertencias'] : []),
-            ],
-            static fn (mixed $hallazgo): bool => is_string($hallazgo) && trim($hallazgo) !== '',
-        )));
+        $resolucion['version_documental_persistida'] = $actual['version_documental_persistida'];
+        $resolucion['hallazgos_resueltos'] = $seleccionados;
         $metadatos['revision_documental'] = [...$actual, ...$resolucion];
-        $historial = $metadatos['revision_documental_historial'] ?? [];
-        $historial[] = $metadatos['revision_documental'];
-        $metadatos['revision_documental_historial'] = $historial;
+        $metadatos['revision_documental_historial'] = [...($metadatos['revision_documental_historial'] ?? []), $metadatos['revision_documental']];
         $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
         return true;
     }
@@ -65,7 +56,19 @@ final class EloquentRevisionDocumentalAdapter implements RevisionDocumentalPort
     {
         $documentos = $modelo->documentos_cargados ?? [];
         ksort($documentos);
-
         return hash('sha256', json_encode($documentos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    }
+
+    /** @return list<array{id:string,tipo:string,descripcion:string,evidencia:string}> */
+    private function hallazgosEstructurados(array $revision, string $version): array
+    {
+        $hallazgos = [];
+        foreach (['errores', 'advertencias'] as $tipo) {
+            foreach (is_array($revision[$tipo] ?? null) ? $revision[$tipo] : [] as $descripcion) {
+                if (! is_string($descripcion) || trim($descripcion) === '') continue;
+                $hallazgos[] = ['id' => hash('sha256', $version.'|'.$tipo.'|'.$descripcion), 'tipo' => $tipo, 'descripcion' => $descripcion, 'evidencia' => $version];
+            }
+        }
+        return $hallazgos;
     }
 }

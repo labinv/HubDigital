@@ -192,6 +192,24 @@
                             <flux:text class="text-text-secondary text-sm">
                                 Esta revisión atiende incertidumbres de los documentos. Una decisión favorable devuelve el expediente al consultor: todavía debe completar sus datos, generar, firmar y enviar la solicitud antes de la decisión final.
                             </flux:text>
+                            @php($hallazgosRevision = $deposito->extraccion_metadatos['revision_documental']['hallazgos'] ?? [])
+                            <div class="space-y-2 rounded-lg border border-amber-200 bg-white p-3">
+                                <p class="text-xs font-semibold text-text-primary">Hallazgos que resuelves en esta revisión</p>
+                                @forelse($hallazgosRevision as $hallazgo)
+                                    <label class="flex items-start gap-2 text-xs text-text-secondary">
+                                        <input type="checkbox" value="{{ $hallazgo['id'] ?? '' }}" wire:model="hallazgosRevisionResueltos" class="mt-0.5 rounded border-amber-400 text-amber-600">
+                                        <span><span class="font-medium text-text-primary">{{ ucfirst($hallazgo['tipo'] ?? 'observación') }}:</span> {{ $hallazgo['descripcion'] ?? '' }}</span>
+                                    </label>
+                                @empty
+                                    <p class="text-xs text-danger">Esta revisión no conserva hallazgos seleccionables. Solicita una nueva revisión documental.</p>
+                                @endforelse
+                                <flux:error name="hallazgosRevisionResueltos" />
+                            </div>
+                            <flux:field>
+                                <flux:label>Justificación de la revisión</flux:label>
+                                <flux:textarea wire:model="justificacionRevisionPrevia" rows="3" placeholder="Describe la evidencia revisada y el alcance de la decisión." />
+                                <flux:error name="justificacionRevisionPrevia" />
+                            </flux:field>
                             <div class="flex flex-col gap-2">
                                 <flux:button variant="primary" icon="arrow-uturn-left"
                                     wire:click="pedirConfirmacion('revision-previa')">
