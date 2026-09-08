@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Enums\RolUsuario;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -10,7 +11,6 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenDivulgableEloquentModel;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
@@ -28,6 +28,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\EventoCicloIotEloquentModel;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\LocalidadEloquentModel;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\TaxonEloquentModel;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('layouts.app')]
 #[Title('Dashboard')]
@@ -48,6 +49,7 @@ class Dashboard extends Component
         abort_unless(auth()->user()?->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN), 403);
 
         $inicio = $this->inicioAnalisis();
+
         return response()->streamDownload(function () use ($inicio): void {
             $salida = fopen('php://output', 'wb');
             // BOM UTF-8 para que Excel conserve tildes y nombres taxonómicos.
@@ -410,9 +412,9 @@ class Dashboard extends Component
 
         $actas = RecepcionLoteEloquentModel::query()
             ->join('recepciones.solicitudes_deposito as solicitud', 'solicitud.id', '=', 'recepciones.recepcion_lotes.solicitud_deposito_id')
-            ->whereIn('estado', $estadosConstatados)
-            ->whereNull('acta_firmada_ruta')
-            ->latest('verificado_en')
+            ->whereIn('recepciones.recepcion_lotes.estado', $estadosConstatados)
+            ->whereNull('recepciones.recepcion_lotes.acta_firmada_ruta')
+            ->latest('recepciones.recepcion_lotes.verificado_en')
             ->limit(8)
             ->get([
                 'recepciones.recepcion_lotes.solicitud_deposito_id',
@@ -439,7 +441,7 @@ class Dashboard extends Component
             ->all();
     }
 
-    private function inicioAnalisis(): \Carbon\CarbonImmutable
+    private function inicioAnalisis(): CarbonImmutable
     {
         $meses = in_array($this->periodoAnalisis, ['6', '12', '24'], true)
             ? (int) $this->periodoAnalisis
@@ -452,7 +454,7 @@ class Dashboard extends Component
      * Estados excluyentes de la recepción para no contar un mismo lote en
      * constatación y nuevamente como acta firmada.
      *
-     * @param list<string> $estadosConstatados
+     * @param  list<string>  $estadosConstatados
      * @return array<string, int>
      */
     private function estadosRecepcionExcluyentes(\DateTimeInterface $inicio, array $estadosConstatados): array
