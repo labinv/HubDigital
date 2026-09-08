@@ -7,8 +7,8 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 use Illuminate\Http\Response;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionInput;
+use Modules\GestionPrestamosRecepciones\Application\Ports\OriginalActaRecepcionPort;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
-use Modules\GestionPrestamosRecepciones\Presentation\Support\GestorOriginalActaRecepcion;
 
 /** Entrega el acta final al depositante y la version por firmar al curador. */
 final class DescargarActaRecepcion
@@ -17,7 +17,7 @@ final class DescargarActaRecepcion
         string $id,
         ConsultarDetalleRecepcionHandler $handler,
         AlmacenamientoDepositos $almacenamiento,
-        GestorOriginalActaRecepcion $originales,
+        OriginalActaRecepcionPort $originales,
     ): Response {
         $recepcion = $handler->handle(new ConsultarDetalleRecepcionInput($id));
         abort_if($recepcion === null, 404);

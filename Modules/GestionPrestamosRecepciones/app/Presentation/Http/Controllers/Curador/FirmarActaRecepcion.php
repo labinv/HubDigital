@@ -12,8 +12,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRec
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaInput;
+use Modules\GestionPrestamosRecepciones\Application\Ports\OriginalActaRecepcionPort;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
-use Modules\GestionPrestamosRecepciones\Presentation\Support\GestorOriginalActaRecepcion;
 
 /** Recibe solo el PDF que el firmador local produjo; nunca recibe el P12 o su clave. */
 final class FirmarActaRecepcion
@@ -24,7 +24,7 @@ final class FirmarActaRecepcion
         ConsultarDetalleRecepcionHandler $consultar,
         SubirActaRecepcionFirmadaHandler $guardarFirma,
         AlmacenamientoDepositos $almacenamiento,
-        GestorOriginalActaRecepcion $originales,
+        OriginalActaRecepcionPort $originales,
     ): JsonResponse {
         $request->validate([
             'pdf_firmado' => ['required', 'file', 'mimes:pdf', 'max:15360'],

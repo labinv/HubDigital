@@ -17,11 +17,13 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\EstadoEspecimenCatalog
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorCodigoPrestamo;
+use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorActaRecepcionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\OriginalActaRecepcionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\RevisionDocumentalPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\SolicitudFirmadaPort;
@@ -63,6 +65,8 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarP
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\VerificarAlmacenamientoDepositosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\DomPdfGeneratorAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Documentos\DomPdfGeneradorActaRecepcionAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Documentos\EloquentOriginalActaRecepcionAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUserInvestigadorEmailAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUsuarioNombreAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
@@ -135,6 +139,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         EstadoEspecimenCatalogoPort::class => InventarioGestionColeccionEstadoEspecimenAdapter::class,
         ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
         PdfGeneratorPort::class => DomPdfGeneratorAdapter::class,
+        GeneradorActaRecepcionPort::class => DomPdfGeneradorActaRecepcionAdapter::class,
+        OriginalActaRecepcionPort::class => EloquentOriginalActaRecepcionAdapter::class,
         VerificacionEspecimenesRepositoryInterface::class => EloquentVerificacionEspecimenesRepository::class,
         GeneradorCodigoPrestamo::class => EloquentGeneradorCodigoPrestamoAdapter::class,
         PatenteAnualRepositoryInterface::class => EloquentPatenteAnualRepository::class,

@@ -8,12 +8,11 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\OriginalActaRecepcionPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\GenerarActaRecepcion\GenerarActaRecepcionHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\GenerarActaRecepcion\GenerarActaRecepcionInput;
-use Modules\GestionPrestamosRecepciones\Presentation\Support\GestorOriginalActaRecepcion;
-use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfActaRecepcion;
 
 #[Layout('layouts.app', params: ['title' => 'Acta final de recepción'])]
 final class GestionActaRecepcion extends Component
@@ -28,8 +27,7 @@ final class GestionActaRecepcion extends Component
     public function generar(
         GenerarActaRecepcionHandler $handler,
         ConsultarDetalleRecepcionHandler $consultar,
-        GeneradorPdfActaRecepcion $generadorPdf,
-        GestorOriginalActaRecepcion $originales,
+        OriginalActaRecepcionPort $originales,
     ): void
     {
         $resultado = ($handler)(new GenerarActaRecepcionInput(
@@ -38,15 +36,14 @@ final class GestionActaRecepcion extends Component
         ));
         $recepcion = $consultar->handle(new ConsultarDetalleRecepcionInput($this->id));
         abort_if($recepcion === null || $resultado->ruta === '', 409, 'No fue posible preparar el original oficial del acta.');
-        $originales->materializar($this->id, (string) auth()->id(), $recepcion, $generadorPdf);
+        $originales->materializar($this->id, (string) auth()->id(), $recepcion);
         $this->dispatch('toast', message: 'Acta final generada. Ya puede revisarla y firmarla.');
     }
 
     public function reemitirOriginal(
         int $versionEsperada,
         ConsultarDetalleRecepcionHandler $consultar,
-        GeneradorPdfActaRecepcion $generadorPdf,
-        GestorOriginalActaRecepcion $originales,
+        OriginalActaRecepcionPort $originales,
     ): void {
         $recepcion = $consultar->handle(new ConsultarDetalleRecepcionInput($this->id));
         abort_if($recepcion === null || ! $recepcion->actaEmitida || $recepcion->actaFirmada, 409);
@@ -54,7 +51,7 @@ final class GestionActaRecepcion extends Component
             $originales->obtenerVerificado($this->id);
             abort(409, 'El original oficial todavía está disponible.');
         } catch (\DomainException) {
-            $originales->materializar($this->id, (string) auth()->id(), $recepcion, $generadorPdf, true, $versionEsperada);
+            $originales->materializar($this->id, (string) auth()->id(), $recepcion, true, $versionEsperada);
         }
         $this->dispatch('toast', message: 'Se emitió una nueva versión del original. Revísela completa antes de firmar.');
     }
@@ -62,7 +59,7 @@ final class GestionActaRecepcion extends Component
     public function render(
         ConsultarDetalleRecepcionHandler $consultar,
         UsuarioNombrePort $usuarios,
-        GestorOriginalActaRecepcion $originales,
+        OriginalActaRecepcionPort $originales,
     ): View
     {
         $recepcion = $consultar->handle(new ConsultarDetalleRecepcionInput($this->id));

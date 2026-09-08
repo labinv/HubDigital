@@ -89,6 +89,20 @@ El certificado y la contraseña no forman parte del repositorio. La validez de
 una firma y su aceptación institucional deben confirmarse en el ambiente que
 corresponda.
 
+## Cierre arquitectonico de actas y avisos
+
+- La generación y preservación del original de un acta se resuelve mediante
+  puertos de aplicación e implementaciones de infraestructura: la capa de
+  presentación no crea PDFs, no accede a la base de datos ni escribe objetos.
+- El original se conserva con referencia, versión y huella SHA-256. Una
+  reemisión solo es posible de forma explícita antes de firmar y conserva el
+  historial del documento sustituido.
+- Las notificaciones de la bandeja curatorial se entregan por lotes de sesión,
+  se pueden reabrir desde el historial y sus enlaces internos solo llevan a
+  pantallas autorizadas del módulo.
+- La aceptación funcional institucional sigue pendiente. Debe realizarla el
+  equipo de la EPN en desarrollo; no se reemplaza por declaraciones técnicas.
+
 ## Arquitectura de desarrollo gratuito
 
 ```text
