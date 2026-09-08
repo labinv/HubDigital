@@ -2156,9 +2156,9 @@ final class RegistroSolicitudDeposito extends Component
             return false;
         }
 
-        // Una aprobación humana no es una dispensa general: solo cubre las
-        // advertencias concretas que quedaron registradas al resolverla.
-        $alcance = $revision['advertencias_resueltas'] ?? [];
+        // Una aprobación humana no es una dispensa general: solo cubre los
+        // hallazgos concretos que quedaron registrados al resolverla.
+        $alcance = $revision['hallazgos_resueltos'] ?? [];
         if (! is_array($alcance) || $alcance === []) {
             return false;
         }
@@ -2176,6 +2176,7 @@ final class RegistroSolicitudDeposito extends Component
             'solicitada_por' => (string) auth()->id(),
             'solicitada_en' => now()->toIso8601String(),
             'motivo' => $motivo,
+            'errores' => $this->erroresDocumentales,
             'advertencias' => $this->advertenciasDocumentales,
             'version_documental' => ExtraccionDatosDocumentoJob::huellaDocumental($this->documentosCargados),
         ];
