@@ -8,7 +8,9 @@ use App\Concerns\HandlesDomainExceptions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -151,8 +153,8 @@ final class RegistroSolicitudDeposito extends Component
     public int $extraccionIniciadaEn = 0;
 
     /**
-     * Tipo de advertencia cuando la extracción falla pero el flujo continúa.
-     * Valores posibles: '' | 'error_modelo' | 'error_cola'
+     * Tipo de advertencia cuando la extracción no puede completarse.
+     * Valores posibles: '' | 'error_modelo' | 'error_cola' | 'error_procesamiento'
      */
     public string $advertenciaExtraccion = '';
 
@@ -1009,12 +1011,59 @@ final class RegistroSolicitudDeposito extends Component
             }
         }
 
-        if (! $this->extraccionProcesando) {
-            ExtraccionDatosDocumentoJob::dispatch(
-                $this->solicitudId,
-                $this->documentosCargados,
-                ExtraccionDatosDocumentoJob::huellaDocumental($this->documentosCargados),
-            );
+        if (! $this->extraccionProcesando && $this->solicitudId !== null) {
+            $this->resetErrorBag('documentos');
+            $this->estadoValidacionContenido = '';
+            $this->erroresDocumentales = [];
+            $this->advertenciasDocumentales = [];
+            $this->advertenciaExtraccion = '';
+
+            $versionDocumental = ExtraccionDatosDocumentoJob::huellaDocumental($this->documentosCargados);
+            $ejecucionId = (string) Str::uuid();
+            $modelo = SolicitudDepositoEloquentModel::query()
+                ->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())
+                ->firstOrFail();
+            $metadatos = $modelo->extraccion_metadatos ?? [];
+            unset($metadatos['fallo_extraccion']);
+            $metadatos['ejecucion_id'] = $ejecucionId;
+            $modelo->forceFill([
+                'extraccion_estado' => 'en_cola',
+                'documentos_procesados' => [],
+                'extraccion_metadatos' => $metadatos,
+            ])->save();
+
+            try {
+                ExtraccionDatosDocumentoJob::dispatch(
+                    $this->solicitudId,
+                    $this->documentosCargados,
+                    $versionDocumental,
+                    $ejecucionId,
+                );
+            } catch (\Throwable $error) {
+                Log::error('No fue posible encolar la extracción documental', [
+                    'solicitudId' => $this->solicitudId,
+                    'error' => $error->getMessage(),
+                ]);
+                $mensaje = 'El análisis no pudo ponerse en cola. Conservamos tus archivos; vuelve a intentarlo en unos minutos.';
+                $metadatos['fallo_extraccion'] = [
+                    'codigo' => 'cola_no_disponible',
+                    'documento' => null,
+                    'mensaje_usuario' => $mensaje,
+                    'reintento_permitido' => true,
+                    'ocurrido_en' => now()->toIso8601String(),
+                    'version_documental' => $versionDocumental,
+                ];
+                $modelo->forceFill([
+                    'extraccion_estado' => 'fallida',
+                    'extraccion_metadatos' => $metadatos,
+                ])->save();
+                $this->advertenciaExtraccion = 'error_cola';
+                $this->metadatosExtraccion = $metadatos;
+                $this->avanzarDesdeFalloExtraccion($mensaje, 'error_cola');
+
+                return;
+            }
             $this->extraccionProcesando = true;
             $this->extraccionIniciadaEn = now()->timestamp;
             // Persiste el estado para que updated_at refleje el momento del dispatch,
@@ -1051,10 +1100,13 @@ final class RegistroSolicitudDeposito extends Component
             : 0;
 
         // Queue nunca arrancó el job (estado sigue null tras 45 s).
-        if ($model->extraccion_estado === null && $segundosTranscurridos > 45) {
+        if (in_array($model->extraccion_estado, [null, 'en_cola'], true) && $segundosTranscurridos > 45) {
             $this->extraccionProcesando = false;
             $this->advertenciaExtraccion = 'error_cola';
-            $this->avanzarDesdeFalloExtraccion();
+            $this->avanzarDesdeFalloExtraccion(
+                'El análisis todavía no pudo iniciar. Conservamos tus archivos; vuelve a intentarlo en unos minutos.',
+                'error_cola',
+            );
 
             return;
         }
@@ -1063,7 +1115,10 @@ final class RegistroSolicitudDeposito extends Component
         if ($model->extraccion_estado === 'procesando' && $segundosTranscurridos > 300) {
             $this->extraccionProcesando = false;
             $this->advertenciaExtraccion = 'error_cola';
-            $this->avanzarDesdeFalloExtraccion();
+            $this->avanzarDesdeFalloExtraccion(
+                'El análisis excedió el tiempo disponible. Conservamos tus archivos; vuelve a intentarlo.',
+                'error_cola',
+            );
 
             return;
         }
@@ -1071,15 +1126,23 @@ final class RegistroSolicitudDeposito extends Component
         if ($model->extraccion_estado === 'error_modelo') {
             $this->extraccionProcesando = false;
             $this->advertenciaExtraccion = 'error_modelo';
-            $this->avanzarDesdeFalloExtraccion();
+            $this->metadatosExtraccion = $model->extraccion_metadatos ?? [];
+            $this->avanzarDesdeFalloExtraccion(
+                $this->mensajeFalloExtraccion('El motor local de lectura no está disponible temporalmente. Conservamos tus archivos; vuelve a intentar el análisis.'),
+                'error_modelo',
+            );
 
             return;
         }
 
         if ($model->extraccion_estado === 'fallida') {
             $this->extraccionProcesando = false;
-            $this->advertenciaExtraccion = 'error_modelo';
-            $this->avanzarDesdeFalloExtraccion();
+            $this->advertenciaExtraccion = 'error_procesamiento';
+            $this->metadatosExtraccion = $model->extraccion_metadatos ?? [];
+            $this->avanzarDesdeFalloExtraccion(
+                $this->mensajeFalloExtraccion('El análisis se interrumpió. Conservamos tus archivos; vuelve a intentar.'),
+                'error_procesamiento',
+            );
 
             return;
         }
@@ -1138,16 +1201,19 @@ final class RegistroSolicitudDeposito extends Component
      * Avanza al paso 4 cuando la extracción falló, dejando todos los campos
      * vacíos para que el usuario los complete manualmente.
      */
-    private function avanzarDesdeFalloExtraccion(): void
+    private function avanzarDesdeFalloExtraccion(
+        ?string $mensaje = null,
+        string $estado = 'error_procesamiento',
+    ): void
     {
         $regulatorios = [
             'Copia de la autorización de recolección (MAE)',
             'Copia del permiso de movilización',
         ];
         if (array_intersect($regulatorios, $this->documentosRequeridos) !== []) {
-            $this->estadoValidacionContenido = 'error_procesamiento';
+            $this->estadoValidacionContenido = $estado;
             $this->erroresDocumentales = [
-                'No fue posible leer y validar los documentos regulatorios. Vuelve a intentarlo o carga copias PDF legibles.',
+                $mensaje ?? 'No fue posible procesar los documentos regulatorios. Conservamos tus archivos; vuelve a intentar.',
             ];
             $this->addError('documentos', $this->erroresDocumentales[0]);
 
@@ -1190,6 +1256,16 @@ final class RegistroSolicitudDeposito extends Component
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 3]));
         $this->paso = 4;
         $this->persistirEstadoWizard();
+    }
+
+    private function mensajeFalloExtraccion(string $predeterminado): string
+    {
+        $fallo = $this->metadatosExtraccion['fallo_extraccion'] ?? null;
+        $mensaje = is_array($fallo) ? ($fallo['mensaje_usuario'] ?? null) : null;
+
+        return is_string($mensaje) && trim($mensaje) !== ''
+            ? trim($mensaje)
+            : $predeterminado;
     }
 
     // ── Paso 4 ────────────────────────────────────────────────────────────────────

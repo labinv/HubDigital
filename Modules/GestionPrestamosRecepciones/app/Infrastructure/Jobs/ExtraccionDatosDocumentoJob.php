@@ -48,6 +48,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
         private readonly string $solicitudId,
         private readonly array $documentos,
         private readonly string $versionDocumental = '',
+        private readonly string $ejecucionId = '',
     ) {}
 
     /**
@@ -70,7 +71,9 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             return;
         }
 
-        $this->actualizarEstadoSiVersionVigente('procesando', []);
+        $this->actualizarEstadoSiVersionVigente('procesando', [], true);
+
+        $documentoEnProceso = null;
 
         try {
             $acumulado = [
@@ -89,6 +92,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             $procesados = [];
             $metadatosExtraccion = [
                 'motor' => 'local',
+                'ejecucion_id' => $this->ejecucionId,
                 'requiere_revision_humana' => true,
                 'confirmacion_humana' => ['estado' => 'pendiente'],
                 'documentos' => [],
@@ -99,6 +103,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             $nombresOriginales = $modelSolicitud?->nombres_archivos_originales ?? [];
 
             foreach ($this->documentos as $nombre => $ruta) {
+                $documentoEnProceso = $nombre;
                 $parcial = $extraccion->extraerDatos([$nombre => $ruta]);
 
                 foreach ([
@@ -248,7 +253,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             // inconsistencia si la transacción anterior falla.
             $transactionManager->executeTransactional(function () use ($repo, $datosIntegrados, $firmas, &$metadatosExtraccion, &$eventos, &$aplicada): void {
                 $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->firstOrFail();
-                if (self::huellaDocumental($modelo->documentos_cargados ?? []) !== $this->versionDocumental) {
+                if (! $this->coincideVersionYEjecucion($modelo)) {
                     return;
                 }
                 $solicitud = $repo->buscarPorIdParaActualizar(SolicitudDepositoId::from($this->solicitudId));
@@ -287,12 +292,15 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
 
+            $this->registrarFalloTecnicoSiVersionVigente($e, $documentoEnProceso, 'motor_no_disponible');
             $this->actualizarEstadoSiVersionVigente('error_modelo');
         } catch (\Throwable $e) {
             Log::error('ExtraccionDatosDocumentoJob: error al procesar documentos', [
                 'solicitudId' => $this->solicitudId,
                 'error' => $e->getMessage(),
             ]);
+
+            $this->registrarFalloTecnicoSiVersionVigente($e, $documentoEnProceso);
 
             // La infraestructura de colas conserva el intento y aplica backoff. El
             // estado final se escribe únicamente desde failed(), una vez agotados.
@@ -316,31 +324,104 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 
     private function esVersionVigente(): bool
     {
-        $actual = SolicitudDepositoEloquentModel::query()
+        $modelo = SolicitudDepositoEloquentModel::query()
             ->whereKey($this->solicitudId)
-            ->value('documentos_cargados');
+            ->first();
 
-        if (! is_array($actual)) {
-            return false;
-        }
-
-        return self::huellaDocumental($actual) === $this->versionDocumental;
+        return $modelo !== null && $this->coincideVersionYEjecucion($modelo);
     }
 
     /** @param list<string>|null $procesados */
-    private function actualizarEstadoSiVersionVigente(string $estado, ?array $procesados = null): void
+    private function actualizarEstadoSiVersionVigente(
+        string $estado,
+        ?array $procesados = null,
+        bool $limpiarFalloAnterior = false,
+    ): void
     {
-        DB::transaction(function () use ($estado, $procesados): void {
+        DB::transaction(function () use ($estado, $procesados, $limpiarFalloAnterior): void {
             $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->first();
-            if ($modelo === null || self::huellaDocumental($modelo->documentos_cargados ?? []) !== $this->versionDocumental) {
+            if ($modelo === null || ! $this->coincideVersionYEjecucion($modelo)) {
                 return;
             }
             $cambios = ['extraccion_estado' => $estado];
             if ($procesados !== null) {
                 $cambios['documentos_procesados'] = $procesados;
             }
+            if ($limpiarFalloAnterior) {
+                $metadatos = $modelo->extraccion_metadatos ?? [];
+                unset($metadatos['fallo_extraccion']);
+                $cambios['extraccion_metadatos'] = $metadatos;
+            }
             $modelo->forceFill($cambios)->save();
         });
+    }
+
+    private function registrarFalloTecnicoSiVersionVigente(
+        \Throwable $error,
+        ?string $documento,
+        ?string $codigo = null,
+    ): void {
+        DB::transaction(function () use ($error, $documento, $codigo): void {
+            $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->first();
+            if ($modelo === null || ! $this->coincideVersionYEjecucion($modelo)) {
+                return;
+            }
+
+            $codigo ??= $this->clasificarFalloTecnico($error);
+            $metadatos = $modelo->extraccion_metadatos ?? [];
+            $metadatos['fallo_extraccion'] = [
+                'codigo' => $codigo,
+                'documento' => $documento,
+                'mensaje_usuario' => $this->mensajePublicoParaFallo($codigo, $documento),
+                'reintento_permitido' => true,
+                'ocurrido_en' => now()->toIso8601String(),
+                'version_documental' => $this->versionDocumental,
+            ];
+            $modelo->forceFill(['extraccion_metadatos' => $metadatos])->save();
+        });
+    }
+
+    private function clasificarFalloTecnico(\Throwable $error): string
+    {
+        $mensaje = mb_strtolower($error->getMessage());
+
+        if (str_contains($mensaje, 'r2') || str_contains($mensaje, 'almacenamiento')) {
+            return 'almacenamiento_no_disponible';
+        }
+        if (str_contains($mensaje, 'pdf') || str_contains($mensaje, 'poppler') || str_contains($mensaje, 'tesseract')) {
+            return 'lectura_pdf_fallida';
+        }
+
+        return 'procesamiento_interno_interrumpido';
+    }
+
+    private function mensajePublicoParaFallo(string $codigo, ?string $documento): string
+    {
+        $etiqueta = is_string($documento) && trim($documento) !== ''
+            ? ' «'.trim($documento).'»'
+            : '';
+
+        return match ($codigo) {
+            'motor_no_disponible' => 'El motor local de lectura no está disponible temporalmente. Conservamos tus archivos; vuelve a intentar el análisis.',
+            'almacenamiento_no_disponible' => 'No pudimos recuperar temporalmente el documento'.$etiqueta.'. Conservamos tu expediente; vuelve a intentar el análisis.',
+            'lectura_pdf_fallida' => 'No pudimos leer técnicamente el documento'.$etiqueta.'. Comprueba que el PDF abra correctamente y vuelve a intentar.',
+            default => 'El análisis se interrumpió mientras procesábamos el documento'.$etiqueta.'. Conservamos tus archivos; vuelve a intentar.',
+        };
+    }
+
+    private function coincideVersionYEjecucion(SolicitudDepositoEloquentModel $modelo): bool
+    {
+        if (self::huellaDocumental($modelo->documentos_cargados ?? []) !== $this->versionDocumental) {
+            return false;
+        }
+
+        if ($this->ejecucionId === '') {
+            return true;
+        }
+
+        $metadatos = $modelo->extraccion_metadatos ?? [];
+
+        return hash_equals((string) ($metadatos['ejecucion_id'] ?? ''), $this->ejecucionId);
     }
 
     /** @param array<string, string> $documentos */

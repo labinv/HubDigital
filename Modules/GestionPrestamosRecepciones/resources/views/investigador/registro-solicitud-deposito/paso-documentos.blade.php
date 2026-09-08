@@ -91,14 +91,27 @@
         <flux:error name="documentos" />
 
         @if($estadoValidacionContenido === 'rechazado' || !empty($erroresDocumentales))
-            <flux:callout variant="danger" icon="x-circle" heading="Los documentos no superaron la validación de contenido">
-                <p class="mb-2 text-sm">HubDigital revisó la estructura, códigos, titulares, proyecto y fechas; no se basa en el nombre del archivo.</p>
+            @php $falloTecnico = in_array($estadoValidacionContenido, ['error_procesamiento', 'error_modelo', 'error_cola'], true); @endphp
+            <flux:callout
+                variant="danger"
+                icon="x-circle"
+                :heading="$falloTecnico ? 'No fue posible completar la lectura' : 'Los documentos no superaron la validación de contenido'"
+            >
+                <p class="mb-2 text-sm">
+                    {{ $falloTecnico
+                        ? 'El expediente y los archivos cargados permanecen guardados para que puedas volver a ejecutar el análisis.'
+                        : 'HubDigital revisó la estructura, códigos, titulares, proyecto y fechas; no se basa en el nombre del archivo.' }}
+                </p>
                 <ul class="list-disc space-y-1 pl-5 text-sm">
                     @foreach($erroresDocumentales as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
-                <p class="mt-2 text-xs">Reemplaza el archivo incorrecto y vuelve a ejecutar el análisis.</p>
+                <p class="mt-2 text-xs">
+                    {{ $falloTecnico
+                        ? 'Vuelve a pulsar «Validar documentos». Reemplaza un archivo únicamente si el mensaje indica que el PDF no puede leerse.'
+                        : 'Reemplaza el archivo incorrecto y vuelve a ejecutar el análisis.' }}
+                </p>
             </flux:callout>
         @endif
 

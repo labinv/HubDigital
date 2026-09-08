@@ -377,9 +377,16 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
     /**
      * @param list<array{numero: int, metodo: string, caracteres: int, estado: string}> $paginas
      */
-    private function paginaDeEvidencia(?string $evidencia, array $paginas): ?int
+    private function paginaDeEvidencia(mixed $evidencia, array $paginas): ?int
     {
-        if ($evidencia !== null && preg_match('/\[Página\s+(\d+)\s+·/u', $evidencia, $coincidencia) === 1) {
+        // El analizador ambiental conserva evidencia estructurada para que el
+        // fragmento, patrón y versión de reglas permanezcan auditables. Los
+        // extractores genéricos todavía pueden entregar una cadena simple.
+        $fragmento = is_array($evidencia)
+            ? ($evidencia['fragmento'] ?? null)
+            : $evidencia;
+
+        if (is_string($fragmento) && preg_match('/\[Página\s+(\d+)\s+·/u', $fragmento, $coincidencia) === 1) {
             return (int) $coincidencia[1];
         }
 
