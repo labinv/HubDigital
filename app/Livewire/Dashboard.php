@@ -439,7 +439,7 @@ class Dashboard extends Component
             ->all();
     }
 
-    private function inicioAnalisis(): \Illuminate\Support\Carbon
+    private function inicioAnalisis(): \Carbon\CarbonImmutable
     {
         $meses = in_array($this->periodoAnalisis, ['6', '12', '24'], true)
             ? (int) $this->periodoAnalisis
