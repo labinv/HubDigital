@@ -222,6 +222,11 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     expect($expediente->fresh()->estado)->toBe(EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value);
     Notification::assertSentTo($curador, NuevaSolicitudPorRevisarNotification::class);
 
+    $this->actingAs($curador)
+        ->get(route('prestamos.curador.deposito.revisar', (string) $solicitud->id()))
+        ->assertOk()
+        ->assertSee('Aprobar solicitud');
+
     app(AprobarDocumentalmenteSolicitudHandler::class)(new AprobarDocumentalmenteSolicitudInput(
         solicitudId: (string) $solicitud->id(),
         curadorId: (string) $curador->id,

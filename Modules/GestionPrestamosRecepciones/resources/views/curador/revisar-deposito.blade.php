@@ -192,7 +192,9 @@
                             <flux:text class="text-text-secondary text-sm">
                                 Esta revisión atiende incertidumbres de los documentos. Una decisión favorable devuelve el expediente al consultor: todavía debe completar sus datos, generar, firmar y enviar la solicitud antes de la decisión final.
                             </flux:text>
-                            @php($hallazgosRevision = $deposito->extraccion_metadatos['revision_documental']['hallazgos'] ?? [])
+                            @php
+                                $hallazgosRevision = $deposito->extraccion_metadatos['revision_documental']['hallazgos'] ?? [];
+                            @endphp
                             <div class="space-y-2 rounded-lg border border-amber-200 bg-white p-3">
                                 <p class="text-xs font-semibold text-text-primary">Hallazgos que resuelves en esta revisión</p>
                                 @forelse($hallazgosRevision as $hallazgo)
