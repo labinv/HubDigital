@@ -65,7 +65,7 @@
                 <img
                     src="{{ asset('images/portal-depositos-hero.webp') }}"
                     alt="Gaveta de colección entomológica con especímenes y etiquetas de archivo"
-                    class="absolute inset-0 size-full object-cover object-[62%_50%]"
+                    class="absolute inset-0 size-full object-cover object-[78%_50%] sm:object-[70%_50%] lg:object-[62%_50%]"
                     fetchpriority="high"
                 />
                 <div class="absolute inset-y-0 left-0 hidden w-32 bg-gradient-to-r from-white to-transparent lg:block" aria-hidden="true"></div>
