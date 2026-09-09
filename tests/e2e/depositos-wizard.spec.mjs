@@ -30,6 +30,11 @@ test.describe.serial('Depósitos: borradores y reglas documentales', () => {
     const errors = observeRuntime(page);
     await login(page, accounts.depositanteC);
     await page.goto('/prestamos/deposito/nueva', { waitUntil: 'networkidle' });
+    if (await page.getByText(/1\/2 cargados/i).count()) {
+      await page.getByRole('button', { name: 'Descartar', exact: true }).click();
+      await page.getByRole('button', { name: 'Descartar', exact: true }).last().click();
+      await expect(page.getByRole('heading', { name: /Tipo de trámite/i })).toBeVisible();
+    }
     if (!await page.getByRole('heading', { name: /Documentos oficiales/i }).count()) {
       const deposito = page.getByRole('radio', { name: /^Depósito/i });
       await deposito.click();
