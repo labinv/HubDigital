@@ -39,6 +39,13 @@ final class InMemorySolicitudDepositoRepository implements SolicitudDepositoRepo
         return $this->store[(string) $id] ?? null;
     }
 
+    public function buscarPorIdParaActualizar(SolicitudDepositoId $id): ?SolicitudDeposito
+    {
+        // El doble en memoria no tiene concurrencia ni bloqueo transaccional;
+        // conserva el contrato devolviendo el mismo agregado almacenado.
+        return $this->buscarPorId($id);
+    }
+
     public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?SolicitudDeposito
     {
         foreach ($this->store as $solicitud) {
