@@ -95,6 +95,7 @@ RUN apk add --no-cache \
         --with-jpeg \
         --with-webp \
     && docker-php-ext-install -j"$(nproc)" \
+        bcmath \
         pdo_pgsql \
         pgsql \
         gd \
