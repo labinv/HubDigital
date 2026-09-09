@@ -1,3 +1,9 @@
+<style>
+    .portal-depositos-hero-image { object-position: 78% 50%; }
+    @media (min-width: 640px) { .portal-depositos-hero-image { object-position: 70% 50%; } }
+    @media (min-width: 1024px) { .portal-depositos-hero-image { object-position: 62% 50%; } }
+</style>
+
 <div class="overflow-hidden bg-white text-text-primary">
     <section class="relative isolate border-b border-blue-navy/10 bg-white" aria-labelledby="titulo-depositos">
         <div class="portal-hero-grid min-w-0 lg:min-h-[34rem]">
@@ -65,7 +71,7 @@
                 <img
                     src="{{ asset('images/portal-depositos-hero.webp') }}"
                     alt="Gaveta de colección entomológica con especímenes y etiquetas de archivo"
-                    class="absolute inset-0 size-full object-cover object-[78%_50%] sm:object-[70%_50%] lg:object-[62%_50%]"
+                    class="portal-depositos-hero-image absolute inset-0 size-full object-cover object-[62%_50%]"
                     fetchpriority="high"
                 />
                 <div class="absolute inset-y-0 left-0 hidden w-32 bg-gradient-to-r from-white to-transparent lg:block" aria-hidden="true"></div>
