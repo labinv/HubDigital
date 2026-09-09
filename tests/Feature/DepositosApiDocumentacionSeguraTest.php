@@ -69,7 +69,7 @@ test('la API guarda archivos con claves privadas server-side y nunca autoavanza 
     config()->set('deposit-storage.require_remote', false);
 
     $depositante = User::factory()->depositante()->create();
-    $solicitud = crearSolicitudApiDe($depositante, 'DEP-000003');
+    $solicitud = crearSolicitudApiDe($depositante, 'MEPN-INV-DEP-00003');
     $extractor = new class implements ExtraccionDatosDocumentoPort
     {
         /** @var array<string, string> */

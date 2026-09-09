@@ -80,7 +80,7 @@ it('rechaza un archivo incorrecto aunque mencione permisos y movilización', fun
         ->and($resultado['numero_documento'])->toBeNull();
 });
 
-it('rechaza códigos contradictorios para el mismo campo y nunca los autocompleta', function (): void {
+it('envía a revisión códigos contradictorios y no autocompleta el campo ambiguo', function (): void {
     $resultado = (new AnalizadorDocumentoAmbiental)->analizar(<<<'TXT'
     AUTORIZACIÓN DE RECOLECCIÓN DE VIDA SILVESTRE N.º 111-2026-FA-FLO-DZ8-MAATE
     El Ministerio del Ambiente y Energía otorga la autorización a una organización de prueba.
@@ -91,9 +91,9 @@ it('rechaza códigos contradictorios para el mismo campo y nunca los autocomplet
     TXT);
 
     expect($resultado['tipo_detectado'])->toBe(AnalizadorDocumentoAmbiental::AUTORIZACION_RECOLECCION)
-        ->and($resultado['estado'])->toBe('rechazado')
+        ->and($resultado['estado'])->toBe('revision')
         ->and($resultado['numero_autorizacion'])->toBeNull()
-        ->and($resultado['autocompletado_habilitado'])->toBeFalse()
+        ->and($resultado['autocompletado_habilitado'])->toBeTrue()
         ->and($resultado['candidatos_ambiguos']['numero_autorizacion'] ?? [])->toHaveCount(2);
 });
 

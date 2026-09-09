@@ -5,7 +5,7 @@ test('el portal de depósitos es público', function (): void {
         ->assertOk()
         ->assertSee('Depósito de colecciones')
         ->assertSee('biológicas')
-        ->assertSee('Iniciar una solicitud');
+        ->assertSee('Crear cuenta e iniciar');
 });
 
 test('el portal respeta https cuando la solicitud llega por un proxy confiable', function (): void {
@@ -18,7 +18,7 @@ test('el portal respeta https cuando la solicitud llega por un proxy confiable',
         ])
         ->get('/depositos')
         ->assertOk()
-        ->assertSee('href="https://dev.labinvepn.org/depositos/solicitud"', false);
+        ->assertSee('href="https://dev.labinvepn.org/register"', false);
 });
 
 test('el formulario de depósito requiere autenticación', function (): void {

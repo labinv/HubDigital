@@ -150,11 +150,11 @@ test('flujo integral separa depositante receptor y curador hasta el acta final f
     ));
     app(IniciarRecepcionLoteHandler::class)(new IniciarRecepcionLoteInput(
         solicitudId: (string) $solicitud->id(),
-        curadorId: (string) $receptor->id,
+        receptorId: (string) $receptor->id,
     ));
     app(AprobarRecepcionLoteHandler::class)(new AprobarRecepcionLoteInput(
         solicitudId: (string) $solicitud->id(),
-        curadorId: (string) $receptor->id,
+        receptorId: (string) $receptor->id,
         itemsVerificacion: array_map(
             static fn (ItemChecklistRecepcion $item): array => [
                 'item' => $item->value,

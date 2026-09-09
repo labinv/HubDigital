@@ -157,7 +157,7 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     expect($token)->not->toBeEmpty();
 
     $carga = $this->withToken($token)->post(
-        route('solicitudes-deposito.documentacion-oficial', (string) $solicitud->id()),
+        route('api.solicitudes-deposito.documentacion-oficial', (string) $solicitud->id()),
         [
             'documentos' => [
                 'Permiso de investigación' => UploadedFile::fake()->createWithContent(

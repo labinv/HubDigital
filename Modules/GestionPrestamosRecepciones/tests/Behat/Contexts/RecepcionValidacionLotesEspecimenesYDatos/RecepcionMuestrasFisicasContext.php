@@ -269,7 +269,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         ($this->iniciarRecepcionHandler)(
             new IniciarRecepcionLoteInput(
                 solicitudId: (string) $this->solicitudEnCurso->id(),
-                curadorId: $this->receptorId,
+                receptorId: $this->receptorId,
             )
         );
 
@@ -365,7 +365,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             $this->ultimaRespuesta = ($this->aprobarRecepcionHandler)(
                 new AprobarRecepcionLoteInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
-                    curadorId: $this->receptorId,
+                    receptorId: $this->receptorId,
                     itemsVerificacion: $this->itemsVerificacion,
                 )
             );
@@ -544,7 +544,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             $this->ultimaRespuesta = ($this->rechazarRecepcionHandler)(
                 new RechazarRecepcionLoteInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
-                    curadorId: $this->receptorId,
+                    receptorId: $this->receptorId,
                     motivoFallo: $this->motivoFallo,
                 )
             );
@@ -609,7 +609,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             $this->ultimaRespuesta = ($this->aceptarConObservacionesHandler)(
                 new AceptarRecepcionConObservacionesInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
-                    curadorId: $this->receptorId,
+                    receptorId: $this->receptorId,
                     itemsNoConformes: $this->itemsNoConformes,
                 )
             );
