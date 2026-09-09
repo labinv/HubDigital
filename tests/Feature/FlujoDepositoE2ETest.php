@@ -283,5 +283,6 @@ test('la alerta curatorial abre directamente el acta del lote constatado', funct
     expect($datos['tipo'])->toBe('lote_recibido_acta_pendiente')
         ->and($datos['prioridad'])->toBe('alta')
         ->and($datos['accion'])->toBe('Generar y firmar acta')
-        ->and($datos['url'])->toContain('/prestamos/curador/deposito/018f45f0-7c99-7ae4-8f72-4b320b11c777/acta-final');
+        ->and($datos['url'])->toContain('/prestamos/curador/deposito/018f45f0-7c99-7ae4-8f72-4b320b11c777/acta-final')
+        ->and($notificacion->afterCommit)->toBeTrue();
 });

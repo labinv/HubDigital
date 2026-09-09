@@ -17,15 +17,17 @@ final class LoteRecibidoParaActaNotification extends Notification implements Sho
     use Queueable;
 
     /** La cola solo recibe el aviso después de confirmar la constatación física. */
-    public bool $afterCommit = true;
-
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
         public readonly ?string $tipoTramite,
         public readonly ?string $nombreReceptor,
         public readonly bool $conObservaciones,
-    ) {}
+    ) {
+        // Queueable ya define esta propiedad. Usar su API evita una colisión
+        // de propiedades tipadas y conserva el despacho posterior al commit.
+        $this->afterCommit();
+    }
 
     /** @return list<string> */
     public function via(object $notifiable): array
