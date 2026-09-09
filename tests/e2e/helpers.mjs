@@ -1,8 +1,10 @@
 import { expect } from '@playwright/test';
+import fs from 'node:fs';
 
 export const accounts = {
   depositante: { email: process.env.E2E_DEPOSITANTE_EMAIL || 'test.depositante@labinvepn.test', password: process.env.E2E_SHARED_PASSWORD },
   depositanteB: { email: process.env.E2E_DEPOSITANTE_B_EMAIL, password: process.env.E2E_DEPOSITANTE_B_PASSWORD || process.env.E2E_SHARED_PASSWORD },
+  depositanteC: { email: process.env.E2E_DEPOSITANTE_C_EMAIL, password: process.env.E2E_DEPOSITANTE_C_PASSWORD || process.env.E2E_SHARED_PASSWORD },
   curador: { email: process.env.E2E_CURADOR_EMAIL || 'test.curaduria@labinvepn.test', password: process.env.E2E_SHARED_PASSWORD },
   receptor: { email: process.env.E2E_RECEPTOR_EMAIL || 'test.recepcion@labinvepn.test', password: process.env.E2E_SHARED_PASSWORD },
 };
@@ -14,6 +16,10 @@ export const historical = {
   receivedId: process.env.E2E_RECEIVED_ID || 'fecec178-5f2f-4400-bc1c-a4e4c26fa944',
   receivedQr: process.env.E2E_RECEIVED_QR || 'LOTE-UCQZ8A',
 };
+
+export const branchFixtures = process.env.E2E_FIXTURES_FILE
+  ? JSON.parse(fs.readFileSync(process.env.E2E_FIXTURES_FILE, 'utf8')).fixtures
+  : {};
 
 export function requireCredential(account, label) {
   if (!account.email || !account.password) throw new Error(`Falta la credencial E2E de ${label}.`);

@@ -34,7 +34,7 @@ test.describe('Portal público', () => {
     await page.getByRole('button', { name: 'Buscar', exact: true }).click();
     await page.waitForLoadState('networkidle');
     await expect(page.locator('body')).toContainText(/Sin taxones visibles|0 registros|Sin resultados|No se encontraron/i);
-    await page.getByRole('button', { name: /Limpiar filtros/i }).last().click();
+    await page.getByRole('button', { name: /^Limpiar(?: filtros)?$/i }).last().click();
     await expect(input).toHaveValue('');
     await expectHealthy(page, errors, /Catálogo/i);
   });

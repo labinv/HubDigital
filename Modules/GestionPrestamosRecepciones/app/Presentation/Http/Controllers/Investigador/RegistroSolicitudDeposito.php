@@ -877,7 +877,15 @@ final class RegistroSolicitudDeposito extends Component
             ]
         );
 
-        $ruta = app(AlmacenamientoDepositos::class)->guardarArchivo($archivo, 'depositos/'.$this->solicitudId);
+        try {
+            $ruta = app(AlmacenamientoDepositos::class)->guardarArchivo($archivo, 'depositos/'.$this->solicitudId);
+        } catch (\InvalidArgumentException) {
+            $this->reset($propiedad);
+            $this->addError($propiedad, "El contenido de \"{$nombre}\" no corresponde a un documento PDF válido.");
+            $this->dispatch('documento-rechazado', propiedad: $propiedad);
+
+            return;
+        }
         $rutaAnterior = $this->documentosCargados[$nombre] ?? null;
         $documentosActualizados = $this->documentosCargados;
         $nombresActualizados = $this->nombresArchivosOriginales;
@@ -921,6 +929,7 @@ final class RegistroSolicitudDeposito extends Component
             app(AlmacenamientoDepositos::class)->eliminar($rutaAnterior);
         }
         $this->invalidarFirmaSolicitud();
+        $this->dispatch('documento-aceptado', propiedad: $propiedad);
 
     }
 

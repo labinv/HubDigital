@@ -53,6 +53,7 @@ final class AlmacenamientoDepositos
         if ($contenido === false) {
             throw new \RuntimeException('No se pudo leer el archivo cargado.');
         }
+        $this->asegurarContenidoPdf($contenido);
         $this->guardarContenido($ruta, $contenido, $archivo->getMimeType() ?: 'application/octet-stream');
 
         return $ruta;
@@ -64,6 +65,7 @@ final class AlmacenamientoDepositos
         if ($contenido === false) {
             throw new \RuntimeException('No se pudo leer el archivo cargado.');
         }
+        $this->asegurarContenidoPdf($contenido);
         $this->guardarContenido($ruta, $contenido, $archivo->getMimeType() ?: 'application/pdf');
 
         return $ruta;
@@ -92,6 +94,13 @@ final class AlmacenamientoDepositos
         $guardado = Storage::disk($this->discoLocal())->put($ruta, $contenido);
         if ($guardado !== true) {
             throw new \RuntimeException('No se pudo guardar el documento en el disco privado local.');
+        }
+    }
+
+    private function asegurarContenidoPdf(string $contenido): void
+    {
+        if (! str_contains(substr($contenido, 0, 1024), '%PDF-')) {
+            throw new \InvalidArgumentException('El contenido del archivo no corresponde a un documento PDF.');
         }
     }
 

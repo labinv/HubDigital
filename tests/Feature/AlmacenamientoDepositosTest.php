@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
@@ -30,6 +31,29 @@ test('rechaza configuracion R2 parcial sin aplicar fallback silencioso', functio
 
     expect(fn () => (new AlmacenamientoDepositos)->driver())
         ->toThrow(RuntimeException::class, 'configuracion R2 esta incompleta');
+});
+
+test('rechaza como PDF un archivo cuyo contenido no tiene cabecera PDF', function (): void {
+    Storage::fake('local');
+    config()->set('deposit-storage.driver', 'local');
+    config()->set('deposit-storage.require_remote', false);
+
+    $archivo = UploadedFile::fake()->createWithContent('aparente.pdf', 'contenido que no es PDF');
+
+    expect(fn () => (new AlmacenamientoDepositos)->guardarArchivo($archivo, 'depositos/prueba'))
+        ->toThrow(InvalidArgumentException::class, 'no corresponde a un documento PDF');
+    Storage::disk('local')->assertMissing('depositos/prueba');
+});
+
+test('acepta un PDF con cabecera valida dentro del primer kilobyte', function (): void {
+    Storage::fake('local');
+    config()->set('deposit-storage.driver', 'local');
+    config()->set('deposit-storage.require_remote', false);
+
+    $archivo = UploadedFile::fake()->createWithContent('valido.pdf', "%PDF-1.7\ncontenido de prueba");
+    $ruta = (new AlmacenamientoDepositos)->guardarArchivo($archivo, 'depositos/prueba');
+
+    Storage::disk('local')->assertExists($ruta);
 });
 
 test('persiste, verifica y elimina un objeto mediante la API S3 de R2', function (): void {
