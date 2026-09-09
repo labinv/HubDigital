@@ -548,8 +548,9 @@ final class RegistroSolicitudDeposito extends Component
             $this->estadoDocumental = $outputDoc->estadoDocumental->value;
         }
 
-        // Paso 5+ data (Matriz de especies)
-        if ($pasoGuardado >= 5 && $model->matriz_id !== null) {
+        // Matriz de especies. Puede existir aunque el usuario haya retrocedido y
+        // persistido un paso anterior; al reanudar debemos conservarla disponible.
+        if ($model->matriz_id !== null) {
             $this->matrizId = $model->matriz_id;
             $this->matrizCargada = true;
 
