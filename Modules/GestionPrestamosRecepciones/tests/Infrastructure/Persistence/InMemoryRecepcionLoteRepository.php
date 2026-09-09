@@ -15,6 +15,9 @@ final class InMemoryRecepcionLoteRepository implements RecepcionLoteRepositoryIn
     /** @var array<string, RecepcionLote> */
     private array $store = [];
 
+    /** @var array<string, array{referencia: string, sha256: string}> */
+    private array $originalesVigentes = [];
+
     public function nextIdentity(): RecepcionLoteId
     {
         return RecepcionLoteId::generate();
@@ -45,6 +48,20 @@ final class InMemoryRecepcionLoteRepository implements RecepcionLoteRepositoryIn
     {
         // El repositorio de pruebas es monohilo; conserva el contrato sin bloqueo real.
         return $this->buscarPorSolicitudId($solicitudId);
+    }
+
+    public function registrarOriginalVigente(SolicitudDepositoId $solicitudId, string $referencia, string $sha256): void
+    {
+        $this->originalesVigentes[(string) $solicitudId] = compact('referencia', 'sha256');
+    }
+
+    public function coincideOriginalVigenteParaActualizar(SolicitudDepositoId $solicitudId, string $referencia, string $sha256): bool
+    {
+        $original = $this->originalesVigentes[(string) $solicitudId] ?? null;
+
+        return $original !== null
+            && hash_equals($original['referencia'], $referencia)
+            && hash_equals($original['sha256'], $sha256);
     }
 
     public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?RecepcionLote

@@ -435,12 +435,17 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
                 solicitudId: $solicitudId,
                 curadorId: $this->curadorId,
             ));
+            $referenciaOriginal = '018f45f0-7c99-7ae4-8f72-4b320b11c777';
+            $sha256Original = hash_file('sha256', $rutaActaOriginal);
+            $this->recepcionRepo->registrarOriginalVigente($this->solicitudEnCurso->id(), $referenciaOriginal, $sha256Original);
             ($this->subirActaFirmadaHandler)(new SubirActaRecepcionFirmadaInput(
                 solicitudId: $solicitudId,
                 curadorId: $this->curadorId,
                 rutaRelativa: 'actas/recepcion-firmada/prueba-behat.pdf',
                 rutaAbsoluta: $rutaActaFirmada,
                 rutaOriginalAbsoluta: $rutaActaOriginal,
+                referenciaOriginal: $referenciaOriginal,
+                sha256Original: $sha256Original,
             ));
         } finally {
             @unlink($rutaActaFirmada);

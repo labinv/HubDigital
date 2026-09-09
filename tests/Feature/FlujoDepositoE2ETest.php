@@ -180,12 +180,17 @@ test('flujo integral separa depositante receptor y curador hasta el acta final f
         solicitudId: (string) $solicitud->id(),
         curadorId: (string) $curador->id,
     ));
+    $referenciaOriginal = '018f45f0-7c99-7ae4-8f72-4b320b11c777';
+    $sha256Original = hash_file('sha256', $rutaActaOriginal);
+    $recepciones->registrarOriginalVigente($solicitud->id(), $referenciaOriginal, $sha256Original);
     app(SubirActaRecepcionFirmadaHandler::class)(new SubirActaRecepcionFirmadaInput(
         solicitudId: (string) $solicitud->id(),
         curadorId: (string) $curador->id,
         rutaRelativa: 'actas/recepcion-firmada/prueba.pdf',
         rutaAbsoluta: $rutaActaFirmada,
         rutaOriginalAbsoluta: $rutaActaOriginal,
+        referenciaOriginal: $referenciaOriginal,
+        sha256Original: $sha256Original,
     ));
 
     $listener = app(IngresarLoteEnColeccionListener::class);
@@ -212,6 +217,8 @@ test('flujo integral separa depositante receptor y curador hasta el acta final f
         rutaRelativa: 'actas/recepcion-firmada/intento-segundo.pdf',
         rutaAbsoluta: $rutaSegundoIntento,
         rutaOriginalAbsoluta: $rutaActaOriginal,
+        referenciaOriginal: $referenciaOriginal,
+        sha256Original: $sha256Original,
     )))->toThrow(\DomainException::class, 'El acta ya fue firmada');
 
     expect($recepciones->buscarPorSolicitudId($solicitud->id())?->actaFirmadaRuta())
