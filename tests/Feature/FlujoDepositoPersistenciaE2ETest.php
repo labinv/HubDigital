@@ -8,8 +8,10 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Features;
+use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\OriginalActaRecepcionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalmenteSolicitud\AprobarDocumentalmenteSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalmenteSolicitud\AprobarDocumentalmenteSolicitudInput;
@@ -17,9 +19,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLot
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\GenerarActaRecepcion\GenerarActaRecepcionHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\GenerarActaRecepcion\GenerarActaRecepcionInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteOutput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
@@ -36,6 +38,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\LoteRecibid
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\NuevaSolicitudPorRevisarNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\GestionActaRecepcion;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 
 test('el depósito completo persiste actores, documentos, taxonomía, recepción, alerta y acta firmada', function (): void {
@@ -252,6 +255,11 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->get(route('prestamos.receptor.deposito.recepcion', (string) $solicitud->id()))
         ->assertForbidden();
 
+    app(IniciarRecepcionLoteHandler::class)(new IniciarRecepcionLoteInput(
+        solicitudId: (string) $solicitud->id(),
+        receptorId: (string) $receptor->id,
+    ));
+
     $recepcion = RecepcionLoteEloquentModel::query()
         ->where('solicitud_deposito_id', (string) $solicitud->id())
         ->sole();
@@ -259,7 +267,7 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
 
     $resultadoRecepcion = app(AprobarRecepcionLoteHandler::class)(new AprobarRecepcionLoteInput(
         solicitudId: (string) $solicitud->id(),
-        curadorId: (string) $receptor->id,
+        receptorId: (string) $receptor->id,
         itemsVerificacion: array_map(
             static fn (ItemChecklistRecepcion $item): array => [
                 'item' => $item->value,
@@ -275,10 +283,11 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     $this->actingAs($curador)
         ->get(route('prestamos.curador.deposito.acta', (string) $solicitud->id()))
         ->assertOk();
-    app(GenerarActaRecepcionHandler::class)(new GenerarActaRecepcionInput(
-        solicitudId: (string) $solicitud->id(),
-        curadorId: (string) $curador->id,
-    ));
+    Livewire::actingAs($curador)
+        ->test(GestionActaRecepcion::class, ['id' => (string) $solicitud->id()])
+        ->call('generar')
+        ->assertHasNoErrors();
+    $original = app(OriginalActaRecepcionPort::class)->obtenerVerificado((string) $solicitud->id());
 
     $this->actingAs($curador)->post(
         route('prestamos.curador.deposito.acta.firmar', (string) $solicitud->id()),
@@ -287,6 +296,8 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
                 'acta-final-firmada.pdf',
                 "%PDF-1.7\nacta final firmada localmente para E2E",
             ),
+            'original_referencia' => $original['referencia'],
+            'original_sha256' => $original['sha256'],
         ],
         ['Accept' => 'application/json'],
     )->assertOk();
