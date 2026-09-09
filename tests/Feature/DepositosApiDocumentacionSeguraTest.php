@@ -58,7 +58,7 @@ test('la API oculta un expediente ajeno aunque se envíe un archivo válido', fu
 
     $this->post("/api/v1/solicitudes-deposito/{$solicitud->id}/documentacion-oficial", [
         'documentos' => [
-            'Guía de movilización' => UploadedFile::fake()->create('guia.pdf', 8, 'application/pdf'),
+            'Guía de movilización' => UploadedFile::fake()->createWithContent('guia.pdf', "%PDF-1.7\ncontenido ajeno"),
         ],
     ], ['Accept' => 'application/json'])->assertNotFound();
 });
@@ -98,7 +98,10 @@ test('la API guarda archivos con claves privadas server-side y nunca autoavanza 
 
     $respuesta = $this->post("/api/v1/solicitudes-deposito/{$solicitud->id}/documentacion-oficial", [
         'documentos' => [
-            'Guía de movilización' => UploadedFile::fake()->create('nombre-controlado-por-cliente.pdf', 8, 'application/pdf'),
+            'Guía de movilización' => UploadedFile::fake()->createWithContent(
+                'nombre-controlado-por-cliente.pdf',
+                "%PDF-1.7\ncontenido regulatorio sintético",
+            ),
         ],
     ], ['Accept' => 'application/json']);
 
