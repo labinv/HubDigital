@@ -109,6 +109,15 @@
         />
 
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+            @if(count($hijos) === 0)
+                <div role="status" class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-6 py-12 text-center">
+                    <flux:icon name="magnifying-glass" class="size-6 text-text-secondary" />
+                    <h2 class="font-display text-lg font-semibold text-text-primary">Sin resultados</h2>
+                    <p class="max-w-md text-sm text-text-secondary">
+                        No se encontraron taxones públicos que coincidan con los filtros aplicados.
+                    </p>
+                </div>
+            @else
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach($hijos as $hijo)
                     @php
@@ -157,6 +166,7 @@
                     </button>
                 @endforeach
             </div>
+            @endif
         </div>
 
     {{-- =====================================================================
