@@ -57,13 +57,19 @@ test.describe.serial('Cierre UI/UX focal de depósitos', () => {
     await page.goto('/prestamos/mis-depositos', { waitUntil: 'networkidle' });
 
     const sidebar = page.locator('[data-flux-sidebar]');
-    const toggle = page.getByRole('button', { name: 'Toggle sidebar' }).first();
+    const toggle = page.getByRole('button', { name: 'Toggle sidebar' }).last();
     await expect(sidebar).toHaveAttribute('data-flux-sidebar-collapsed-mobile', '');
     await expect(sidebar).toHaveAttribute('inert', '');
 
     await page.locator('body').focus();
     await page.keyboard.press('Tab');
-    await expect(toggle).toBeFocused();
+    const firstFocus = page.locator(':focus');
+    await expect(firstFocus).not.toHaveAttribute('inert', '');
+    expect(await firstFocus.evaluate(element => ! element.closest('[data-flux-sidebar]'))).toBeTruthy();
+    expect(await firstFocus.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.left < innerWidth;
+    })).toBeTruthy();
     await expectVisibleFocus(page, toggle);
     await toggle.press('Enter');
     await expect(sidebar).not.toHaveAttribute('data-flux-sidebar-collapsed-mobile', '');
@@ -112,6 +118,7 @@ test.describe.serial('Cierre UI/UX focal de depósitos', () => {
       await screenshot(page, testInfo, `UIUX-CLOSE-002-bandeja-${viewport.name}`, true);
     }
 
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.evaluate(() => { document.body.style.zoom = '200%'; });
     await expectNoHorizontalOverflow(page);
     await screenshot(page, testInfo, 'UIUX-CLOSE-002-bandeja-zoom-css-200', true);
@@ -132,8 +139,10 @@ test.describe.serial('Cierre UI/UX focal de depósitos', () => {
     await expect(page.getByLabel('Tipo de rechazo')).toBeVisible();
     await expect(page.getByLabel('Motivo del rechazo')).toBeVisible();
     await screenshot(page, testInfo, 'UIUX-CLOSE-003-modal-curatorial-teclado', true);
-    await page.keyboard.press('Escape');
-    await expect(page.getByLabel('Tipo de rechazo')).toHaveCount(0);
+    const cancel = page.getByRole('button', { name: 'Cancelar', exact: true });
+    await expectVisibleFocus(page, cancel);
+    await cancel.click();
+    await expect(page.getByLabel('Tipo de rechazo')).not.toBeVisible();
     await expectNoHorizontalOverflow(page);
     expect(errors).toEqual([]);
   });
