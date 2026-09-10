@@ -552,6 +552,7 @@
                     syncInert();
                 };
 
+                protectCollapsedSidebar();
                 document.addEventListener('DOMContentLoaded', protectCollapsedSidebar, { once: true });
                 document.addEventListener('livewire:navigated', protectCollapsedSidebar);
             })();
