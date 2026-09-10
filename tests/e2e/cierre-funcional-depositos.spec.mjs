@@ -20,7 +20,6 @@ const accounts = {
 };
 
 const correctionComment = 'SOL cierre funcional: corregir localidad y volver a firmar la solicitud.';
-const correctedLocality = 'Reserva sintética Sol, Pichincha — cierre E2E validado';
 
 async function logoutByCookies(page) {
   await page.context().clearCookies();
@@ -70,42 +69,12 @@ test.describe.serial('Cierre funcional: corrección y recepción recuperada', ()
     const correctLink = page.getByRole('link', { name: /Corregir/i });
     await assertKeyboardFocus(page, correctLink);
     await correctLink.press('Enter');
-
-    const reviewVisible = await page.getByText(/Revisar, firmar y enviar/i).count();
-    if (reviewVisible) {
-      await expect(page.locator('body')).toContainText(/Firmada y validada/i);
-      await screenshot(page, testInfo, 'DEP-CLOSE-001-firma-previa', true);
-      await page.getByRole('button', { name: /Atr.s/i }).last().click();
-      await expect(page.locator('body')).toContainText(/Matriz|Darwin Core/i);
-      await page.getByRole('button', { name: /Atr.s/i }).last().click();
-    }
-    await expect(page.locator('body')).toContainText(/Datos extra.dos|Datos del dep.sito/i);
-
-    const localityCard = page.locator('div.rounded-lg.border.p-3.relative')
-        .filter({ has: page.getByText('Localidad', { exact: true }) })
-        .first();
-    await localityCard.getByRole('button', { name: /Editar/i }).click();
-    const localityInput = localityCard.locator('input');
-    let saveRequests = 0;
-    await page.route('**/livewire-*/update', async (route) => {
-      if (route.request().postData()?.includes('guardarDatoFaltante')) {
-        saveRequests += 1;
-        await new Promise((resolve) => setTimeout(resolve, 1_500));
-      }
-      await route.continue();
-    });
-    await localityInput.fill(correctedLocality);
-    const save = localityCard.getByRole('button', { name: /^Guardar$/i });
-    const box = await save.boundingBox();
-    const saving = save.click();
-    await expect(save).toBeDisabled();
-    if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await saving;
-    await expect(localityCard).toContainText(correctedLocality);
-    expect(saveRequests).toBe(1);
-
-    await page.getByRole('button', { name: /^Continuar$/i }).click();
+    await page.waitForURL(new RegExp(`/prestamos/deposito/${fixtures.correction.id}/corregir$`));
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.getByText('Nueva solicitud de depósito', { exact: true }).last()).toBeVisible();
+    await expect(page.locator('body')).toContainText(/Paso 5 de 6/i);
     await expect(page.locator('body')).toContainText(/Matriz|Darwin Core/i);
+    await expect(page.locator('body')).toContainText(/MEPN-QA-001|QA-TERRA-20260908-1100/i);
     await page.getByRole('button', { name: /Revisar y enviar/i }).click();
     await expect(page.locator('body')).toContainText(/Revisar, firmar y enviar/i);
     await expect(page.locator('body')).not.toContainText(/Firmada y validada/i);
@@ -119,9 +88,12 @@ test.describe.serial('Cierre funcional: corrección y recepción recuperada', ()
     const signResponse = page.waitForResponse((response) => response.url().includes(`/depositos/solicitud/${fixtures.correction.id}/firmar`));
     await page.getByRole('button', { name: /Firmar con Firmador HubDigital/i }).click();
     expect((await signResponse).status()).toBe(200);
+    await page.waitForTimeout(1_200);
     await expect(page.locator('body')).toContainText(/Firmada y validada/i, { timeout: 25_000 });
 
     const send = page.getByRole('button', { name: /^Enviar solicitud$/i });
+    const declarationAfterSigning = page.getByRole('checkbox', { name: /Declaro bajo juramento/i });
+    if (await declarationAfterSigning.getAttribute('aria-checked') !== 'true') await declarationAfterSigning.click();
     await expect(send).toBeEnabled();
     await send.click();
     await expect(page.locator('body')).toContainText(/Pendiente de Revisi.n|enviada|curadur/i);

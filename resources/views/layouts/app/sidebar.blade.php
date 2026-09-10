@@ -525,5 +525,36 @@
         </div>
 
         @fluxScripts
+        <script>
+            (() => {
+                const breakpoint = window.matchMedia('(max-width: 1023px)');
+
+                const protectCollapsedSidebar = () => {
+                    const sidebar = document.querySelector('[data-flux-sidebar-on-mobile]');
+
+                    if (! sidebar || sidebar.dataset.keyboardGuard === 'ready') {
+                        return;
+                    }
+
+                    const syncInert = () => {
+                        sidebar.inert = breakpoint.matches
+                            && sidebar.hasAttribute('data-flux-sidebar-collapsed-mobile');
+                    };
+
+                    const observer = new MutationObserver(syncInert);
+                    observer.observe(sidebar, {
+                        attributes: true,
+                        attributeFilter: ['data-flux-sidebar-collapsed-mobile'],
+                    });
+
+                    breakpoint.addEventListener('change', syncInert);
+                    sidebar.dataset.keyboardGuard = 'ready';
+                    syncInert();
+                };
+
+                document.addEventListener('DOMContentLoaded', protectCollapsedSidebar, { once: true });
+                document.addEventListener('livewire:navigated', protectCollapsedSidebar);
+            })();
+        </script>
     </body>
 </html>
