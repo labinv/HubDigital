@@ -47,6 +47,48 @@ async function expectNoHorizontalOverflow(page) {
   expect(layout.scroll).toBeLessThanOrEqual(layout.client + 2);
 }
 
+async function contrastOf(locator) {
+  return locator.evaluate((element) => {
+    const parse = (value) => {
+      const numbers = value.match(/[\d.]+/g)?.map(Number) || [];
+      return { r: numbers[0] || 0, g: numbers[1] || 0, b: numbers[2] || 0, a: numbers[3] ?? 1 };
+    };
+    const composite = (foreground, background) => ({
+      r: foreground.r * foreground.a + background.r * (1 - foreground.a),
+      g: foreground.g * foreground.a + background.g * (1 - foreground.a),
+      b: foreground.b * foreground.a + background.b * (1 - foreground.a),
+      a: 1,
+    });
+    const backgroundFor = (node) => {
+      let background = { r: 255, g: 255, b: 255, a: 1 };
+      const layers = [];
+      for (let current = node; current; current = current.parentElement) {
+        const color = parse(getComputedStyle(current).backgroundColor);
+        if (color.a > 0) layers.push(color);
+      }
+      for (const layer of layers.reverse()) background = composite(layer, background);
+      return background;
+    };
+    const linear = (value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    };
+    const luminance = ({ r, g, b }) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+    const style = getComputedStyle(element);
+    const background = backgroundFor(element);
+    const foreground = composite(parse(style.color), background);
+    const lighter = Math.max(luminance(foreground), luminance(background));
+    const darker = Math.min(luminance(foreground), luminance(background));
+    return {
+      ratio: Number(((lighter + 0.05) / (darker + 0.05)).toFixed(2)),
+      foreground: style.color,
+      background: style.backgroundColor,
+      fontSize: style.fontSize,
+      fontWeight: style.fontWeight,
+    };
+  });
+}
+
 test.describe.serial('Cierre UI/UX focal de depósitos', () => {
   test.describe.configure({ retries: 0 });
 
@@ -163,6 +205,32 @@ test.describe.serial('Cierre UI/UX focal de depósitos', () => {
     await expectNoHorizontalOverflow(page);
     await screenshot(page, testInfo, 'UIUX-CLOSE-004-qr-movil', true);
     expect(responses).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+  test('UIUX-CLOSE-005 mide contraste representativo y preferencias reales del layout', async ({ page }, testInfo) => {
+    const errors = observeRuntime(page);
+    await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto('/depositos', { waitUntil: 'networkidle' });
+
+    const publicHeading = page.getByRole('heading').first();
+    const publicLink = page.getByRole('link', { name: 'Crear cuenta e iniciar' }).first();
+    await expect(publicHeading).toBeVisible();
+    await expect(publicLink).toBeVisible();
+    const publicContrast = {
+      heading: await contrastOf(publicHeading),
+      action: await contrastOf(publicLink),
+    };
+    expect(publicContrast.heading.ratio).toBeGreaterThanOrEqual(4.5);
+    expect(publicContrast.action.ratio).toBeGreaterThanOrEqual(4.5);
+    expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBeTruthy();
+    expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBeFalsy();
+
+    await testInfo.attach('UIUX-CLOSE-005-contraste.json', {
+      body: Buffer.from(JSON.stringify({ publicContrast }, null, 2)),
+      contentType: 'application/json',
+    });
+    await expectNoHorizontalOverflow(page);
     expect(errors).toEqual([]);
   });
 });

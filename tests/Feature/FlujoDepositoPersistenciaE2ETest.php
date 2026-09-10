@@ -219,6 +219,22 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->and($expediente->solicitud_firmada_sha256)->not->toBeNull()
         ->and($expediente->solicitud_firma_metadata['firmante_usuario_id'])->toBe((string) $depositante->id);
 
+    $rutaFirmada = $expediente->solicitud_firmada_ruta;
+    $contenidoFirmado = Storage::disk('local')->get($rutaFirmada);
+    $this->actingAs($depositante)
+        ->get(route('depositos.solicitud.documento', (string) $solicitud->id()))
+        ->assertOk()
+        ->assertContent($contenidoFirmado);
+
+    Storage::disk('local')->delete($rutaFirmada);
+    $this->actingAs($depositante)
+        ->get(route('depositos.solicitud.documento', (string) $solicitud->id()))
+        ->assertConflict();
+    expect(fn () => app(EnviarSolicitudDepositoHandler::class)(new EnviarSolicitudDepositoInput(
+        solicitudId: (string) $solicitud->id(),
+    )))->toThrow(DomainException::class, 'Debes generar y firmar electrónicamente');
+    Storage::disk('local')->put($rutaFirmada, $contenidoFirmado);
+
     app(EnviarSolicitudDepositoHandler::class)(new EnviarSolicitudDepositoInput(
         solicitudId: (string) $solicitud->id(),
     ));

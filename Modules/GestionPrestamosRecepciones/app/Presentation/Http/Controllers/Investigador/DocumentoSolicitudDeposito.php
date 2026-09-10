@@ -25,10 +25,22 @@ final class DocumentoSolicitudDeposito
         abort_unless($esDueno || $usuario->esCurador() || $usuario->esReceptor(), 403);
 
         $servirOriginal = $request->boolean('original');
-        if (! $servirOriginal
-            && $solicitud->solicitud_firmada_ruta !== null
-            && $almacenamiento->existe($solicitud->solicitud_firmada_ruta)
-        ) {
+        if (! $servirOriginal && $solicitud->solicitud_firmada_ruta !== null) {
+            abort_unless(
+                $almacenamiento->existe($solicitud->solicitud_firmada_ruta),
+                409,
+                'La copia firmada no está disponible. No se servirá el documento original como si estuviera firmado.',
+            );
+            abort_unless(
+                is_string($solicitud->solicitud_firmada_sha256)
+                    && $solicitud->solicitud_firmada_sha256 !== ''
+                    && hash_equals(
+                        $solicitud->solicitud_firmada_sha256,
+                        $almacenamiento->sha256($solicitud->solicitud_firmada_ruta),
+                    ),
+                409,
+                'La copia firmada no supera la verificación de integridad.',
+            );
             $contenido = $almacenamiento->obtener($solicitud->solicitud_firmada_ruta);
         } else {
             abort_unless($esDueno || $usuario->esCurador(), 403);
