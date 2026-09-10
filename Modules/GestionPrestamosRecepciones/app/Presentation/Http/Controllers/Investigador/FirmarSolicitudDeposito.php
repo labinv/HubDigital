@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
@@ -44,7 +45,7 @@ final class FirmarSolicitudDeposito
             abort(500, 'No se pudo preparar el documento oficial.');
         }
 
-        $rutaAnterior = $solicitud->solicitud_firmada_ruta;
+        $versionEsperada = (int) $solicitud->solicitud_documento_version;
         $ruta = 'solicitudes-deposito/firmadas/'.$solicitud->id
             .'-v'.((int) $solicitud->solicitud_documento_version)
             .'-'.Str::uuid().'.pdf';
@@ -72,13 +73,45 @@ final class FirmarSolicitudDeposito
             $firmaMetadata['proposito'] = 'solicitud_deposito';
             $firmaMetadata['pdf_sha256'] = hash_file('sha256', $rutaAbsoluta);
 
-            $solicitud->forceFill([
-                'solicitud_firmada_ruta' => $ruta,
-                'solicitud_firmada_sha256' => $firmaMetadata['pdf_sha256'],
-                'solicitud_firmada_en' => now(),
-                'solicitud_firma_metadata' => $firmaMetadata,
-            ])->save();
+            $rutaAnterior = DB::transaction(function () use (
+                $id,
+                $request,
+                $versionEsperada,
+                $ruta,
+                $firmaMetadata,
+            ): ?string {
+                $vigente = SolicitudDepositoEloquentModel::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+                abort_unless((string) $vigente->investigador_id === (string) $request->user()->id, 403);
+                abort_unless(in_array($vigente->estado, [
+                    EstadoSolicitudDeposito::EnBorrador->value,
+                    EstadoSolicitudDeposito::RequiereCorreccion->value,
+                ], true), 409, 'La solicitud cambió de estado mientras se firmaba.');
+                abort_unless(
+                    (int) $vigente->solicitud_documento_version === $versionEsperada,
+                    409,
+                    'El documento cambió mientras se firmaba. Genera y firma la versión vigente.',
+                );
+
+                $anterior = is_string($vigente->solicitud_firmada_ruta)
+                    ? $vigente->solicitud_firmada_ruta
+                    : null;
+                $vigente->forceFill([
+                    'solicitud_firmada_ruta' => $ruta,
+                    'solicitud_firmada_sha256' => $firmaMetadata['pdf_sha256'],
+                    'solicitud_firmada_en' => now(),
+                    'solicitud_firma_metadata' => $firmaMetadata,
+                ])->save();
+
+                return $anterior;
+            });
             $persistido = true;
+
+            Log::info('Firma de solicitud persistida', [
+                'solicitud_id' => $id,
+                'version' => $versionEsperada,
+                'sha256' => $firmaMetadata['pdf_sha256'],
+                'objeto_verificado' => $almacenamiento->existe($ruta),
+            ]);
 
             if (is_string($rutaAnterior) && $rutaAnterior !== '' && $rutaAnterior !== $ruta) {
                 try {

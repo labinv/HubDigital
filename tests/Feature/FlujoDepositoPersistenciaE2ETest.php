@@ -17,9 +17,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalme
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalmenteSolicitud\AprobarDocumentalmenteSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteOutput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteOutput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
@@ -225,6 +225,24 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->get(route('depositos.solicitud.documento', (string) $solicitud->id()))
         ->assertOk()
         ->assertContent($contenidoFirmado);
+
+    $respuestaOriginal = $this->actingAs($depositante)
+        ->get(route('depositos.solicitud.documento', [
+            'id' => (string) $solicitud->id(),
+            'original' => 1,
+        ]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/pdf');
+    expect($respuestaOriginal->getContent())->not->toBe($contenidoFirmado);
+
+    Storage::disk('local')->put($rutaFirmada, $contenidoFirmado."\ncontenido alterado");
+    $this->actingAs($depositante)
+        ->get(route('depositos.solicitud.documento', (string) $solicitud->id()))
+        ->assertConflict();
+    expect(fn () => app(EnviarSolicitudDepositoHandler::class)(new EnviarSolicitudDepositoInput(
+        solicitudId: (string) $solicitud->id(),
+    )))->toThrow(DomainException::class, 'Debes generar y firmar electrónicamente');
+    Storage::disk('local')->put($rutaFirmada, $contenidoFirmado);
 
     Storage::disk('local')->delete($rutaFirmada);
     $this->actingAs($depositante)

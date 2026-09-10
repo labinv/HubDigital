@@ -63,9 +63,10 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ExtraccionDatosDocumentoJob;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\MatrizEspeciesEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\InvalidarFirmaSolicitud;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\TaxonEloquentModel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
  * Componente Livewire para el registro de una solicitud de depósito o donación.
@@ -647,12 +648,12 @@ final class RegistroSolicitudDeposito extends Component
         SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
             ->where('investigador_id', (string) auth()->id())
             ->update([
-            'paso_actual' => $this->paso,
-            'documentos_cargados' => $this->documentosCargados,
-            'nombres_archivos_originales' => $this->nombresArchivosOriginales,
-            'documentos_requeridos' => $this->documentosRequeridos,
-            'matriz_id' => $this->matrizId,
-        ]);
+                'paso_actual' => $this->paso,
+                'documentos_cargados' => $this->documentosCargados,
+                'nombres_archivos_originales' => $this->nombresArchivosOriginales,
+                'documentos_requeridos' => $this->documentosRequeridos,
+                'matriz_id' => $this->matrizId,
+            ]);
     }
 
     public function descartarBorrador(): void
@@ -898,28 +899,28 @@ final class RegistroSolicitudDeposito extends Component
         $this->erroresDocumentales = [];
         $this->advertenciasDocumentales = [];
         try {
-        DB::transaction(function () use ($documentosActualizados, $nombresActualizados): void {
-            $modelo = SolicitudDepositoEloquentModel::query()
-                ->whereKey($this->solicitudId)
-                ->where('investigador_id', (string) auth()->id())
-                ->lockForUpdate()
-                ->firstOrFail();
-            $metadatos = $modelo->extraccion_metadatos ?? [];
-            $revision = $metadatos['revision_documental'] ?? null;
-            $historial = $metadatos['revision_documental_historial'] ?? [];
-            if (is_array($revision)) {
-                $historial[] = [...$revision, 'estado' => 'invalidada', 'invalidada_en' => now()->toIso8601String(), 'motivo_invalidacion' => 'El consultor sustituyó documentación del expediente.'];
-            }
-            $modelo->forceFill([
-                'documentos_cargados' => $documentosActualizados,
-                'nombres_archivos_originales' => $nombresActualizados,
-                'extraccion_estado' => null,
-                'extraccion_metadatos' => [...$metadatos,
-                    'revision_documental' => is_array($revision) ? [...$revision, 'estado' => 'invalidada'] : null,
-                    'revision_documental_historial' => $historial],
-                'documentos_procesados' => [],
-            ])->save();
-        });
+            DB::transaction(function () use ($documentosActualizados, $nombresActualizados): void {
+                $modelo = SolicitudDepositoEloquentModel::query()
+                    ->whereKey($this->solicitudId)
+                    ->where('investigador_id', (string) auth()->id())
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $metadatos = $modelo->extraccion_metadatos ?? [];
+                $revision = $metadatos['revision_documental'] ?? null;
+                $historial = $metadatos['revision_documental_historial'] ?? [];
+                if (is_array($revision)) {
+                    $historial[] = [...$revision, 'estado' => 'invalidada', 'invalidada_en' => now()->toIso8601String(), 'motivo_invalidacion' => 'El consultor sustituyó documentación del expediente.'];
+                }
+                $modelo->forceFill([
+                    'documentos_cargados' => $documentosActualizados,
+                    'nombres_archivos_originales' => $nombresActualizados,
+                    'extraccion_estado' => null,
+                    'extraccion_metadatos' => [...$metadatos,
+                        'revision_documental' => is_array($revision) ? [...$revision, 'estado' => 'invalidada'] : null,
+                        'revision_documental_historial' => $historial],
+                    'documentos_procesados' => [],
+                ])->save();
+            });
         } catch (\Throwable $error) {
             app(AlmacenamientoDepositos::class)->eliminar($ruta);
             throw $error;
@@ -1214,8 +1215,7 @@ final class RegistroSolicitudDeposito extends Component
     private function avanzarDesdeFalloExtraccion(
         ?string $mensaje = null,
         string $estado = 'error_procesamiento',
-    ): void
-    {
+    ): void {
         $regulatorios = [
             'Copia de la autorización de recolección (MAE)',
             'Copia del permiso de movilización',
@@ -2296,8 +2296,8 @@ final class RegistroSolicitudDeposito extends Component
         SolicitudDepositoEloquentModel::whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())
             ->update([
-            'extraccion_metadatos' => $metadatos,
-        ]);
+                'extraccion_metadatos' => $metadatos,
+            ]);
         $this->metadatosExtraccion = $metadatos;
     }
 
@@ -2315,14 +2315,16 @@ final class RegistroSolicitudDeposito extends Component
         SolicitudDepositoEloquentModel::whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())
             ->update([
-            'extraccion_metadatos' => $this->metadatosExtraccion,
-        ]);
+                'extraccion_metadatos' => $this->metadatosExtraccion,
+            ]);
     }
 
     /** @param array<string, string> $documentos @param array<string, string> $nombres */
     private function persistirRetiroDocumento(array $documentos, array $nombres): void
     {
-        if ($this->solicitudId === null) return;
+        if ($this->solicitudId === null) {
+            return;
+        }
 
         DB::transaction(function () use ($documentos, $nombres): void {
             $modelo = SolicitudDepositoEloquentModel::query()
@@ -2560,23 +2562,13 @@ final class RegistroSolicitudDeposito extends Component
         if ($this->solicitudId === null) {
             return;
         }
-        $solicitud = SolicitudDepositoEloquentModel::query()
-            ->whereKey($this->solicitudId)
-            ->where('investigador_id', (string) auth()->id())
-            ->first();
-        if ($solicitud?->solicitud_firmada_en === null) {
+        $invalidada = app(InvalidarFirmaSolicitud::class)(
+            $this->solicitudId,
+            (string) auth()->id(),
+        );
+        if (! $invalidada) {
             return;
         }
-        if (is_string($solicitud->solicitud_firmada_ruta)) {
-            app(AlmacenamientoDepositos::class)->eliminar($solicitud->solicitud_firmada_ruta);
-        }
-        $solicitud->forceFill([
-            'solicitud_firmada_ruta' => null,
-            'solicitud_firmada_sha256' => null,
-            'solicitud_firmada_en' => null,
-            'solicitud_firma_metadata' => [],
-            'solicitud_documento_version' => ((int) $solicitud->solicitud_documento_version) + 1,
-        ])->save();
         $this->solicitudFirmada = false;
         $this->solicitudFirmaMetadata = [];
     }
