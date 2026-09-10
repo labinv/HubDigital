@@ -108,3 +108,30 @@ test('persiste, verifica y elimina un objeto mediante la API S3 de R2', function
     $almacenamiento->eliminar('depositos/expediente.pdf');
     expect($almacenamiento->existe('depositos/expediente.pdf'))->toBeFalse();
 });
+
+test('una escritura R2 fallida no se confirma ni intenta verificar el objeto', function (): void {
+    Http::fake([
+        '*' => Http::response('fallo de almacenamiento inyectado', 500),
+    ]);
+    config()->set('deposit-storage.driver', 'r2');
+    config()->set('deposit-storage.require_remote', true);
+    config()->set('deposit-storage.verify_after_write', true);
+    config()->set('deposit-storage.r2', [
+        'endpoint' => 'https://cuenta.r2.cloudflarestorage.com',
+        'bucket' => 'hubdigital-depositos-dev',
+        'access_key_id' => 'clave-prueba',
+        'secret_access_key' => 'secreto-prueba',
+        'timeout_seconds' => 5,
+        'connect_timeout_seconds' => 2,
+        'max_attempts' => 1,
+    ]);
+
+    expect(fn () => (new AlmacenamientoDepositos)->guardarContenido(
+        'depositos/escritura-fallida.pdf',
+        '%PDF-fallo-controlado',
+        'application/pdf',
+    ))->toThrow(RuntimeException::class);
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'PUT');
+});

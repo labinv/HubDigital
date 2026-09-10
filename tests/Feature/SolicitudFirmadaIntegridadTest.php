@@ -78,3 +78,20 @@ test('la invalidación confirma metadatos antes de retirar la versión anterior'
         ->and($vigente->solicitud_documento_version)->toBe(2);
     Storage::disk('local')->assertMissing($ruta);
 });
+
+test('reintentar la invalidación no incrementa otra vez la versión ni revive referencias', function (): void {
+    $depositante = User::factory()->depositante()->create();
+    $solicitud = solicitudFirmadaParaIntegridad($depositante);
+    $ruta = $solicitud->solicitud_firmada_ruta;
+    $invalidar = app(InvalidarFirmaSolicitud::class);
+
+    expect($invalidar((string) $solicitud->id, (string) $depositante->id))->toBeTrue()
+        ->and($invalidar((string) $solicitud->id, (string) $depositante->id))->toBeFalse();
+
+    $vigente = $solicitud->fresh();
+    expect($vigente->solicitud_documento_version)->toBe(2)
+        ->and($vigente->solicitud_firmada_ruta)->toBeNull()
+        ->and($vigente->solicitud_firmada_sha256)->toBeNull()
+        ->and($vigente->solicitud_firmada_en)->toBeNull();
+    Storage::disk('local')->assertMissing($ruta);
+});
