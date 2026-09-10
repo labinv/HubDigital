@@ -527,6 +527,10 @@ final class RegistroSolicitudDeposito extends Component
             $this->nombreEnDocumento = $model->nombre_investigador_documento ?? '';
             $this->documentosProcesados = $model->documentos_procesados ?? [];
 
+            if ($pasoGuardado >= 5) {
+                $this->prepararRegistroNativoDesdeExpediente();
+            }
+
             // Re-derivar validación de identidad si ya fue realizada
             if (! empty($this->nombreEnDocumento)) {
                 $handler = app(ValidarIdentidadSolicitudHandler::class);
@@ -1413,6 +1417,16 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
+        $this->prepararRegistroNativoDesdeExpediente();
+
+        $this->registrarConfirmacionExtraccion();
+        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 4]));
+        $this->paso = 5;
+        $this->persistirEstadoWizard();
+    }
+
+    private function prepararRegistroNativoDesdeExpediente(): void
+    {
         $this->registroNativo = array_replace($this->registroNativo, [
             'identifiedBy' => auth()->user()->name,
             'recordedBy' => auth()->user()->name,
@@ -1423,11 +1437,6 @@ final class RegistroSolicitudDeposito extends Component
             'recordNumber' => (string) ($this->muestrasDetectadas[0]['recordNumber'] ?? $this->numeroSolicitud.'-001'),
             'stateProvince' => (string) ($this->datosExtraidos['Provincia'] ?? ''),
         ]);
-
-        $this->registrarConfirmacionExtraccion();
-        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 4]));
-        $this->paso = 5;
-        $this->persistirEstadoWizard();
     }
 
     // ── Paso 5 – Matriz de especies ─────────────────────────────────────────────
