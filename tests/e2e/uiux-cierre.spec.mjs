@@ -56,7 +56,7 @@ test.describe.serial('Cierre UI/UX focal de depósitos', () => {
     await login(page, accounts.depositor);
     await page.goto('/prestamos/mis-depositos', { waitUntil: 'networkidle' });
 
-    const sidebar = page.locator('[data-flux-sidebar-on-mobile]');
+    const sidebar = page.locator('[data-flux-sidebar]');
     const toggle = page.getByRole('button', { name: 'Toggle sidebar' }).first();
     await expect(sidebar).toHaveAttribute('data-flux-sidebar-collapsed-mobile', '');
     await expect(sidebar).toHaveAttribute('inert', '');

@@ -530,7 +530,7 @@
                 const breakpoint = window.matchMedia('(max-width: 1023px)');
 
                 const protectCollapsedSidebar = () => {
-                    const sidebar = document.querySelector('[data-flux-sidebar-on-mobile]');
+                    const sidebar = document.querySelector('[data-flux-sidebar]');
 
                     if (! sidebar || sidebar.dataset.keyboardGuard === 'ready') {
                         return;
