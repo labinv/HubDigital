@@ -1,5 +1,7 @@
 <?php
 
+uses(Tests\TestCase::class);
+
 test('el menú móvil expone estado y devuelve el foco al cerrarse con escape', function (): void {
     $response = $this->get(route('home'));
 
