@@ -8,7 +8,9 @@ function ejecutarRespaldoCoordinadoSintetico(string $raiz, array $entorno = []):
 {
     $proyecto = dirname(__DIR__, 2);
     $bin = $raiz.'/bin';
-    mkdir($bin, 0700, true);
+    if (! is_dir($bin)) {
+        mkdir($bin, 0700, true);
+    }
     $docker = <<<'SH'
 #!/bin/sh
 printf '%s\n' "$*" >>"$QA_DOCKER_LOG"
