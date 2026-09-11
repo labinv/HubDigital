@@ -9,7 +9,7 @@
                 id="chat-bot-panel"
                 aria-label="Chat de consulta a la colección"
                 wire:keydown.escape.window="alternar"
-                class="flex h-[min(32rem,calc(100dvh-7rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
+                class="flex h-[min(32rem,calc(100dvh-2rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg sm:h-[min(32rem,calc(100dvh-7rem))]"
             >
                 <header class="flex items-center justify-between gap-2 border-b border-border bg-blue-navy px-4 py-3 text-white">
                     <div class="flex items-center gap-2">
@@ -24,7 +24,7 @@
                         wire:click="alternar"
                         wire:loading.attr="disabled"
                         wire:target="alternar"
-                        class="rounded-md p-1.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                        class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                         aria-label="Cerrar chat"
                     >
                         <flux:icon name="x-mark" class="h-5 w-5" />
@@ -86,6 +86,7 @@
                         wire:loading.attr="disabled"
                         wire:target="enviar"
                         size="sm"
+                        class="min-h-11 min-w-11"
                         aria-label="Enviar pregunta"
                     >
                         <span wire:loading.remove wire:target="enviar" class="inline-flex">
@@ -104,7 +105,9 @@
             type="button"
             wire:click="alternar"
             @class([
-                'flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-colors',
+                'h-14 w-14 items-center justify-center rounded-full shadow-lg transition-colors',
+                'flex' => ! $abierto,
+                'hidden sm:flex' => $abierto,
                 'bg-blue-navy text-white hover:bg-blue-navy/90' => ! $abierto,
                 'bg-error text-white hover:bg-error/90' => $abierto,
             ])

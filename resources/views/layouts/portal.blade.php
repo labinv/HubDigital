@@ -49,13 +49,14 @@
             </div>
 
             <button
+                x-ref="menuButton"
                 type="button"
                 @click="abierto = !abierto"
                 :aria-expanded="abierto.toString()"
                 aria-controls="menu-portal-movil"
                 class="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-blue-navy/20 text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue lg:hidden"
             >
-                <span class="sr-only">Abrir menú principal</span>
+                <span class="sr-only" x-text="abierto ? 'Cerrar menú principal' : 'Abrir menú principal'">Abrir menú principal</span>
                 <svg x-show="!abierto" viewBox="0 0 24 24" aria-hidden="true" class="size-6 fill-none stroke-current stroke-2"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" /></svg>
                 <svg x-cloak x-show="abierto" viewBox="0 0 24 24" aria-hidden="true" class="size-6 fill-none stroke-current stroke-2"><path d="m6 6 12 12M18 6 6 18" stroke-linecap="round" /></svg>
             </button>
@@ -67,7 +68,7 @@
             x-show="abierto"
             x-transition.opacity.duration.150ms
             @click.outside="abierto = false"
-            @keydown.escape.window="abierto = false"
+            @keydown.escape.window="if (abierto) { abierto = false; $nextTick(() => $refs.menuButton.focus()) }"
             class="border-t border-blue-navy/10 bg-white px-5 py-4 shadow-lg lg:hidden"
             aria-label="Navegación principal móvil"
         >
