@@ -16,8 +16,8 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ColaRevisionCuratorial
 use Modules\GestionPrestamosRecepciones\Application\Ports\EstadoEspecimenCatalogoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
-use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorCodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorActaRecepcionPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorCodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
@@ -48,8 +48,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecime
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentColaRevisionCuratorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentGeneradorCodigoPrestamoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentSolicitudFirmadaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentRevisionDocumentalAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentSolicitudFirmadaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionCatalogoCuraduriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEspecimenesAdapter;
@@ -61,12 +61,15 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LocalExtraccionD
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionInvestigadorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\ConciliarDocumentosDepositosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarPlazosDevolucionTodosLosPrestamosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\RespaldarDocumentosDepositosCommand;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\RestaurarDocumentosDepositosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\VerificarAlmacenamientoDepositosCommand;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\DomPdfGeneratorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Documentos\DomPdfGeneradorActaRecepcionAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Documentos\EloquentOriginalActaRecepcionAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\DomPdfGeneratorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUserInvestigadorEmailAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUsuarioNombreAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
@@ -157,6 +160,9 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
             LimpiarBorradoresAbandonadosCommand::class,
             EvaluarPlazosDevolucionTodosLosPrestamosCommand::class,
             VerificarAlmacenamientoDepositosCommand::class,
+            ConciliarDocumentosDepositosCommand::class,
+            RespaldarDocumentosDepositosCommand::class,
+            RestaurarDocumentosDepositosCommand::class,
         ]);
 
         // Los documentos regulatorios producen hechos auditables. Por diseño, su

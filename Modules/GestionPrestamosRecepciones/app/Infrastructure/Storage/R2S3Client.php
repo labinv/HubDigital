@@ -81,8 +81,51 @@ final class R2S3Client
         $this->exigirExito($respuesta, 'eliminar');
     }
 
-    private function enviar(string $metodo, string $ruta, string $contenido = '', ?string $mime = null): Response
+    /**
+     * @return array{objetos: list<array{ruta: string, tamano: int, etag: ?string}>, truncado: bool, cursor: ?string}
+     */
+    public function listar(string $prefijo, ?string $cursor = null, int $limite = 1000): array
     {
+        $consulta = [
+            'list-type' => '2',
+            'prefix' => $prefijo,
+            'max-keys' => (string) max(1, min(1000, $limite)),
+        ];
+        if ($cursor !== null && $cursor !== '') {
+            $consulta['continuation-token'] = $cursor;
+        }
+
+        $respuesta = $this->enviar('GET', '', '', null, $consulta);
+        $this->exigirExito($respuesta, 'listar');
+        $xml = @simplexml_load_string($respuesta->body());
+        if ($xml === false) {
+            throw new \RuntimeException('R2 entrego un inventario XML invalido.');
+        }
+
+        $objetos = [];
+        foreach ($xml->Contents as $objeto) {
+            $objetos[] = [
+                'ruta' => (string) $objeto->Key,
+                'tamano' => (int) $objeto->Size,
+                'etag' => trim((string) $objeto->ETag, '"'),
+            ];
+        }
+
+        return [
+            'objetos' => $objetos,
+            'truncado' => strtolower((string) $xml->IsTruncated) === 'true',
+            'cursor' => isset($xml->NextContinuationToken) ? (string) $xml->NextContinuationToken : null,
+        ];
+    }
+
+    /** @param array<string, string> $consulta */
+    private function enviar(
+        string $metodo,
+        string $ruta,
+        string $contenido = '',
+        ?string $mime = null,
+        array $consulta = [],
+    ): Response {
         $endpoint = rtrim((string) ($this->configuracion['endpoint'] ?? ''), '/');
         $bucket = trim((string) ($this->configuracion['bucket'] ?? ''), '/');
         $clave = (string) ($this->configuracion['access_key_id'] ?? '');
@@ -94,7 +137,7 @@ final class R2S3Client
         }
 
         $rutaCodificada = implode('/', array_map('rawurlencode', explode('/', ltrim($ruta, '/'))));
-        $url = $endpoint.'/'.rawurlencode($bucket).'/'.$rutaCodificada;
+        $url = $endpoint.'/'.rawurlencode($bucket).($rutaCodificada !== '' ? '/'.$rutaCodificada : '');
         $componentes = parse_url($url);
         if (! is_array($componentes) || ! isset($componentes['scheme'], $componentes['host'], $componentes['path'])) {
             throw new \RuntimeException('El endpoint configurado para R2 no es valido.');
@@ -114,10 +157,15 @@ final class R2S3Client
         $hashContenido = hash('sha256', $contenido);
         $headersCanonicos = "host:{$host}\nx-amz-content-sha256:{$hashContenido}\nx-amz-date:{$ahora}\n";
         $headersFirmados = 'host;x-amz-content-sha256;x-amz-date';
+        ksort($consulta);
+        $consultaCanonica = implode('&', array_map(
+            static fn (string $clave): string => rawurlencode($clave).'='.rawurlencode($consulta[$clave]),
+            array_keys($consulta),
+        ));
         $solicitudCanonica = implode("\n", [
             $metodo,
             (string) $componentes['path'],
-            '',
+            $consultaCanonica,
             $headersCanonicos,
             $headersFirmados,
             $hashContenido,
@@ -149,7 +197,7 @@ final class R2S3Client
                     $peticion = $peticion->withBody($contenido, $mime ?: 'application/octet-stream');
                 }
 
-                $respuesta = $peticion->send($metodo, $url);
+                $respuesta = $peticion->send($metodo, $url.($consultaCanonica !== '' ? '?'.$consultaCanonica : ''));
                 $reintentable = $respuesta->status() === 429 || $respuesta->serverError();
                 if (! $reintentable || $intento === $maxIntentos) {
                     return $respuesta;

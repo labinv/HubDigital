@@ -190,6 +190,45 @@ final class AlmacenamientoDepositos
         }
     }
 
+    /** @return array{content_type: ?string, content_length: ?int, etag: ?string} */
+    public function inspeccionar(string $ruta): array
+    {
+        $ruta = $this->normalizarRuta($ruta);
+        if ($this->driver() === 'r2') {
+            return $this->clienteR2()->head($ruta);
+        }
+        if (! Storage::disk($this->discoLocal())->exists($ruta)) {
+            throw new \RuntimeException('El objeto no existe.');
+        }
+
+        return [
+            'content_type' => Storage::disk($this->discoLocal())->mimeType($ruta) ?: null,
+            'content_length' => Storage::disk($this->discoLocal())->size($ruta),
+            'etag' => null,
+        ];
+    }
+
+    /**
+     * @return array{objetos: list<array{ruta: string, tamano: int, etag: ?string}>, truncado: bool, cursor: ?string}
+     */
+    public function listar(string $prefijo, ?string $cursor = null, int $limite = 1000): array
+    {
+        $prefijo = $this->normalizarPrefijo($prefijo);
+        if ($this->driver() === 'r2') {
+            return $this->clienteR2()->listar($prefijo, $cursor, $limite);
+        }
+        $todos = collect(Storage::disk($this->discoLocal())->allFiles($prefijo))->sort()->values();
+        $inicio = $cursor === null ? 0 : max(0, (int) $cursor);
+        $pagina = $todos->slice($inicio, max(1, $limite))->map(fn (string $ruta): array => [
+            'ruta' => $ruta,
+            'tamano' => Storage::disk($this->discoLocal())->size($ruta),
+            'etag' => null,
+        ])->values()->all();
+        $siguiente = $inicio + count($pagina);
+
+        return ['objetos' => $pagina, 'truncado' => $siguiente < $todos->count(), 'cursor' => $siguiente < $todos->count() ? (string) $siguiente : null];
+    }
+
     public function copiaLocal(string $ruta): ArchivoLocalDeposito
     {
         $ruta = $this->normalizarRuta($ruta);
@@ -242,5 +281,15 @@ final class AlmacenamientoDepositos
         }
 
         return implode('/', array_filter($segmentos, static fn (string $segmento): bool => $segmento !== ''));
+    }
+
+    private function normalizarPrefijo(string $prefijo): string
+    {
+        $prefijo = trim($prefijo);
+        if ($prefijo === '' || str_starts_with($prefijo, '/') || str_contains($prefijo, '\\') || str_contains($prefijo, '..')) {
+            throw new \InvalidArgumentException('El prefijo de objetos no es valido.');
+        }
+
+        return trim($prefijo, '/').'/';
     }
 }

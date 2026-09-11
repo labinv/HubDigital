@@ -50,3 +50,29 @@ test('rechaza un endpoint R2 sin HTTPS antes de enviar credenciales', function (
         ->toThrow(RuntimeException::class, 'debe usar HTTPS');
     Http::assertNothingSent();
 });
+
+test('pagina el inventario R2 con continuation token y no confunde una pagina corta con el final', function (): void {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult><IsTruncated>true</IsTruncated><NextContinuationToken>cursor+/=</NextContinuationToken><Contents><Key>depositos/qa/uno.pdf</Key><ETag>&quot;abc&quot;</ETag><Size>17</Size></Contents></ListBucketResult>
+XML, 200),
+    ]);
+    $cliente = new R2S3Client([
+        'endpoint' => 'https://cuenta-prueba.r2.cloudflarestorage.com',
+        'bucket' => 'mepn-privado',
+        'access_key_id' => 'AKIDPRUEBA',
+        'secret_access_key' => 'secreto',
+        'max_attempts' => 1,
+    ], new DateTimeImmutable('2026-09-10T18:00:00Z'));
+
+    $pagina = $cliente->listar('depositos/qa/', null, 25);
+
+    expect($pagina['truncado'])->toBeTrue()
+        ->and($pagina['cursor'])->toBe('cursor+/=')
+        ->and($pagina['objetos'])->toBe([['ruta' => 'depositos/qa/uno.pdf', 'tamano' => 17, 'etag' => 'abc']]);
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'GET'
+        && str_contains($request->url(), 'list-type=2')
+        && str_contains($request->url(), 'max-keys=25')
+        && str_contains($request->url(), 'prefix=depositos%2Fqa%2F'));
+});
