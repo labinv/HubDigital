@@ -11,13 +11,16 @@ window.hubDigitalFirmador = (config) => ({
         this.error = '';
 
         const archivo = this.$refs.certificado?.files?.[0];
-        const clave = this.$refs.clave?.value ?? '';
+        let clave = this.$refs.clave?.value ?? '';
         if (!archivo || !/\.(p12|pfx)$/i.test(archivo.name)) {
             this.error = 'Selecciona un certificado .p12 o .pfx.';
+            this.limpiarCamposCredenciales();
+            clave = '';
             return;
         }
         if (clave.length === 0) {
             this.error = 'Ingresa la contraseña del certificado.';
+            this.limpiarCamposCredenciales();
             return;
         }
 
@@ -91,8 +94,6 @@ window.hubDigitalFirmador = (config) => ({
 
             this.estado = 'completado';
             this.progreso = cuerpo.message ?? 'Documento firmado y validado.';
-            this.$refs.clave.value = '';
-            this.$refs.certificado.value = '';
             window.dispatchEvent(new CustomEvent('toast', { detail: { message: this.progreso } }));
             window.setTimeout(() => window.location.reload(), 900);
         } catch (error) {
@@ -104,9 +105,17 @@ window.hubDigitalFirmador = (config) => ({
             if (certificadoBytes && certificadoBytes.byteLength > 0) {
                 new Uint8Array(certificadoBytes).fill(0);
             }
-            if (this.$refs.clave) {
-                this.$refs.clave.value = '';
-            }
+            clave = '';
+            this.limpiarCamposCredenciales();
+        }
+    },
+
+    limpiarCamposCredenciales() {
+        if (this.$refs.clave) {
+            this.$refs.clave.value = '';
+        }
+        if (this.$refs.certificado) {
+            this.$refs.certificado.value = '';
         }
     },
 

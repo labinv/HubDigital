@@ -7,6 +7,7 @@
         "dev": "vite",
         "test:e2e": "playwright test",
         "test:signer": "node tests/js/firmador-smoke.mjs",
+        "test:signer:ui-security": "node tests/js/firmador-ui-seguridad.mjs",
         "test:signer:p12-local": "node tests/js/firmador-p12-local.mjs"
     },
     "dependencies": {

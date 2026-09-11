@@ -39,6 +39,7 @@ final class ConsultarDetalleRecepcionHandler
             : [];
 
         return new ConsultarDetalleRecepcionOutput(
+            solicitudId: (string) $solicitud->id(),
             numeroSolicitud: (string) $solicitud->numero(),
             tipoTramite: $solicitud->tipoTramite(),
             investigadorId: $solicitud->investigadorId(),

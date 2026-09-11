@@ -14,6 +14,7 @@ final readonly class ConsultarDetalleRecepcionOutput
      * @param  list<string>  $observaciones
      */
     public function __construct(
+        public string $solicitudId,
         public string $numeroSolicitud,
         public string $tipoTramite,
         public string $investigadorId,

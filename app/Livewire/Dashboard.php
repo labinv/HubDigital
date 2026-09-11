@@ -67,10 +67,10 @@ class Dashboard extends Component
                     'recepciones.solicitudes_deposito.estado as estado_documental',
                     'recepciones.solicitudes_deposito.nro_lotes',
                     'recepciones.solicitudes_deposito.nro_individuos',
-                    DB::raw("TO_CHAR(recepciones.solicitudes_deposito.created_at AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as registrado_en"),
-                    DB::raw("TO_CHAR(recepciones.solicitudes_deposito.aprobada_en AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as aprobada_en"),
+                    DB::raw("TO_CHAR(recepciones.solicitudes_deposito.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as registrado_en"),
+                    DB::raw("TO_CHAR(recepciones.solicitudes_deposito.aprobada_en AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as aprobada_en"),
                     'recepcion.estado as estado_recepcion',
-                    DB::raw("TO_CHAR(recepcion.verificado_en AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as verificado_en"),
+                    DB::raw("TO_CHAR(recepcion.verificado_en AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as verificado_en"),
                     'recepcion.acta_firmada_ruta',
                 ])
                 ->cursor();
@@ -268,19 +268,20 @@ class Dashboard extends Component
     private function graficoDepositosPorMes(): array
     {
         $cantidadMeses = (int) $this->periodoAnalisis;
-        $inicio = now()->startOfMonth()->subMonths($cantidadMeses - 1);
+        $inicioLocal = now('America/Guayaquil')->startOfMonth()->subMonths($cantidadMeses - 1);
+        $inicio = $inicioLocal->utc();
         $conteos = SolicitudDepositoEloquentModel::query()
             ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
             ->where('created_at', '>=', $inicio)
-            ->selectRaw("TO_CHAR(created_at, 'YYYY-MM') AS periodo, COUNT(*) AS total")
-            ->groupByRaw("TO_CHAR(created_at, 'YYYY-MM')")
+            ->selectRaw("TO_CHAR(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guayaquil', 'YYYY-MM') AS periodo, COUNT(*) AS total")
+            ->groupByRaw("TO_CHAR(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Guayaquil', 'YYYY-MM')")
             ->pluck('total', 'periodo');
 
         $meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
         $filas = [];
 
         for ($desplazamiento = 0; $desplazamiento < $cantidadMeses; $desplazamiento++) {
-            $mes = $inicio->copy()->addMonths($desplazamiento);
+            $mes = $inicioLocal->addMonths($desplazamiento);
             $filas[] = [
                 'etiqueta' => $meses[$mes->month - 1].' '.$mes->format('y'),
                 'valor' => (int) ($conteos[$mes->format('Y-m')] ?? 0),
@@ -447,7 +448,10 @@ class Dashboard extends Component
             ? (int) $this->periodoAnalisis
             : 12;
 
-        return now()->startOfMonth()->subMonths($meses - 1);
+        return now('America/Guayaquil')
+            ->startOfMonth()
+            ->subMonths($meses - 1)
+            ->utc();
     }
 
     /**

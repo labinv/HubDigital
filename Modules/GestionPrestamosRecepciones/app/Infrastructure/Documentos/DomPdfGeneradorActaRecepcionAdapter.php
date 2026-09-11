@@ -8,6 +8,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorActaRecepcionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionOutput;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 
 final class DomPdfGeneradorActaRecepcionAdapter implements GeneradorActaRecepcionPort
 {
@@ -23,6 +24,9 @@ final class DomPdfGeneradorActaRecepcionAdapter implements GeneradorActaRecepcio
         $fecha = sprintf('%d de %s de %d', (int) $fechaBase->format('j'), $meses[(int) $fechaBase->format('n') - 1], (int) $fechaBase->format('Y'));
         $perfil = 'acta-recepcion:curador:v1';
         $ruta = str_replace([':', '_'], ['/', '-'], $perfil);
+        $versionActa = ((int) RecepcionLoteEloquentModel::query()
+            ->where('solicitud_deposito_id', $recepcion->solicitudId)
+            ->value('acta_original_version')) + 1;
 
         return Pdf::loadView('gestionprestamosrecepciones::pdf.acta-recepcion', [
             'recepcion' => $recepcion,
@@ -31,6 +35,7 @@ final class DomPdfGeneradorActaRecepcionAdapter implements GeneradorActaRecepcio
             'curador' => $curador,
             'receptor' => $receptor,
             'fecha' => $fecha,
+            'versionActa' => $versionActa,
             'perfilFirma' => ['perfil' => $perfil, 'rol' => 'curador', 'bloque' => 'https://firmas.hubdigital.invalid/bloques/'.$ruta, 'zona' => 'https://firmas.hubdigital.invalid/zonas/'.$ruta],
         ])->output();
     }

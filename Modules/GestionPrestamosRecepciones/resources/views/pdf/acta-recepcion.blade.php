@@ -8,6 +8,7 @@
     $logoDb = public_path('images/logo-DB.jpg');
     $logoEpnB64 = is_file($logoEpn) ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoEpn)) : null;
     $logoDbB64 = is_file($logoDb) ? 'data:image/jpeg;base64,'.base64_encode(file_get_contents($logoDb)) : null;
+    $esDonacion = $recepcion->tipoTramite === 'Donación';
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -94,6 +95,13 @@
             <td>Quito, {{ $fecha }}</td>
             <td class="der">Acta recepción-depósito No. <strong>{{ $recepcion->numeroSolicitud }}</strong></td>
         </tr>
+        <tr>
+            <td>Modalidad: <strong>{{ $recepcion->tipoTramite }}</strong></td>
+            <td class="der">Versión del original: <strong>{{ $versionActa }}</strong></td>
+        </tr>
+        <tr>
+            <td colspan="2">Estado de recepción: <strong>{{ $recepcion->estadoRecepcion ?? '—' }}</strong></td>
+        </tr>
     </table>
 
     {{-- Destinatario --}}
@@ -105,14 +113,25 @@
 
     <p class="saludo">De mis consideraciones:</p>
 
-    <p>
-        Toda vez revisada la documentación requerida para el ingreso de especímenes, incluyendo
-        autorización de investigación ({{ $recepcion->nroPermisoRecoleccion ?? '—' }}) y
-        movilización ({{ $recepcion->nroPermisoMovilizacion ?? '—' }}), confirmo la recepción del
-        material biológico abajo indicado, el cual será depositado en las colecciones temporales del
-        Museo de Historia Natural “Gustavo Orcés V.”, Departamento de Biología, Escuela Politécnica
-        Nacional (MEPN):
-    </p>
+    @if($esDonacion)
+        <p>
+            Toda vez revisada la documentación requerida para el ingreso de especímenes, incluyendo
+            autorización de investigación ({{ $recepcion->nroPermisoRecoleccion ?? '—' }}) y
+            movilización ({{ $recepcion->nroPermisoMovilizacion ?? '—' }}), confirmo la recepción en
+            calidad de donación del material biológico abajo indicado. Esta modalidad corresponde a
+            una transferencia definitiva y su incorporación a las colecciones del Museo de Historia
+            Natural “Gustavo Orcés V.”, Departamento de Biología, Escuela Politécnica Nacional (MEPN):
+        </p>
+    @else
+        <p>
+            Toda vez revisada la documentación requerida para el ingreso de especímenes, incluyendo
+            autorización de investigación ({{ $recepcion->nroPermisoRecoleccion ?? '—' }}) y
+            movilización ({{ $recepcion->nroPermisoMovilizacion ?? '—' }}), confirmo la recepción del
+            material biológico abajo indicado, el cual será depositado temporalmente en las colecciones
+            del Museo de Historia Natural “Gustavo Orcés V.”, Departamento de Biología, Escuela
+            Politécnica Nacional (MEPN):
+        </p>
+    @endif
 
     <ul class="detalle">
         <li>
@@ -149,6 +168,20 @@
         @if($recepcion->verificadoEn) el {{ $recepcion->verificadoEn->format('d/m/Y H:i') }}@endif.
         La trazabilidad de esta actuación se conserva en HubDigital.
     </p>
+
+    <div class="section">
+        <p><strong>Resultado de la constatación física:</strong> {{ $recepcion->estadoRecepcion ?? '—' }}</p>
+        @if($recepcion->observaciones !== [])
+            <p><strong>Observaciones registradas:</strong></p>
+            <ul class="detalle">
+                @foreach($recepcion->observaciones as $observacion)
+                    <li>{{ $observacion }}</li>
+                @endforeach
+            </ul>
+        @else
+            <p><strong>Observaciones registradas:</strong> Sin observaciones.</p>
+        @endif
+    </div>
 
     <p>Atentamente,</p>
 
