@@ -9,9 +9,9 @@
                 id="chat-bot-panel"
                 aria-label="Chat de consulta a la colección"
                 wire:keydown.escape.window="alternar"
-                class="flex h-[min(32rem,calc(100dvh-2rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg sm:h-[min(32rem,calc(100dvh-7rem))]"
+                class="flex h-[min(32rem,calc(100dvh-1rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg sm:h-[min(32rem,calc(100dvh-7rem))]"
             >
-                <header class="flex items-center justify-between gap-2 border-b border-border bg-blue-navy px-4 py-3 text-white">
+                <header class="flex items-center justify-between gap-2 border-b border-border bg-blue-navy px-2 py-1 text-white sm:px-4 sm:py-3">
                     <div class="flex items-center gap-2">
                         <flux:icon name="chat-bubble-left-right" class="h-5 w-5" />
                         <div class="flex flex-col">
@@ -31,7 +31,7 @@
                     </button>
                 </header>
 
-                <div class="flex flex-1 flex-col gap-3 overflow-y-auto bg-bg-main p-4">
+                <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg-main p-2 sm:p-4">
                     @forelse($mensajes as $mensaje)
                         @if($mensaje['rol'] === 'visitante')
                             <div class="flex justify-end">
@@ -70,7 +70,7 @@
                     @endif
                 </div>
 
-                <form wire:submit="enviar" class="flex gap-2 border-t border-border bg-surface p-3">
+                <form wire:submit="enviar" class="flex gap-2 border-t border-border bg-surface p-1 sm:p-3">
                     <flux:input
                         wire:model="pregunta"
                         placeholder="Tu pregunta…"
@@ -78,7 +78,7 @@
                         wire:loading.attr="disabled"
                         wire:target="enviar"
                         size="sm"
-                        class="flex-1"
+                        class="min-h-11 flex-1"
                     />
                     <flux:button
                         type="submit"
