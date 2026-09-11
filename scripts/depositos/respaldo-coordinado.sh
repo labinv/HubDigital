@@ -61,7 +61,7 @@ manifesto_documentos="$destino/manifiesto-documentos.json"
 manifesto="$destino/manifiesto-coordinado.json"
 dump="$destino/postgresql.dump"
 
-if [ -s "$manifesto" ] && php -r '$m=json_decode(file_get_contents($argv[1]),true); exit(($m["estado"]??null)==="COMPLETO" ? 0 : 1);' "$manifesto"; then
+if [ -s "$manifesto" ] && grep -Eq '"estado"[[:space:]]*:[[:space:]]*"COMPLETO"' "$manifesto"; then
     echo "El respaldo coordinado $BACKUP_ID ya esta COMPLETO y no se sobrescribira." >&2
     preservar_manifiesto=1
     exit 4
@@ -77,11 +77,19 @@ dc stop nginx worker scheduler >/dev/null
 
 reanudar=""
 [ -f "$manifesto_documentos" ] && reanudar="--reanudar"
-dc run --rm --no-deps -v "$destino:/evidencia" app php artisan depositos:respaldar-documentos \
+set +e
+dc run --rm --no-deps --user "0:0" --entrypoint php -v "$destino:/evidencia" app artisan depositos:respaldar-documentos \
     --id="$BACKUP_ID" \
     --prefijo-destino="$BACKUP_PREFIX" \
     --salida-manifiesto="/evidencia/manifiesto-documentos.json" \
     $reanudar
+resultado_respaldo=$?
+set -e
+if [ -e "$manifesto_documentos" ]; then
+    dc run --rm --no-deps --user "0:0" --entrypoint chown -v "$destino:/evidencia" app \
+        "$(id -u):$(id -g)" /evidencia/manifiesto-documentos.json
+fi
+[ "$resultado_respaldo" -eq 0 ] || exit "$resultado_respaldo"
 test -s "$manifesto_documentos"
 
 dc exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' >"$dump"

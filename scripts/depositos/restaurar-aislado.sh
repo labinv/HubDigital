@@ -12,13 +12,19 @@ set -eu
 umask 077
 manifesto="$BACKUP_DIR/manifiesto-coordinado.json"
 test -s "$manifesto"
-php -r '$m=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); if(($m["version_formato"]??null)!==1||($m["estado"]??null)!=="COMPLETO") exit(4);' "$manifesto"
-dump_sha="$(php -r '$m=json_decode(file_get_contents($argv[1]),true); echo $m["postgresql"]["sha256"];' "$manifesto")"
-docs_sha="$(php -r '$m=json_decode(file_get_contents($argv[1]),true); echo $m["documentos"]["sha256"];' "$manifesto")"
+dc() { docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" "$@"; }
+dc run --rm --no-deps --user "0:0" --entrypoint php -v "$BACKUP_DIR:/respaldo:ro" app \
+    -r '$m=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); if(($m["version_formato"]??null)!==1||($m["estado"]??null)!=="COMPLETO") exit(4);' \
+    /respaldo/manifiesto-coordinado.json
+dump_sha="$(dc run --rm --no-deps --user "0:0" --entrypoint php -v "$BACKUP_DIR:/respaldo:ro" app \
+    -r '$m=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); echo $m["postgresql"]["sha256"];' \
+    /respaldo/manifiesto-coordinado.json)"
+docs_sha="$(dc run --rm --no-deps --user "0:0" --entrypoint php -v "$BACKUP_DIR:/respaldo:ro" app \
+    -r '$m=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); echo $m["documentos"]["sha256"];' \
+    /respaldo/manifiesto-coordinado.json)"
 [ "$(sha256sum "$BACKUP_DIR/postgresql.dump" | cut -d ' ' -f 1)" = "$dump_sha" ] || exit 4
 [ "$(sha256sum "$BACKUP_DIR/manifiesto-documentos.json" | cut -d ' ' -f 1)" = "$docs_sha" ] || exit 4
 
-dc() { docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" "$@"; }
 dc up -d postgres
 until dc exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' >/dev/null; do sleep 2; done
 dc exec -T postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner --no-privileges' <"$BACKUP_DIR/postgresql.dump"

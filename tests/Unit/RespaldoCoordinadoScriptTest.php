@@ -84,11 +84,21 @@ test('el respaldo coordinado preserva copias completas y reporta la recuperacion
             ->and(hash_file('sha256', $destino.'/manifiesto-coordinado.json'))->toBe($huella);
 
         unlink($destino.'/manifiesto-coordinado.json');
+        file_put_contents($raiz.'/docker.log', '');
+        $exitoso = ejecutarRespaldoCoordinadoSintetico($raiz);
+        $logExitoso = (string) file_get_contents($raiz.'/docker.log');
+        expect($exitoso->getExitCode())->toBe(0)
+            ->and($logExitoso)->toContain('--user 0:0')
+            ->and($logExitoso)->toContain('--entrypoint chown');
+
+        unlink($destino.'/manifiesto-coordinado.json');
         $falloRecuperable = ejecutarRespaldoCoordinadoSintetico($raiz, ['QA_FAIL_BACKUP' => '1']);
         $incompleto = json_decode((string) file_get_contents($destino.'/manifiesto-coordinado.json'), true, 512, JSON_THROW_ON_ERROR);
         $log = (string) file_get_contents($raiz.'/docker.log');
         expect($falloRecuperable->getExitCode())->toBe(42)
             ->and($incompleto['estado'])->toBe('INCOMPLETO')
+            ->and($log)->toContain('--user 0:0')
+            ->and($log)->toContain('--entrypoint php')
             ->and($log)->toContain('start app worker scheduler nginx')
             ->and($log)->toContain('artisan up');
 
