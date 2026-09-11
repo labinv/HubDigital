@@ -75,6 +75,7 @@
                         wire:model="pregunta"
                         placeholder="Tu pregunta…"
                         aria-label="Pregunta al bichochat"
+                        required
                         wire:loading.attr="disabled"
                         wire:target="enviar"
                         size="sm"

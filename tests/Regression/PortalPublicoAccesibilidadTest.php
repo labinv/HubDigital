@@ -19,6 +19,8 @@ test('el chat conserva controles táctiles y refluye cuando el zoom reduce el vi
         ->toContain('sm:h-[min(32rem,calc(100dvh-7rem))]')
         ->toContain('flex min-h-0 flex-1')
         ->toContain('p-1 sm:p-3')
+        ->toContain('aria-label="Pregunta al bichochat"')
+        ->toContain('required')
         ->toContain('inline-flex size-11 shrink-0')
         ->toContain('min-h-11 min-w-11')
         ->toContain("'hidden sm:flex' => \$abierto");
