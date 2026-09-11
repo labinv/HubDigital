@@ -53,10 +53,11 @@ test('concilia por expediente, detecta alteracion y limita huerfanos al prefijo 
 
 test('respaldo reanudable verifica sha y restauracion rechaza manifiesto incompleto o destino no vacio', function (): void {
     solicitudOperacionDocumental('MEPN-INV-DEP-99002', 'depositos/qa-ops/dos/original-v1.pdf', '%PDF-respaldo');
-    $manifiesto = storage_path('framework/testing/respaldo-operativo.json');
+    $id = 'qa-ops-'.Str::uuid();
+    $manifiesto = storage_path("framework/testing/{$id}.json");
 
     $codigo = Artisan::call('depositos:respaldar-documentos', [
-        '--id' => 'qa-ops-99002', '--prefijo-destino' => 'respaldos-depositos/qa-ops-99002',
+        '--id' => $id, '--prefijo-destino' => "respaldos-depositos/{$id}",
         '--expediente' => 'MEPN-INV-DEP-99002', '--salida-manifiesto' => $manifiesto,
     ]);
     expect($codigo)->toBe(0);
@@ -80,7 +81,7 @@ test('rechaza una segunda ejecucion mientras el bloqueo de respaldo esta vigente
         $codigo = Artisan::call('depositos:respaldar-documentos', [
             '--id' => 'qa-concurrente',
             '--prefijo-destino' => 'respaldos-depositos/qa-concurrente',
-            '--salida-manifiesto' => storage_path('framework/testing/concurrente.json'),
+            '--salida-manifiesto' => storage_path('framework/testing/concurrente-'.Str::uuid().'.json'),
         ]);
         expect($codigo)->toBe(4)
             ->and(Artisan::output())->toContain('Ya existe un respaldo');
@@ -91,10 +92,11 @@ test('rechaza una segunda ejecucion mientras el bloqueo de respaldo esta vigente
 
 test('no sobrescribe un respaldo documental que ya esta completo', function (): void {
     solicitudOperacionDocumental('MEPN-INV-DEP-99003', 'depositos/qa-ops/tres/original.pdf', '%PDF-respaldo-completo');
-    $manifiesto = storage_path('framework/testing/respaldo-completo.json');
+    $id = 'qa-ops-'.Str::uuid();
+    $manifiesto = storage_path("framework/testing/{$id}.json");
     $opciones = [
-        '--id' => 'qa-ops-99003',
-        '--prefijo-destino' => 'respaldos-depositos/qa-ops-99003',
+        '--id' => $id,
+        '--prefijo-destino' => "respaldos-depositos/{$id}",
         '--expediente' => 'MEPN-INV-DEP-99003',
         '--salida-manifiesto' => $manifiesto,
     ];
