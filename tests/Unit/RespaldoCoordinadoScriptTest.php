@@ -6,6 +6,7 @@ use Symfony\Component\Process\Process;
 
 function ejecutarRespaldoCoordinadoSintetico(string $raiz, array $entorno = []): Process
 {
+    $proyecto = dirname(__DIR__, 2);
     $bin = $raiz.'/bin';
     mkdir($bin, 0700, true);
     $docker = <<<'SH'
@@ -33,8 +34,8 @@ SH;
     chmod($bin.'/docker', 0700);
 
     $process = new Process(
-        ['/bin/sh', base_path('scripts/depositos/respaldo-coordinado.sh')],
-        base_path(),
+        ['/bin/sh', $proyecto.'/scripts/depositos/respaldo-coordinado.sh'],
+        $proyecto,
         array_merge([
             'PATH' => $bin.':'.getenv('PATH'),
             'COMPOSE_FILE' => $raiz.'/compose.yml',
