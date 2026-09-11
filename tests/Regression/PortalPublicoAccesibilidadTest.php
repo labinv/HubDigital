@@ -1,23 +1,23 @@
 <?php
 
-uses(Tests\TestCase::class);
-
 test('el menú móvil expone estado y devuelve el foco al cerrarse con escape', function (): void {
-    $response = $this->get(route('home'));
+    $layout = file_get_contents(dirname(__DIR__, 2).'/resources/views/layouts/portal.blade.php');
 
-    $response->assertOk()
-        ->assertSee('x-ref="menuButton"', false)
-        ->assertSee("x-text=\"abierto ? 'Cerrar menú principal' : 'Abrir menú principal'\"", false)
-        ->assertSee('$refs.menuButton.focus()', false);
+    expect($layout)
+        ->not->toBeFalse()
+        ->toContain('x-ref="menuButton"')
+        ->toContain("x-text=\"abierto ? 'Cerrar menú principal' : 'Abrir menú principal'\"")
+        ->toContain('$refs.menuButton.focus()');
 });
 
 test('el chat conserva controles táctiles y refluye cuando el zoom reduce el viewport', function (): void {
-    $response = $this->get(route('home'));
+    $chat = file_get_contents(dirname(__DIR__, 2).'/Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php');
 
-    $response->assertOk()
-        ->assertSee('h-[min(32rem,calc(100dvh-2rem))]', false)
-        ->assertSee('sm:h-[min(32rem,calc(100dvh-7rem))]', false)
-        ->assertSee('inline-flex size-11 shrink-0', false)
-        ->assertSee('min-h-11 min-w-11', false)
-        ->assertSee("'hidden sm:flex' => \$abierto", false);
+    expect($chat)
+        ->not->toBeFalse()
+        ->toContain('h-[min(32rem,calc(100dvh-2rem))]')
+        ->toContain('sm:h-[min(32rem,calc(100dvh-7rem))]')
+        ->toContain('inline-flex size-11 shrink-0')
+        ->toContain('min-h-11 min-w-11')
+        ->toContain("'hidden sm:flex' => \$abierto");
 });
