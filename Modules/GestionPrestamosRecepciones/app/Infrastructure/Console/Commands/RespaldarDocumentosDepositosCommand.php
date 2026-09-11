@@ -40,6 +40,11 @@ final class RespaldarDocumentosDepositosCommand extends Command
         }
 
         try {
+            if (! $this->option('reanudar')
+                && (is_file($salida) || $almacenamiento->existe($prefijo.'/manifiesto.json'))
+            ) {
+                throw new \RuntimeException('El respaldo solicitado ya existe; no se sobrescribira una copia anterior.');
+            }
             $manifiesto = $this->cargarOInicializar($salida, $id, $prefijo, $almacenamiento->driver());
             foreach ($catalogo->referencias($this->cadena('expediente')) as $referencia) {
                 $origen = $referencia['ruta'];
@@ -99,10 +104,16 @@ final class RespaldarDocumentosDepositosCommand extends Command
     /** @return array<string, mixed> */
     private function cargarOInicializar(string $ruta, string $id, string $prefijo, string $driver): array
     {
-        if ($this->option('reanudar') && is_file($ruta)) {
+        if (is_file($ruta)) {
             $existente = json_decode((string) file_get_contents($ruta), true, 512, JSON_THROW_ON_ERROR);
             if (($existente['id'] ?? null) !== $id || ($existente['prefijo_destino'] ?? null) !== $prefijo) {
                 throw new \RuntimeException('El manifiesto existente no corresponde al respaldo solicitado.');
+            }
+            if (($existente['estado'] ?? null) === 'COMPLETO') {
+                throw new \RuntimeException('El respaldo ya esta COMPLETO y no se sobrescribira.');
+            }
+            if (! $this->option('reanudar')) {
+                throw new \RuntimeException('Existe un respaldo INCOMPLETO; use --reanudar con el mismo identificador.');
             }
 
             return $existente;

@@ -26,14 +26,31 @@ fi
 echo "$$" >"$lock/pid"
 echo "$(date -u +%FT%TZ)" >"$lock/iniciado-en"
 restaurar_servicios=0
+preservar_manifiesto=0
 limpiar_y_recuperar() {
     estado=$?
+    recuperacion_fallo=0
     if [ "$restaurar_servicios" -eq 1 ]; then
-        dc start app worker scheduler nginx >/dev/null 2>&1 || true
-        dc exec -T app php artisan up >/dev/null 2>&1 || true
+        if ! dc start app worker scheduler nginx >/dev/null 2>&1; then
+            echo "Fallo al reiniciar servicios; se requiere recuperacion manual." >&2
+            recuperacion_fallo=1
+        fi
+        if ! dc exec -T app php artisan up >/dev/null 2>&1; then
+            echo "Fallo al retirar el modo mantenimiento; se requiere recuperacion manual." >&2
+            recuperacion_fallo=1
+        fi
+    fi
+    if [ "$estado" -ne 0 ] || [ "$recuperacion_fallo" -ne 0 ]; then
+        if [ -n "${manifesto:-}" ] && [ "$preservar_manifiesto" -eq 0 ]; then
+            printf '%s\n' "{\"version_formato\":1,\"id\":\"$BACKUP_ID\",\"creado_en\":\"$(date -u +%FT%TZ)\",\"estado\":\"INCOMPLETO\",\"codigo_fallo\":$estado,\"recuperacion_servicios_fallida\":$recuperacion_fallo}" >"$manifesto"
+            chmod 600 "$manifesto"
+        fi
     fi
     rm -f "$lock/pid" "$lock/iniciado-en"
     rmdir "$lock" 2>/dev/null || true
+    if [ "$recuperacion_fallo" -ne 0 ]; then
+        exit 5
+    fi
     exit "$estado"
 }
 trap limpiar_y_recuperar EXIT
@@ -43,6 +60,12 @@ mkdir -p "$destino"
 manifesto_documentos="$destino/manifiesto-documentos.json"
 manifesto="$destino/manifiesto-coordinado.json"
 dump="$destino/postgresql.dump"
+
+if [ -s "$manifesto" ] && php -r '$m=json_decode(file_get_contents($argv[1]),true); exit(($m["estado"]??null)==="COMPLETO" ? 0 : 1);' "$manifesto"; then
+    echo "El respaldo coordinado $BACKUP_ID ya esta COMPLETO y no se sobrescribira." >&2
+    preservar_manifiesto=1
+    exit 4
+fi
 
 dc() { docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" "$@"; }
 

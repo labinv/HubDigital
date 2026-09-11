@@ -88,3 +88,21 @@ test('rechaza una segunda ejecucion mientras el bloqueo de respaldo esta vigente
         $lock->release();
     }
 });
+
+test('no sobrescribe un respaldo documental que ya esta completo', function (): void {
+    solicitudOperacionDocumental('MEPN-INV-DEP-99003', 'depositos/qa-ops/tres/original.pdf', '%PDF-respaldo-completo');
+    $manifiesto = storage_path('framework/testing/respaldo-completo.json');
+    $opciones = [
+        '--id' => 'qa-ops-99003',
+        '--prefijo-destino' => 'respaldos-depositos/qa-ops-99003',
+        '--expediente' => 'MEPN-INV-DEP-99003',
+        '--salida-manifiesto' => $manifiesto,
+    ];
+
+    expect(Artisan::call('depositos:respaldar-documentos', $opciones))->toBe(0);
+    $huella = hash_file('sha256', $manifiesto);
+
+    expect(Artisan::call('depositos:respaldar-documentos', $opciones))->toBe(3)
+        ->and(Artisan::output())->toContain('no se sobrescribira')
+        ->and(hash_file('sha256', $manifiesto))->toBe($huella);
+});
