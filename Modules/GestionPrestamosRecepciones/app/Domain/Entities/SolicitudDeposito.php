@@ -998,6 +998,7 @@ final class SolicitudDeposito
             'N.º Permiso Movilización' => $this->nroPermisoMovilizacion = $valor,
             'Provincia', 'Administración Política' => $this->provinciaOrigen = $valor,
             'Localidad' => $this->localidad = $valor,
+            'Origen Donación' => $this->origenDonacion = $valor,
             'N.º Individuos' => $this->nroIndividuos = $valor,
             'N.º Morfoespecies' => $this->nroMorfoespecies = $valor,
             'N.º Lotes' => $this->nroLotes = $valor,
