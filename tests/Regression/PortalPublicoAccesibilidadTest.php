@@ -15,6 +15,7 @@ test('el chat conserva controles táctiles y refluye cuando el zoom reduce el vi
 
     expect($chat)
         ->not->toBeFalse()
+        ->toContain('portal-chat-shell')
         ->toContain('h-[min(32rem,calc(100dvh-1rem))]')
         ->toContain('sm:h-[min(32rem,calc(100dvh-7rem))]')
         ->toContain('flex min-h-0 flex-1')
@@ -24,6 +25,15 @@ test('el chat conserva controles táctiles y refluye cuando el zoom reduce el vi
         ->toContain('inline-flex size-11 shrink-0')
         ->toContain('min-h-11 min-w-11')
         ->toContain("'hidden sm:flex' => \$abierto");
+
+    $styles = file_get_contents(dirname(__DIR__, 2).'/resources/css/app.css');
+
+    expect($styles)
+        ->not->toBeFalse()
+        ->toContain('@media (max-height: 8rem)')
+        ->toContain('body:has(#titulo-portada) .portal-chat-shell')
+        ->toContain('position: absolute')
+        ->toContain('top: 5.25rem');
 });
 
 test('el hero adapta su altura y tipografía al escritorio visible', function (): void {

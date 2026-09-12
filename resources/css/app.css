@@ -232,6 +232,14 @@ img, svg, video, canvas, iframe, embed, object {
     }
 }
 
+@media (max-height: 8rem) {
+    body:has(#titulo-portada) .portal-chat-shell {
+        position: absolute;
+        top: 5.25rem;
+        bottom: auto;
+    }
+}
+
 /* Los workspace internos ocupan el ancho operativo disponible. Los límites de
    lectura deben vivir en tarjetas y párrafos, no en la superficie completa. */
 .hub-workspace {

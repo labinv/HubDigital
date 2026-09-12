@@ -1,5 +1,5 @@
 <div
-    class="pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6"
+    class="portal-chat-shell pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6"
     x-data
     x-on:chat-cerrado.window="$nextTick(() => document.getElementById('chat-bot-trigger')?.focus())"
 >
