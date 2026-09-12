@@ -6,6 +6,8 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Notifications;
 
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushChannel;
+use NotificationChannels\WebPush\WebPushMessage;
 
 /**
  * Notifica al depositante que su solicitud fue rechazada por curaduría (requiere
@@ -25,7 +27,17 @@ final class SolicitudRechazadaNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        $channels = ['mail', 'database'];
+
+        if (filled(config('webpush.vapid.subject'))
+            && filled(config('webpush.vapid.public_key'))
+            && filled(config('webpush.vapid.private_key'))
+            && method_exists($notifiable, 'pushSubscriptions')
+            && $notifiable->pushSubscriptions()->exists()) {
+            $channels[] = WebPushChannel::class;
+        }
+
+        return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -52,5 +64,25 @@ final class SolicitudRechazadaNotification extends Notification
             'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
             'icono' => 'exclamation-triangle',
         ];
+    }
+
+    public function toWebPush(object $notifiable): WebPushMessage
+    {
+        return (new WebPushMessage)
+            ->title('Actualización pendiente en HubDigital')
+            ->body('Una solicitud requiere correcciones antes de continuar.')
+            ->icon('/images/hub-icon.png')
+            ->badge('/images/hub-icon.png')
+            ->tag($this->eventoId())
+            ->data([
+                'notificationId' => $this->eventoId(),
+                'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
+            ])
+            ->options(['TTL' => 86400, 'urgency' => 'high']);
+    }
+
+    private function eventoId(): string
+    {
+        return 'deposito-rechazo-'.$this->solicitudId;
     }
 }
