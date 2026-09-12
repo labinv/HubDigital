@@ -396,6 +396,7 @@ final class SolicitudDeposito
         if ($favorable) {
             $this->estado = EstadoSolicitudDeposito::EnBorrador;
             $this->comentarioCurador = trim($motivo) !== '' ? trim($motivo) : 'Documentación revisada. Continúe con la preparación y firma de la solicitud.';
+
             return;
         }
 
