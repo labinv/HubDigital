@@ -25,3 +25,20 @@ test('el chat conserva controles táctiles y refluye cuando el zoom reduce el vi
         ->toContain('min-h-11 min-w-11')
         ->toContain("'hidden sm:flex' => \$abierto");
 });
+
+test('el hero adapta su altura y tipografía al escritorio visible', function (): void {
+    $view = file_get_contents(dirname(__DIR__, 2).'/resources/views/portal-inicio.blade.php');
+    $styles = file_get_contents(dirname(__DIR__, 2).'/resources/css/app.css');
+
+    expect($view)
+        ->not->toBeFalse()
+        ->toContain('class="portal-hero-grid"')
+        ->not->toContain('lg:min-h-[42rem]');
+
+    expect($styles)
+        ->not->toBeFalse()
+        ->toContain('@media (min-width: 1024px)')
+        ->toContain('min-height: min(42rem, calc(100svh - 4.75rem))')
+        ->toContain('padding-block: clamp(1.5rem, 4vh, 3.5rem)')
+        ->toContain('font-size: clamp(2.45rem, min(4.2vw, 7.5vh), 4.5rem)');
+});

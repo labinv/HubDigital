@@ -1,7 +1,7 @@
 @component('layouts.portal', ['title' => 'Laboratorio de Invertebrados · Escuela Politécnica Nacional'])
     <div class="overflow-hidden bg-white text-text-primary">
         <section class="relative isolate border-b border-blue-navy/10 bg-white" aria-labelledby="titulo-portada">
-            <div class="portal-hero-grid lg:min-h-[42rem]">
+            <div class="portal-hero-grid">
                 <div class="portal-container portal-hero-copy relative z-10 flex items-center">
                     <div class="max-w-2xl">
                         <h1 id="titulo-portada" class="portal-hero-title font-display font-bold leading-[1.04] tracking-[-0.035em] text-blue-navy">

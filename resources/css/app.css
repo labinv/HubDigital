@@ -186,7 +186,7 @@ img, svg, video, canvas, iframe, embed, object {
 .portal-hero-grid {
     display: grid;
     min-width: 0;
-    grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
 }
 
 .portal-hero-copy {
@@ -216,6 +216,20 @@ img, svg, video, canvas, iframe, embed, object {
 .portal-responsive-actions > a,
 .portal-responsive-actions > button {
     flex: 1 1 13rem;
+}
+
+@media (min-width: 1024px) {
+    .portal-hero-grid {
+        min-height: min(42rem, calc(100svh - 4.75rem));
+    }
+
+    .portal-hero-copy {
+        padding-block: clamp(1.5rem, 4vh, 3.5rem);
+    }
+
+    .portal-hero-title {
+        font-size: clamp(2.45rem, min(4.2vw, 7.5vh), 4.5rem);
+    }
 }
 
 /* Los workspace internos ocupan el ancho operativo disponible. Los límites de
