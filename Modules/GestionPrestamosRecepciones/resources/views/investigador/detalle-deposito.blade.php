@@ -87,8 +87,9 @@
                                 <a href="{{ route('prestamos.deposito.qr', $deposito->id) }}" target="_blank" rel="noopener"
                                     class="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-2.5 text-sm font-medium text-white! hover:opacity-90 transition-opacity">
                                     <flux:icon name="printer" class="size-4 text-white!" />
-                                    Imprimir / Guardar QR (PDF)
+                                    Imprimir QR
                                 </a>
+                                <p class="max-w-xs text-center text-xs leading-5 text-text-secondary sm:text-left">En la ventana de impresión puedes elegir “Guardar como PDF”.</p>
                                 @if($deposito->tipo_tramite === 'Donación' && $actaTransferenciaDisponible)
                                     <a href="{{ route('prestamos.deposito.acta', $deposito->id) }}"
                                         target="_blank" rel="noopener"

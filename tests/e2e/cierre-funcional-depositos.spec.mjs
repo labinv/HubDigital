@@ -136,10 +136,10 @@ test.describe.serial('Cierre funcional: corrección y recepción recuperada', ()
     await retry.press('Enter');
     await expect(page.locator('body')).toContainText(/Lista de verificaci.n de recepci.n/i);
 
-    const switches = page.locator('[role=switch]:visible');
-    expect(await switches.count()).toBe(4);
+    const criteria = page.locator('select[aria-label^="Estado de comprobación"]:visible');
+    expect(await criteria.count()).toBe(4);
     for (let index = 0; index < 4; index += 1) {
-      if (await switches.nth(index).getAttribute('aria-checked') !== 'true') await switches.nth(index).click();
+      await criteria.nth(index).selectOption('conforme');
     }
 
     let delayApproval = true;

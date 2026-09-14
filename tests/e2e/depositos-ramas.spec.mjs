@@ -64,10 +64,10 @@ test.describe.serial('Depósitos: ramas curatoriales y recepción', () => {
     const iniciar = page.getByRole('button', { name: /Iniciar constatación física/i });
     if (await iniciar.count()) await iniciar.click();
     await expect(page.getByRole('heading', { name: /Lista de verificación de recepción/i })).toBeVisible();
-    const switches = page.locator('[role=switch]:visible');
-    expect(await switches.count()).toBeGreaterThanOrEqual(4);
-    for (let index = 0; index < 2; index += 1) {
-      if (await switches.nth(index).getAttribute('aria-checked') !== 'true') await switches.nth(index).click();
+    const criteria = page.locator('select[aria-label^="Estado de comprobación"]:visible');
+    expect(await criteria.count()).toBe(4);
+    for (let index = 0; index < 4; index += 1) {
+      await criteria.nth(index).selectOption(index < 2 ? 'conforme' : 'no_conforme');
     }
     await page.getByRole('button', { name: /Aprobar recepción/i }).click();
     await expect(page.getByText('Aceptar con observaciones', { exact: true }).first()).toBeVisible();

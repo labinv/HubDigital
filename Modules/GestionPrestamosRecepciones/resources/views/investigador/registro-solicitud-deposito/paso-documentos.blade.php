@@ -200,8 +200,9 @@
             </section>
         @else
             <div class="rounded-lg border border-dashed border-border p-8 text-center">
-                <flux:icon name="document-text" class="size-8 text-text-secondary mx-auto mb-2" />
-                <p class="text-sm text-text-secondary">Cargando documentos requeridos…</p>
+                <flux:icon name="check-circle" class="size-8 text-success mx-auto mb-2" />
+                <p class="text-sm font-medium text-text-primary">No se requieren archivos para esta modalidad.</p>
+                <p class="mt-1 text-xs leading-5 text-text-secondary">La solicitud y las declaraciones aplicables se generan dentro de HubDigital.</p>
             </div>
         @endif
 

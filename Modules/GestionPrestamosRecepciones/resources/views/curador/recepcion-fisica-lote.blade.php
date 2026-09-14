@@ -154,7 +154,7 @@
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-white">Ítem de verificación</th>
                             <th class="px-4 py-3 text-left font-medium text-white">Resultado conforme</th>
-                            <th class="px-4 py-3 text-right font-medium text-white">Conformidad</th>
+                            <th class="px-4 py-3 text-right font-medium text-white">Estado de comprobación</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-border">
@@ -164,7 +164,17 @@
                                 <td class="px-4 py-3 text-text-secondary">{{ $definicion['resultado'] }}</td>
                                 <td class="px-4 py-3">
                                     <div class="flex justify-end">
-                                        <flux:switch wire:model="conforme.{{ $indice }}" label="Conforme" align="right" />
+                                        <label for="criterio-desktop-{{ $indice }}" class="sr-only">Estado de comprobación: {{ $definicion['item'] }}</label>
+                                        <select
+                                            id="criterio-desktop-{{ $indice }}"
+                                            wire:model.live="estadoCriterio.{{ $indice }}"
+                                            aria-label="Estado de comprobación: {{ $definicion['item'] }}"
+                                            class="min-h-11 rounded-lg border-border bg-surface px-3 text-sm text-text-primary focus:border-science-blue focus:ring-science-blue"
+                                        >
+                                            <option value="pendiente">Pendiente de comprobar</option>
+                                            <option value="conforme">Criterio confirmado</option>
+                                            <option value="no_conforme">No conformidad / observación</option>
+                                        </select>
                                     </div>
                                 </td>
                             </tr>
@@ -185,7 +195,17 @@
                                 {{ $definicion['resultado'] }}
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                         </dl>
-                        <flux:switch wire:model="conforme.{{ $indice }}" label="Conforme" />
+                        <label for="criterio-mobile-{{ $indice }}" class="block text-sm font-medium text-text-primary">Estado de comprobación</label>
+                        <select
+                            id="criterio-mobile-{{ $indice }}"
+                            wire:model.live="estadoCriterio.{{ $indice }}"
+                            aria-label="Estado de comprobación: {{ $definicion['item'] }}"
+                            class="min-h-11 w-full rounded-lg border-border bg-surface px-3 text-sm text-text-primary focus:border-science-blue focus:ring-science-blue"
+                        >
+                            <option value="pendiente">Pendiente de comprobar</option>
+                            <option value="conforme">Criterio confirmado</option>
+                            <option value="no_conforme">No conformidad / observación</option>
+                        </select>
                     </div>
                 @endforeach
             </div>
@@ -200,6 +220,10 @@
                 ítem no lo está, se registrará con observaciones. Usa "Suspender y devolver" cuando la anomalía es
                 subsanable y el lote debe regresar al depositante.
             </flux:text>
+
+            @error('estadoCriterio')
+                <p class="mt-3 text-sm font-medium text-error" role="alert">{{ $message }}</p>
+            @enderror
 
             <div class="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
                 <flux:button variant="danger" icon="arrow-uturn-left" class="w-full sm:w-auto"
