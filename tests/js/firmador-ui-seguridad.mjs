@@ -67,6 +67,21 @@ assert.equal(fallido.$refs.certificado.value, '');
 assert.ok(new Uint8Array(copiaP12).every((byte) => byte === 0));
 assert.match(fallido.error, /Verifica el archivo y su contraseña/u);
 
+globalThis.Worker = class WorkerAsn1Invalido {
+    postMessage() {
+        queueMicrotask(() => this.onmessage({ data: { ok: false, error: 'Too few bytes to read ASN.1 value.' } }));
+    }
+
+    terminate() {}
+};
+
+const asn1Invalido = componente(certificado);
+await asn1Invalido.firmar();
+assert.equal(asn1Invalido.$refs.clave.value, '');
+assert.equal(asn1Invalido.$refs.certificado.value, '');
+assert.equal(asn1Invalido.error, 'No se pudo abrir el certificado. Verifica el archivo y su contraseña.');
+assert.doesNotMatch(asn1Invalido.error, /ASN\.1|bytes/u);
+
 let camposSubidos = [];
 globalThis.Worker = class WorkerExitoso {
     postMessage() {

@@ -121,7 +121,7 @@ window.hubDigitalFirmador = (config) => ({
 
     mensajeSeguro(error) {
         const mensaje = String(error?.message ?? 'No se pudo firmar el documento.');
-        if (/password|passphrase|PKCS#12|Invalid password|MAC could not be verified/i.test(mensaje)) {
+        if (/password|passphrase|PKCS#12|Invalid password|MAC could not be verified|ASN\.1|BER|DER|too few bytes|unexpected end/i.test(mensaje)) {
             return 'No se pudo abrir el certificado. Verifica el archivo y su contraseña.';
         }
         return mensaje;
