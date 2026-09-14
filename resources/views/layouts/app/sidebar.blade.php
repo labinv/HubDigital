@@ -9,7 +9,7 @@
         <flux:sidebar sticky collapsible="mobile" class="hub-app-sidebar border-e border-border bg-blue-navy">
 
             {{-- Brand header --}}
-            <flux:sidebar.header class="px-4 pb-4 pt-5">
+            <flux:sidebar.header class="px-4 pb-3 pt-4">
                 <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/20 bg-white/10 shadow-sm">
                         <x-app-logo-icon class="size-6 fill-current text-white" />
@@ -28,13 +28,13 @@
             </flux:sidebar.header>
 
             @auth
-                <div class="hub-sidebar-identity border-y border-white/15 px-3 py-3">
+                <div class="hub-sidebar-identity border-y border-white/15 px-3 py-2.5">
                     <x-desktop-user-menu context="sidebar" />
                 </div>
             @endauth
 
             {{-- Navigation --}}
-            <flux:sidebar.nav class="hub-sidebar-navigation mt-0 min-h-0 flex-1 overflow-y-auto py-4">
+            <flux:sidebar.nav class="hub-sidebar-navigation mt-0 min-h-0 flex-1 overflow-y-auto py-3">
                 <flux:sidebar.group heading="Principal" class="grid">
                     <flux:sidebar.item
                         icon="home"

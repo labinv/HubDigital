@@ -2,7 +2,7 @@
 
     {{-- ── Pantalla de confirmación final ──────────────────────────────────────── --}}
     @php
-        $esExito  = in_array($estadoFinal, ['Pendiente de Revisión por Curaduría', 'Registrada']);
+        $esExito  = in_array($estadoFinal, ['Pendiente de Revisión por Curaduría', 'Aprobada Documentalmente', 'Registrada']);
         $esAviso  = in_array($estadoFinal, ['Pausada para Asesoría', 'Requiere Corrección']);
         $esError  = $estadoFinal === 'Rechazada';
 
@@ -13,6 +13,7 @@
 
         $titulo = match($estadoFinal) {
             'Pendiente de Revisión por Curaduría' => 'Solicitud enviada · pendiente de revisión por curaduría',
+            'Aprobada Documentalmente'            => 'Solicitud aprobada documentalmente',
             'Registrada'                          => 'Solicitud registrada exitosamente',
             'Pausada para Asesoría'   => 'Solicitud pausada — en espera de asesoría',
             'Requiere Corrección'                 => 'La solicitud requiere corrección',
@@ -22,6 +23,7 @@
 
         $subtitulo = match($estadoFinal) {
             'Pendiente de Revisión por Curaduría' => 'Tu solicitud ha sido remitida al equipo curatorial. Recibirás notificación cuando inicie la revisión.',
+            'Aprobada Documentalmente'            => 'La curaduría aprobó el expediente. Consulta el detalle para continuar con la entrega física.',
             'Registrada'                          => 'El registro fue aceptado y archivado en la colección.',
             'Pausada para Asesoría'   => 'El funcionario responsable se pondrá en contacto contigo para guiar el caso documental.',
             'Requiere Corrección'                 => 'Algunos documentos no cumplen los requisitos. Revisa las observaciones y reenvía.',
@@ -31,6 +33,13 @@
     @endphp
 
     <div class="py-8 flex flex-col items-center text-center gap-6">
+
+        @if($mensajeEstadoSincronizado)
+            <div class="w-full max-w-xl rounded-lg border border-info/30 bg-info/5 px-4 py-3 text-left" role="status" aria-live="polite">
+                <p class="text-sm font-semibold text-text-primary">{{ $mensajeEstadoSincronizado }}</p>
+                <p class="mt-0.5 text-xs text-text-secondary">Actualizamos esta pantalla con el estado guardado por la otra sesión.</p>
+            </div>
+        @endif
 
         {{-- Icono hero --}}
         <div class="size-20 rounded-full {{ $colorFondo }} flex items-center justify-center">
@@ -114,6 +123,16 @@
 
         {{-- Acciones --}}
         <div class="flex gap-3 flex-wrap justify-center">
+            @if($solicitudId)
+                <flux:button
+                    variant="primary"
+                    icon="eye"
+                    wire:navigate
+                    href="{{ route('prestamos.investigador.deposito.detalle', $solicitudId) }}"
+                >
+                    Ver detalle del expediente
+                </flux:button>
+            @endif
             <flux:button
                 variant="filled"
                 icon="document-text"

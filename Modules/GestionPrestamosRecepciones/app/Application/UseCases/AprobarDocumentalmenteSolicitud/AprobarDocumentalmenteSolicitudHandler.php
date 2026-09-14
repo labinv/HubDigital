@@ -9,8 +9,10 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 /**
@@ -42,6 +44,10 @@ final class AprobarDocumentalmenteSolicitudHandler
             $solicitud = $this->repo->buscarPorIdParaActualizar($id);
             if ($solicitud === null) {
                 throw SolicitudNoEncontradaException::conId($input->solicitudId);
+            }
+
+            if ($solicitud->estado() === EstadoSolicitudDeposito::AprobadaDocumentalmente) {
+                throw SolicitudDepositoYaProcesada::aprobada();
             }
 
             $solicitud->aprobarDocumentalmente($input->curadorId);

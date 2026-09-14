@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\MatrizEspeciesEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
@@ -88,4 +89,34 @@ test('rehidrata los valores derivados de la matriz al reanudar directamente en e
         ->and($component->registroNativo['transportPermit'])->toBe('GUIA-QA-2026-001')
         ->and($component->registroNativo['verbatimLocality'])->toBe('Quito, Pichincha')
         ->and($component->registroNativo['stateProvince'])->toBe('Pichincha');
+});
+
+test('presenta el estado persistido al reabrir una solicitud ya enviada sin instrucciones de corrección', function (): void {
+    $depositante = User::factory()->depositante()->create();
+    $solicitudId = (string) Str::uuid();
+    $numero = sprintf('MEPN-INV-DEP-%05d', random_int(70000, 98999));
+
+    SolicitudDepositoEloquentModel::query()->create([
+        'id' => $solicitudId,
+        'numero' => $numero,
+        'investigador_id' => (string) $depositante->id,
+        'tipo_tramite' => 'Depósito',
+        'estado' => 'Pendiente de Revisión por Curaduría',
+        'paso_actual' => 6,
+        'documentos_adjuntos' => [],
+        'documentos_cargados' => [],
+        'datos_faltantes' => [],
+        'datos_ingresados_manualmente' => [],
+    ]);
+
+    $this->actingAs($depositante);
+    Livewire::test(RegistroSolicitudDeposito::class, ['id' => $solicitudId])
+        ->assertSet('paso', 7)
+        ->assertSet('estadoFinal', 'Pendiente de Revisión por Curaduría')
+        ->assertSet('mensajeEstadoSincronizado', 'Esta solicitud ya fue enviada y está pendiente de revisión.')
+        ->assertSet('modoCorreccion', false)
+        ->assertSet('comentarioCurador', '')
+        ->assertSee('Esta solicitud ya fue enviada y está pendiente de revisión.')
+        ->assertSee('Ver detalle del expediente')
+        ->assertDontSee('Estás corrigiendo una solicitud devuelta por la curaduría');
 });

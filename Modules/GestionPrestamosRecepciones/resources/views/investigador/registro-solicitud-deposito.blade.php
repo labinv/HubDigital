@@ -1,5 +1,5 @@
 <div
-    class="hub-transactional-ui hub-depositos-ui hub-workspace space-y-4 pb-8"
+    class="hub-transactional-ui hub-depositos-ui hub-workspace space-y-3 pb-8"
     x-data="{
         domainError: null,
         tipoTramite: $wire.entangle('tipoTramite'),
@@ -20,7 +20,7 @@
 
     {{-- Corrección de un rechazo subsanable: recordatorio de las observaciones --}}
     @if($modoCorreccion && $paso < 7)
-        <div class="rounded-lg border border-warning/40 bg-warning/5 p-4 flex items-start gap-3">
+        <div class="rounded-lg border border-warning/40 bg-warning/5 p-3 flex items-start gap-3">
             <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0 mt-0.5" />
             <div class="min-w-0">
                 <p class="text-sm font-medium text-text-primary">Estás corrigiendo una solicitud devuelta por la curaduría</p>
@@ -34,7 +34,7 @@
 
     @if($paso < 7)
         {{-- Breadcrumbs --}}
-        <div class="border-b border-blue-navy/10 pb-3">
+        <div class="border-b border-blue-navy/10 pb-2">
             <flux:breadcrumbs class="hub-form-breadcrumbs">
                 <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-solicitudes') }}">
                     Mis solicitudes
@@ -45,13 +45,10 @@
 
         {{-- Borrador restaurado --}}
         @if($borradorRestaurado && ! $modoCorreccion && $paso < 6)
-            <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <div class="flex items-center gap-3">
+            <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 px-3 py-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div class="flex items-center gap-2.5">
                     <flux:icon name="bookmark" class="size-5 text-science-blue shrink-0" />
-                    <div>
-                        <p class="text-sm font-medium text-text-primary">Borrador pendiente recuperado</p>
-                        <p class="text-xs text-text-secondary mt-0.5">Puedes continuar donde lo dejaste o descartar para empezar de nuevo.</p>
-                    </div>
+                    <p class="text-sm text-text-secondary"><span class="font-semibold text-text-primary">Borrador recuperado.</span> Continúa donde lo dejaste.</p>
                 </div>
                 <flux:modal.trigger name="confirmar-descartar-borrador">
                     <flux:button
@@ -86,26 +83,28 @@
         @endif
 
         {{-- Header --}}
-        <div class="flex flex-wrap items-start justify-between gap-3 pt-1">
-            <div class="max-w-3xl">
-                <flux:heading size="xl" level="1" class="font-display tracking-tight text-blue-navy">Nueva solicitud de depósito</flux:heading>
-                <flux:text class="mt-1.5 max-w-3xl text-sm leading-6 text-text-secondary">
-                    Completa el expediente de depósito o donación de material biológico. Puedes guardar el avance y continuar después.
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-blue-navy/10 pb-3">
+            <div class="min-w-0 max-w-3xl">
+                <flux:heading size="lg" level="1" class="font-display tracking-tight text-blue-navy">Solicitud de depósito</flux:heading>
+                <flux:text class="mt-1 text-xs leading-5 text-text-secondary">
+                    Completa el expediente; el avance se guarda por etapas.
                 </flux:text>
             </div>
-            @if($numeroSolicitud)
-                <div class="self-start border-l-2 border-bio-green pl-3 text-right">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-secondary">N.º de solicitud</p>
-                    <p class="mt-1 font-mono text-xs font-semibold text-blue-navy">{{ $numeroSolicitud }}</p>
-                </div>
-            @endif
+            <div class="flex items-center gap-3">
+                @if($numeroSolicitud)
+                    <div class="border-l-2 border-bio-green pl-3 text-right">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-secondary">Expediente</p>
+                        <p class="mt-0.5 font-mono text-xs font-semibold text-blue-navy">{{ $numeroSolicitud }}</p>
+                    </div>
+                @endif
+                <x-gestionprestamosrecepciones::deposito-status-badge :estado="$modoCorreccion ? 'Requiere Corrección' : 'En Borrador'" />
+            </div>
         </div>
 
         {{-- Stepper --}}
-        <div aria-label="Progreso de la solicitud" class="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-            <div class="mb-2 flex items-center justify-between sm:hidden">
+        <div aria-label="Progreso de la solicitud" class="hub-wizard-progress overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+            <div class="flex items-center justify-between px-3 pt-2 sm:hidden">
                 <p class="text-sm font-semibold text-blue-navy">Paso {{ $paso }} de 6</p>
-                <p class="text-xs text-text-secondary">El avance se guarda por etapas</p>
             </div>
             <x-gestionprestamosrecepciones::wizard-stepper
                 :pasos="[

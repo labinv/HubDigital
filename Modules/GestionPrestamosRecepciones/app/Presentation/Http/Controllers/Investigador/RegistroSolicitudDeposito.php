@@ -54,6 +54,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaciosException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAlcanzado;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
@@ -322,6 +323,8 @@ final class RegistroSolicitudDeposito extends Component
 
     public string $estadoFinal = '';
 
+    public string $mensajeEstadoSincronizado = '';
+
     public bool $solicitudFirmada = false;
 
     /** @var array<string, mixed> */
@@ -408,13 +411,14 @@ final class RegistroSolicitudDeposito extends Component
             ->where('investigador_id', (string) auth()->id())
             ->firstOrFail();
 
-        abort_unless(
-            in_array($model->estado, [
-                EstadoSolicitudDeposito::RequiereCorreccion->value,
-                EstadoSolicitudDeposito::EnBorrador->value,
-            ], true),
-            403,
-        );
+        if (! in_array($model->estado, [
+            EstadoSolicitudDeposito::RequiereCorreccion->value,
+            EstadoSolicitudDeposito::EnBorrador->value,
+        ], true)) {
+            $this->presentarEstadoPersistido($model);
+
+            return;
+        }
 
         $this->modoCorreccion = true;
         $this->comentarioCurador = (string) ($model->comentario_curador ?? '');
@@ -2178,10 +2182,47 @@ final class RegistroSolicitudDeposito extends Component
 
         $this->solicitudFirmada = true;
 
-        $output = ($handler)(new EnviarSolicitudDepositoInput(solicitudId: $this->solicitudId));
+        try {
+            $output = ($handler)(new EnviarSolicitudDepositoInput(solicitudId: $this->solicitudId));
+        } catch (SolicitudDepositoYaProcesada) {
+            $persistida = SolicitudDepositoEloquentModel::query()
+                ->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())
+                ->firstOrFail();
+            $this->presentarEstadoPersistido($persistida);
+
+            return;
+        }
+
         $this->estadoFinal = $output->estado->value;
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 6]));
         $this->paso = 7;
+    }
+
+    private function presentarEstadoPersistido(SolicitudDepositoEloquentModel $model): void
+    {
+        abort_unless($model->investigador_id === (string) auth()->id(), 404);
+
+        $this->solicitudId = $model->id;
+        $this->numeroSolicitud = $model->numero;
+        $this->tipoTramite = $model->tipo_tramite;
+        $this->origenRecoleccion = (string) ($model->origen_recoleccion ?? '');
+        $this->situacionRegulatoria = (string) ($model->situacion_regulatoria ?? '');
+        $this->provincia = (string) ($model->provincia_origen ?? '');
+        $this->localidad = (string) ($model->localidad ?? '');
+        $this->matrizCargada = $model->matriz_id !== null;
+        $this->solicitudFirmada = $model->solicitud_firmada_en !== null;
+        $this->estadoFinal = $model->estado;
+        $this->modoCorreccion = false;
+        $this->comentarioCurador = '';
+        $this->borradorRestaurado = false;
+        $this->pasosCompletados = [1, 2, 3, 4, 5, 6];
+        $this->paso = 7;
+        $this->mensajeEstadoSincronizado = match ($model->estado) {
+            EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value => 'Esta solicitud ya fue enviada y está pendiente de revisión.',
+            EstadoSolicitudDeposito::AprobadaDocumentalmente->value => 'Esta solicitud ya fue aprobada documentalmente.',
+            default => 'El expediente cambió en otra sesión. Se muestra su estado actual.',
+        };
     }
 
     // ── Navegación ────────────────────────────────────────────────────────────────

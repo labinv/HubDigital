@@ -28,6 +28,13 @@
         </div>
     </div>
 
+    @if($mensajeEstadoSincronizado)
+        <div class="rounded-lg border border-info/30 bg-info/5 px-4 py-3" role="status" aria-live="polite">
+            <p class="text-sm font-semibold text-text-primary">{{ $mensajeEstadoSincronizado }}</p>
+            <p class="mt-0.5 text-xs text-text-secondary">La vista se actualizó con el estado persistido; no se generó otro código QR.</p>
+        </div>
+    @endif
+
     {{-- Fila superior: datos de la solicitud (2/3) + panel de resolución (1/3).
          Sin items-start: ambas tarjetas igualan su altura (bottoms alineados). --}}
     <div class="grid gap-6 lg:grid-cols-3">

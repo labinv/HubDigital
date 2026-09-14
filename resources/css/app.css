@@ -507,8 +507,8 @@ img, svg, video, canvas, iframe, embed, object {
 
 .hub-sidebar-navigation [data-flux-sidebar-group] + [data-flux-sidebar-group] {
     border-top: 1px solid rgba(255, 255, 255, .12);
-    margin-top: .75rem;
-    padding-top: .9rem;
+    margin-top: .45rem;
+    padding-top: .55rem;
 }
 
 .hub-sidebar-utilities {

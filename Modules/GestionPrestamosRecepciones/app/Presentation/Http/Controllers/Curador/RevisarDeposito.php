@@ -23,12 +23,13 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalm
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalmenteSolicitud\RechazarDocumentalmenteSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasInput;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ResolverRevisionDocumentalPrevia\ResolverRevisionDocumentalPreviaHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ResolverRevisionDocumentalPrevia\ResolverRevisionDocumentalPreviaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarDevolucionDeposito\RegistrarDevolucionDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarDevolucionDeposito\RegistrarDevolucionDepositoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ResolverRevisionDocumentalPrevia\ResolverRevisionDocumentalPreviaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ResolverRevisionDocumentalPrevia\ResolverRevisionDocumentalPreviaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidacionManualCuraduria\ValidacionManualCuraduriaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidacionManualCuraduria\ValidacionManualCuraduriaInput;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrioridadSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
@@ -47,6 +48,9 @@ final class RevisarDeposito extends Component
     public string $id;
 
     public string $nombreInvestigador = '';
+
+    public string $mensajeEstadoSincronizado = '';
+
     public bool $esRevisionDocumentalPrevia = false;
 
     // ── Modal: confirmación de aprobación ────────────────────────────────────
@@ -166,10 +170,16 @@ final class RevisarDeposito extends Component
      */
     public function aprobar(AprobarDocumentalmenteSolicitudHandler $handler): void
     {
-        ($handler)(new AprobarDocumentalmenteSolicitudInput(
-            solicitudId: $this->id,
-            curadorId: (string) auth()->id(),
-        ));
+        try {
+            ($handler)(new AprobarDocumentalmenteSolicitudInput(
+                solicitudId: $this->id,
+                curadorId: (string) auth()->id(),
+            ));
+        } catch (SolicitudDepositoYaProcesada) {
+            $this->mensajeEstadoSincronizado = 'Esta solicitud ya fue aprobada documentalmente.';
+
+            return;
+        }
 
         $this->dispatch('toast', message: 'Solicitud aprobada documentalmente. Código QR asignado.');
     }
@@ -443,8 +453,7 @@ final class RevisarDeposito extends Component
         MatrizEspeciesRepositoryInterface $matrizRepo,
         CatalogoCuraduriaPort $catalogo,
         AlmacenamientoDepositos $almacenamiento,
-    ): View
-    {
+    ): View {
         $deposito = SolicitudDepositoEloquentModel::with('alertas')->find($this->id);
         abort_if($deposito === null, 404);
 

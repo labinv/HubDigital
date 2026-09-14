@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\SolicitudFirmadaPort;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalmenteSolicitud\AprobarDocumentalmenteSolicitudHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalmenteSolicitud\AprobarDocumentalmenteSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\MatrizEspeciesRequeridaException;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
@@ -134,4 +138,55 @@ test('una matriz con todos sus registros resueltos permite el envío firmado', f
 
     expect($salida->estado)->toBe(EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria)
         ->and($notificaciones->solicitudesPorRevisar)->toBe(1);
+
+    expect(fn () => $handler(new EnviarSolicitudDepositoInput((string) $solicitud->id())))
+        ->toThrow(
+            SolicitudDepositoYaProcesada::class,
+            'Esta solicitud ya fue enviada y está pendiente de revisión.'
+        );
+
+    expect($solicitudes->buscarPorId($solicitud->id())->estado())
+        ->toBe(EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria)
+        ->and($notificaciones->solicitudesPorRevisar)->toBe(1);
+});
+
+test('una aprobación ya consumida se distingue sin repetir QR ni notificaciones', function (): void {
+    $solicitudes = new InMemorySolicitudDepositoRepository;
+    $matrices = new InMemoryMatrizEspeciesRepository;
+    $solicitud = crearSolicitudBorrador($solicitudes);
+    $solicitud->avanzarARevisionCuraduria();
+    $solicitudes->guardar($solicitud);
+
+    $notificacionInvestigador = Mockery::mock(NotificacionInvestigadorPort::class);
+    $notificacionInvestigador->shouldReceive('notificarCodigoQrDisponible')->once()->andReturn('qr-prueba');
+    $notificacionInvestigador->shouldNotReceive('notificarCorreccionesCuratoriales');
+
+    $notificacionCuratoria = Mockery::mock(NotificacionCuratoriaPort::class);
+    $notificacionCuratoria->shouldReceive('notificarDecisionDocumentalAOtrosCuradores')->once()->andReturn('curador-prueba');
+
+    $handler = new AprobarDocumentalmenteSolicitudHandler(
+        repo: $solicitudes,
+        transactionManager: new PassThroughTransactionManagerAdapter,
+        eventPublisher: new FakeEventPublisherAdapter,
+        notificacionInvestigador: $notificacionInvestigador,
+        matrizRepo: $matrices,
+        notificacionCuratoria: $notificacionCuratoria,
+    );
+
+    $salida = $handler(new AprobarDocumentalmenteSolicitudInput(
+        solicitudId: (string) $solicitud->id(),
+        curadorId: 'curador-prueba',
+    ));
+
+    expect($salida->estado)->toBe(EstadoSolicitudDeposito::AprobadaDocumentalmente->value);
+    expect(fn () => $handler(new AprobarDocumentalmenteSolicitudInput(
+        solicitudId: (string) $solicitud->id(),
+        curadorId: 'curador-prueba',
+    )))->toThrow(
+        SolicitudDepositoYaProcesada::class,
+        'Esta solicitud ya fue aprobada documentalmente.'
+    );
+
+    expect($solicitudes->buscarPorId($solicitud->id())->estado())
+        ->toBe(EstadoSolicitudDeposito::AprobadaDocumentalmente);
 });

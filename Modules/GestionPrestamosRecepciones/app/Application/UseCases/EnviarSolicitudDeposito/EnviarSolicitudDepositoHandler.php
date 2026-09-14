@@ -10,8 +10,10 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaP
 use Modules\GestionPrestamosRecepciones\Application\Ports\SolicitudFirmadaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\MatrizEspeciesRequeridaException;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 /**
@@ -60,6 +62,10 @@ final class EnviarSolicitudDepositoHandler
             $solicitud = $this->repo->buscarPorIdParaActualizar($id);
             if ($solicitud === null) {
                 throw SolicitudNoEncontradaException::conId($input->solicitudId);
+            }
+
+            if ($solicitud->estado() === EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria) {
+                throw SolicitudDepositoYaProcesada::enviada();
             }
 
             $matriz = $this->matrizRepo->buscarPorSolicitudId($input->solicitudId);

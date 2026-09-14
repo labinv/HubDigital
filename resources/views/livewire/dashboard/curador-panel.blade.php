@@ -1,4 +1,4 @@
-<div class="hub-transactional-ui hub-depositos-dashboard hub-workspace flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
+<div class="hub-transactional-ui hub-depositos-dashboard hub-workspace flex h-full w-full flex-1 flex-col gap-4 p-4 sm:p-6">
 
     <header class="order-0 hub-page-header">
         <div>
@@ -70,11 +70,11 @@
     </section>
 
     {{-- ── Recepción y depósitos ──────────────────────────────────── --}}
-    <section class="hub-depositos-analytics order-1 flex flex-col gap-3">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <section class="hub-depositos-analytics order-1 flex flex-col gap-2">
+        <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
                 <h2 class="font-display text-lg font-semibold text-blue-navy">Recepción y depósitos</h2>
-                <p class="mt-1 text-sm text-text-secondary">Análisis operativo del ciclo documental, la entrega física y el cierre del acta.</p>
+                <p class="mt-0.5 text-sm text-text-secondary">Análisis operativo del ciclo documental, la entrega física y el cierre del acta.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <flux:select wire:model.live="periodoAnalisis" aria-label="Período del análisis" class="w-40">
@@ -85,7 +85,7 @@
                 <flux:button wire:click="descargarReporteDepositos" variant="ghost" icon="arrow-down-tray">Descargar reporte</flux:button>
             </div>
         </div>
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <x-stat-tile
                 label="Depósitos por revisar" :value="$depPorRevisar"
                 icon="clipboard-document-check"
