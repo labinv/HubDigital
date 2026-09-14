@@ -1,13 +1,13 @@
-<div class="hub-workspace p-4 sm:p-6 space-y-5">
+<div class="hub-transactional-ui hub-depositos-ui hub-workspace p-4 sm:p-6 space-y-4">
     <div>
         <flux:heading size="xl" level="1" class="font-display">Recepción física de lotes</flux:heading>
         <flux:text class="mt-1 text-sm text-text-secondary">Verifica el código QR, el inventario entregado, el embalaje, el estado y el rotulado.</flux:text>
     </div>
 
-    <flux:callout variant="info" icon="information-circle">
-        <flux:callout.heading>Cadena de custodia</flux:callout.heading>
-        <flux:callout.text>Tu constatación registra usuario, fecha y resultado. Curaduría generará y firmará el acta final después.</flux:callout.text>
-    </flux:callout>
+    <p class="flex items-start gap-2 rounded-lg border border-info/25 bg-info/5 px-3 py-2 text-sm text-text-secondary">
+        <flux:icon name="information-circle" class="mt-0.5 size-4 shrink-0 text-info" />
+        <span><strong class="text-text-primary">Cadena de custodia:</strong> la constatación registra usuario, fecha y resultado; Curaduría genera y firma el acta final después.</span>
+    </p>
 
     <section class="rounded-xl border border-border bg-surface p-4 shadow-sm">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -23,7 +23,8 @@
         <flux:error name="codigoQr" class="mt-2" />
     </section>
 
-    <div class="inline-flex max-w-full overflow-x-auto rounded-lg border border-border bg-surface p-1" role="tablist" aria-label="Estado de recepciones">
+    <section class="grid gap-2 rounded-lg border border-border bg-surface p-2 shadow-sm lg:grid-cols-[auto_minmax(18rem,1fr)] lg:items-center" aria-label="Filtros de recepciones">
+    <div class="inline-flex max-w-full overflow-x-auto p-1" role="tablist" aria-label="Estado de recepciones">
         @foreach (['pendientes' => 'Por recibir', 'verificacion' => 'En constatación', 'historial' => 'Historial'] as $valor => $etiqueta)
             <button type="button" wire:click="cambiarVista('{{ $valor }}')"
                 @class([
@@ -42,6 +43,7 @@
     </div>
 
     <flux:input wire:model.live.debounce.300ms="busqueda" icon="magnifying-glass" placeholder="Buscar por número, QR o nombre del consultor" aria-label="Buscar lotes" />
+    </section>
 
     <div class="grid gap-3">
         @forelse($solicitudes as $solicitud)
@@ -69,7 +71,10 @@
                 </flux:button>
             </div>
         @empty
-            <div class="rounded-xl border border-border bg-surface p-10 text-center text-sm text-text-secondary">No hay lotes en esta bandeja.</div>
+            <div class="hub-compact-empty rounded-lg border border-border bg-surface text-sm text-text-secondary shadow-sm">
+                <flux:icon name="inbox" class="size-6 text-text-secondary/50" />
+                <span>No hay lotes en esta bandeja.</span>
+            </div>
         @endforelse
     </div>
 </div>

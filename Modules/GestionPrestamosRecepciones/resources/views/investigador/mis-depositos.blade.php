@@ -19,7 +19,7 @@
     $activeFilters = collect([$filtroTipo, $filtroEstado, $filtroDesde, $filtroHasta])->filter()->count();
 @endphp
 
-<div class="hub-workspace space-y-6 p-4 sm:p-6">
+<div class="hub-transactional-ui hub-depositos-ui hub-workspace space-y-5 p-4 sm:p-6">
 
     {{-- Encabezado --}}
     <header class="hub-page-header">
@@ -57,12 +57,12 @@
         </div>
 
         {{-- Filtros en horizontal --}}
-        <div class="px-4 py-3 flex flex-wrap items-end gap-4">
+        <div class="grid gap-3 px-4 py-3 sm:grid-cols-2 xl:grid-cols-[9rem_minmax(13rem,1fr)_10rem_10rem] xl:items-end">
 
             {{-- Tipo --}}
             <flux:field>
                 <flux:label class="text-xs">Tipo</flux:label>
-                <flux:select wire:model.live="filtroTipo" size="sm" class="w-full sm:w-36">
+                <flux:select wire:model.live="filtroTipo" class="w-full">
                     <flux:select.option value="">Todos</flux:select.option>
                     <flux:select.option value="{{ TipoTramite::Deposito->value }}">Depósito</flux:select.option>
                     <flux:select.option value="{{ TipoTramite::Donacion->value }}">Donación</flux:select.option>
@@ -72,7 +72,7 @@
             {{-- Estado --}}
             <flux:field>
                 <flux:label class="text-xs">Estado</flux:label>
-                <flux:select wire:model.live="filtroEstado" size="sm" class="w-full sm:w-52">
+                <flux:select wire:model.live="filtroEstado" class="w-full">
                     <flux:select.option value="">Todos</flux:select.option>
                     <flux:select.option value="{{ EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value }}">Pendiente de Revisión</flux:select.option>
                     <flux:select.option value="{{ EstadoSolicitudDeposito::PendienteDeRevisionDocumentalPrevia->value }}">Revisión documental previa</flux:select.option>
@@ -87,7 +87,7 @@
                 <input
                     type="date"
                     wire:model.live="filtroDesde"
-                    class="px-3 py-2 text-sm sm:py-1 sm:text-xs rounded-lg border bg-bg-main text-text-primary transition-colors focus:outline-none focus:ring-1
+                    class="rounded-lg border bg-bg-main px-3 py-2 text-sm text-text-primary transition-colors focus:outline-none focus:ring-1
                         {{ $filtroDesde ? 'border-science-blue ring-1 ring-science-blue' : 'border-border' }}"
                 />
             </flux:field>
@@ -97,7 +97,7 @@
                 <input
                     type="date"
                     wire:model.live="filtroHasta"
-                    class="px-3 py-2 text-sm sm:py-1 sm:text-xs rounded-lg border bg-bg-main text-text-primary transition-colors focus:outline-none focus:ring-1
+                    class="rounded-lg border bg-bg-main px-3 py-2 text-sm text-text-primary transition-colors focus:outline-none focus:ring-1
                         {{ $filtroHasta ? 'border-science-blue ring-1 ring-science-blue' : 'border-border' }}"
                 />
             </flux:field>
@@ -108,9 +108,9 @@
 
     @if($depositos->isEmpty())
 
-        <div class="flex flex-col items-center justify-center rounded-xl bg-surface min-h-[420px] px-8 text-center gap-4">
+        <div class="hub-compact-empty rounded-xl border border-border bg-surface shadow-sm">
             @if($hayFiltros)
-                <flux:icon name="funnel" class="size-10 text-warning/60" />
+                <flux:icon name="funnel" class="size-7 text-warning/60" />
                 <div>
                     <flux:heading size="lg" level="2">Sin resultados</flux:heading>
                     <flux:text class="text-text-secondary mt-1 text-sm max-w-xs">
@@ -122,7 +122,7 @@
                     Limpiar filtros
                 </button>
             @else
-                <flux:icon name="archive-box" class="size-10 text-science-blue/50" />
+                <flux:icon name="archive-box" class="size-7 text-science-blue/50" />
                 <div>
                     <flux:heading size="lg" level="2">Aún no tienes solicitudes de depósito</flux:heading>
                     <flux:text class="text-text-secondary mt-1 text-sm max-w-xs">

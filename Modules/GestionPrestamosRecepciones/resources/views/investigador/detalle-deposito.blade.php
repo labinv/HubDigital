@@ -1,4 +1,4 @@
-<div class="hub-workspace space-y-6 p-4 sm:p-6">
+<div class="hub-transactional-ui hub-depositos-ui hub-workspace space-y-5 p-4 sm:p-6">
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-depositos') }}">

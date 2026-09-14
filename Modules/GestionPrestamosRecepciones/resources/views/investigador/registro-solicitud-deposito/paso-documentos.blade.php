@@ -1,9 +1,11 @@
-<div class="space-y-6" x-data="{ total: {{ count($documentosRequeridos) }} }">
+<div class="space-y-5" x-data="{ total: {{ count($documentosRequeridos) }} }">
 
-    <div class="border-b border-blue-navy/10 pb-5">
+    <div class="border-b border-blue-navy/10 pb-4">
         <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Documentos oficiales</flux:heading>
         <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-            Adjunta archivos PDF legibles. HubDigital los clasificará por su contenido, leerá códigos y fechas y comprobará que pertenezcan al mismo expediente.
+            {{ !empty($documentosRequeridos)
+                ? 'Adjunta los PDF indicados. HubDigital verificará su contenido y que pertenezcan al mismo expediente.'
+                : 'Esta modalidad genera internamente la solicitud y sus declaraciones; no necesitas adjuntar archivos en este paso.' }}
         </flux:text>
     </div>
 
@@ -199,22 +201,26 @@
                 @endforeach
             </section>
         @else
-            <div class="rounded-lg border border-dashed border-border p-8 text-center">
-                <flux:icon name="check-circle" class="size-8 text-success mx-auto mb-2" />
-                <p class="text-sm font-medium text-text-primary">No se requieren archivos para esta modalidad.</p>
-                <p class="mt-1 text-xs leading-5 text-text-secondary">La solicitud y las declaraciones aplicables se generan dentro de HubDigital.</p>
+            <div class="flex items-start gap-3 rounded-lg border border-success/30 bg-success/5 p-4">
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success">
+                    <flux:icon name="check-circle" class="size-5" />
+                </span>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-text-primary">Sin archivos requeridos</p>
+                    <p class="mt-1 text-sm leading-5 text-text-secondary">Confirma este estado y continúa con los datos oficiales del expediente.</p>
+                </div>
             </div>
         @endif
 
         {{-- Sección de intervención curatorial --}}
-        <div class="space-y-3 border-t border-blue-navy/10 pt-5">
+        @if(!empty($documentosRequeridos))
+        <div class="flex flex-col gap-3 border-t border-blue-navy/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-start gap-3">
                 <flux:icon name="question-mark-circle" class="size-5 text-text-secondary shrink-0 mt-0.5" />
                 <div class="flex-1">
                     <p class="text-sm font-semibold text-text-primary">¿No cuentas con ningún documento disponible?</p>
                     <p class="text-xs text-text-secondary mt-0.5">
-                        Si no cuentas con ningún documento, puedes solicitar la intervención directa del funcionario responsable.
-                        La carga documental se pausará y él se pondrá en contacto contigo para orientarte.
+                        Solicita orientación si no puedes aportar ninguno de los archivos indicados.
                     </p>
                 </div>
             </div>
@@ -226,11 +232,12 @@
                 wire:target="solicitarIntervencion"
                 icon="hand-raised"
                 icon:loading="arrow-path"
-                class="text-warning border-warning/40 hover:bg-warning/10"
+                class="shrink-0 text-warning border-warning/40 hover:bg-warning/10"
             >
                 Solicitar asistencia
             </flux:button>
         </div>
+        @endif
 
     </div>{{-- fin wire:key="formulario-documentos" --}}
 

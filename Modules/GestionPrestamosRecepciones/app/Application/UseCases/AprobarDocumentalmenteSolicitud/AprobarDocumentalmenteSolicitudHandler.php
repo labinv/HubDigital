@@ -37,15 +37,14 @@ final class AprobarDocumentalmenteSolicitudHandler
     public function __invoke(AprobarDocumentalmenteSolicitudInput $input): AprobarDocumentalmenteSolicitudOutput
     {
         $id = SolicitudDepositoId::from($input->solicitudId);
-        $solicitud = $this->repo->buscarPorId($id);
+        $solicitud = null;
+        $this->transactionManager->executeTransactional(function () use ($id, $input, &$solicitud): void {
+            $solicitud = $this->repo->buscarPorIdParaActualizar($id);
+            if ($solicitud === null) {
+                throw SolicitudNoEncontradaException::conId($input->solicitudId);
+            }
 
-        if ($solicitud === null) {
-            throw SolicitudNoEncontradaException::conId($input->solicitudId);
-        }
-
-        $solicitud->aprobarDocumentalmente($input->curadorId);
-
-        $this->transactionManager->executeTransactional(function () use ($solicitud): void {
+            $solicitud->aprobarDocumentalmente($input->curadorId);
             $this->repo->guardar($solicitud);
             foreach ($solicitud->pullEvents() as $event) {
                 $this->eventPublisher->publish($event);

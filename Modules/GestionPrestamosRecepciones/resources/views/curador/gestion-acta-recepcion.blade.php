@@ -3,7 +3,7 @@
     $firma = $recepcion->firmaMetadata;
 @endphp
 
-<div class="hub-workspace p-4 sm:p-6 space-y-6" @toast.window="$flux.toast($event.detail.message)">
+<div class="hub-transactional-ui hub-depositos-ui hub-workspace p-4 sm:p-6 space-y-5" @toast.window="$flux.toast($event.detail.message)">
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.depositos') }}">Depósitos</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $recepcion->numeroSolicitud }}</flux:breadcrumbs.item>

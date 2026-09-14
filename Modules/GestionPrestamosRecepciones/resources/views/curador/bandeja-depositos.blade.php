@@ -1,4 +1,4 @@
-<div class="hub-workspace p-4 sm:p-6 space-y-6"
+<div class="hub-transactional-ui hub-depositos-ui hub-workspace p-4 sm:p-6 space-y-5"
     x-data
     @toast.window="$flux.toast($event.detail.message)"
     @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">
@@ -18,8 +18,9 @@
         </div>
     </header>
 
+    <section class="overflow-hidden rounded-lg border border-border bg-surface shadow-sm" aria-label="Controles de la bandeja">
     {{-- Pestañas: revisión documental / actuación curatorial / historial --}}
-    <div class="inline-flex rounded-lg border border-border bg-surface p-1">
+    <div class="flex max-w-full overflow-x-auto border-b border-border p-1">
         <button type="button" wire:click="cambiarVista('pendientes')"
             @class([
                 'inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
@@ -61,8 +62,8 @@
     </div>
 
     {{-- Filtros --}}
-    <div class="hub-table-shell">
-        <div class="flex items-center gap-2 px-4 py-2.5 bg-bg-main border-b border-border">
+    <div>
+        <div class="flex items-center gap-2 bg-bg-main px-4 py-2">
             <flux:icon name="funnel" class="size-3.5 text-text-secondary" />
             <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">Filtros</span>
             <span wire:loading.delay wire:target="busqueda, tipoTramite, ordenDireccion, toggleOrden, cambiarVista, limpiarFiltros"
@@ -75,14 +76,13 @@
                 </button>
             @endif
         </div>
-        <div class="px-4 py-3 space-y-3">
+        <div class="grid gap-2 p-3 lg:grid-cols-[minmax(0,1fr)_13rem_auto] lg:items-center">
             <flux:input
                 wire:model.live.debounce.300ms="busqueda"
                 placeholder="Buscar por N.º o depositante..."
                 icon="magnifying-glass"
                 clearable />
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <flux:select wire:model.live="tipoTramite" class="sm:w-52">
+                <flux:select wire:model.live="tipoTramite">
                     <flux:select.option value="">Todos los trámites</flux:select.option>
                     <flux:select.option value="Depósito">Depósito</flux:select.option>
                     <flux:select.option value="Donación">Donación</flux:select.option>
@@ -91,17 +91,17 @@
                     wire:click="toggleOrden"
                     variant="ghost"
                     icon="{{ $ordenDireccion === 'asc' ? 'bars-arrow-up' : 'bars-arrow-down' }}"
-                    class="w-full sm:w-auto">
+                    class="w-full lg:w-auto">
                     {{ $ordenDireccion === 'asc' ? 'Más antiguas' : 'Más recientes' }}
                 </flux:button>
-            </div>
         </div>
     </div>
+    </section>
 
     @if(count($solicitudes) === 0)
-        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
-            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
-                <flux:icon name="{{ $hayFiltros ? 'magnifying-glass' : ($esActas ? 'document-check' : ($esResueltas ? 'check-circle' : 'inbox')) }}" class="size-8 text-text-secondary/50" />
+        <div class="hub-compact-empty rounded-lg border border-border bg-surface shadow-sm">
+            <div class="flex size-12 items-center justify-center rounded-full border border-border bg-bg-main">
+                <flux:icon name="{{ $hayFiltros ? 'magnifying-glass' : ($esActas ? 'document-check' : ($esResueltas ? 'check-circle' : 'inbox')) }}" class="size-6 text-text-secondary/50" />
             </div>
             <div>
                 <flux:heading size="lg" level="2">

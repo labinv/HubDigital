@@ -11,7 +11,7 @@
     $hayDatosGrafico = ($pendientesRevision + $pausadasAsesoria + $rechazadas) > 0;
 @endphp
 
-<div class="hub-workspace flex h-full w-full flex-1 flex-col gap-5 p-6">
+<div class="hub-transactional-ui hub-depositos-dashboard hub-workspace flex h-full w-full flex-1 flex-col gap-4 p-4 sm:p-6">
 
     {{-- Invitación a activar el rol complementario. Vive aquí y no en el layout:
          es contenido del panel, no del armazón, y antes salía en todas las pantallas. --}}
@@ -30,10 +30,8 @@
     </div>
 
     {{-- Hero: Tu contribución a la colección --}}
-    <div class="hub-panel relative overflow-hidden p-6">
-        <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-bio-green/5 via-surface to-science-blue/5"></div>
-
-        <div class="relative">
+    <div class="hub-panel p-4 sm:p-5">
+        <div>
             <div class="flex items-center gap-2">
                 <flux:icon name="sparkles" variant="outline" class="size-5 text-bio-green" />
                 <h2 class="font-display text-lg font-semibold text-text-primary">Tu contribución a la colección</h2>
@@ -55,7 +53,7 @@
                     </flux:button>
                 </div>
             @else
-                <div class="mt-5 grid gap-4 sm:grid-cols-3">
+                <div class="mt-4 grid gap-3 sm:grid-cols-3">
                     <div class="flex flex-col">
                         <span class="font-display text-3xl font-bold text-bio-green">{{ number_format($individuos) }}</span>
                         <span class="text-xs font-medium uppercase tracking-wide text-text-secondary">Individuos aportados</span>
@@ -70,7 +68,7 @@
                     </div>
                 </div>
 
-                <p class="mt-5 flex items-center gap-1.5 text-sm text-text-secondary">
+                <p class="mt-4 flex items-center gap-1.5 text-sm text-text-secondary">
                     <flux:icon name="globe-americas" variant="outline" class="size-4 shrink-0 text-bio-green" />
                     A través de
                     <strong class="text-text-primary">{{ $gruposTaxonomicos }}</strong>
@@ -83,8 +81,8 @@
     </div>
 
     {{-- Tarjetas de estado --}}
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-lg border border-border bg-surface p-5 shadow-sm">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-lg border border-border bg-surface p-4 shadow-sm">
             <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-science-blue/10">
                     <flux:icon name="document-text" variant="outline" class="size-5 text-science-blue" />
@@ -96,7 +94,7 @@
             </div>
         </div>
 
-        <div class="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div class="rounded-lg border border-border bg-surface p-4 shadow-sm">
             <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
                     <flux:icon name="clock" variant="outline" class="size-5 text-warning" />
@@ -108,7 +106,7 @@
             </div>
         </div>
 
-        <div class="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div class="rounded-lg border border-border bg-surface p-4 shadow-sm">
             <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10">
                     <flux:icon name="pause-circle" variant="outline" class="size-5 text-info" />
@@ -120,7 +118,7 @@
             </div>
         </div>
 
-        <div class="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div class="rounded-lg border border-border bg-surface p-4 shadow-sm">
             <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-error/10">
                     <flux:icon name="x-circle" variant="outline" class="size-5 text-error" />
@@ -134,10 +132,10 @@
     </div>
 
     {{-- Fila inferior: cupo anual + gráfico --}}
-    <div class="grid gap-4 lg:grid-cols-2">
+    <div class="grid gap-3 lg:grid-cols-2">
 
         {{-- Cupo anual de depósitos --}}
-        <div class="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <div class="rounded-lg border border-border bg-surface p-4 shadow-sm">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
                     <flux:icon name="archive-box" variant="outline" class="size-5 text-blue-navy" />
@@ -146,7 +144,7 @@
                 <span class="text-sm font-medium text-text-secondary">{{ now()->year }}</span>
             </div>
 
-            <div class="mt-5 flex items-end justify-between">
+            <div class="mt-4 flex items-end justify-between">
                 <p class="font-display text-3xl font-bold text-text-primary">
                     {{ $depositosAnio }}<span class="text-lg font-medium text-text-secondary">/{{ $cupoMaximoDepositos }}</span>
                 </p>
@@ -177,7 +175,7 @@
         </div>
 
         {{-- Gráfico: distribución de solicitudes por estado --}}
-        <div class="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <div class="rounded-lg border border-border bg-surface p-4 shadow-sm">
             <div class="flex items-center gap-2">
                 <flux:icon name="chart-pie" variant="outline" class="size-5 text-science-blue" />
                 <h2 class="text-base font-semibold text-text-primary">Estado de mis solicitudes</h2>
@@ -185,12 +183,12 @@
 
             @if($hayDatosGrafico)
                 <div wire:ignore class="mt-4 flex items-center justify-center">
-                    <div class="relative h-56 w-full max-w-xs">
+                    <div class="relative h-44 w-full max-w-xs">
                         <canvas id="dep-estado-chart"></canvas>
                     </div>
                 </div>
             @else
-                <div class="mt-4 flex h-56 flex-col items-center justify-center gap-2 text-center">
+                <div class="mt-4 flex h-40 flex-col items-center justify-center gap-2 text-center">
                     <flux:icon name="chart-pie" variant="outline" class="size-8 text-text-secondary/50" />
                     <p class="text-sm text-text-secondary">Sin datos para mostrar aún.</p>
                     <p class="text-xs text-text-secondary">El gráfico aparecerá cuando tengas solicitudes en proceso.</p>
@@ -200,7 +198,7 @@
     </div>
 
     {{-- Accesos rápidos --}}
-    <div class="rounded-lg border border-border bg-surface p-6 shadow-sm">
+    <div class="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div class="flex flex-col items-start gap-4">
             <h2 class="text-base font-semibold text-text-primary">Accesos rápidos</h2>
             <div class="flex flex-wrap gap-3">

@@ -6,10 +6,10 @@
     </head>
     <body class="min-h-screen bg-bg-main">
         <x-estado-conectividad />
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-border bg-blue-navy">
+        <flux:sidebar sticky collapsible="mobile" class="hub-app-sidebar border-e border-border bg-blue-navy">
 
             {{-- Brand header --}}
-            <flux:sidebar.header class="border-b border-white/15 px-4 pt-4 pb-5">
+            <flux:sidebar.header class="px-4 pb-4 pt-5">
                 <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/20 bg-white/10 shadow-sm">
                         <x-app-logo-icon class="size-6 fill-current text-white" />
@@ -27,8 +27,14 @@
                 </div>
             </flux:sidebar.header>
 
+            @auth
+                <div class="hub-sidebar-identity border-y border-white/15 px-3 py-3">
+                    <x-desktop-user-menu context="sidebar" />
+                </div>
+            @endauth
+
             {{-- Navigation --}}
-            <flux:sidebar.nav class="mt-2">
+            <flux:sidebar.nav class="hub-sidebar-navigation mt-0 min-h-0 flex-1 overflow-y-auto py-4">
                 <flux:sidebar.group heading="Principal" class="grid">
                     <flux:sidebar.item
                         icon="home"
@@ -412,10 +418,27 @@
                 @endauth
             </flux:sidebar.nav>
 
-            <flux:spacer />
+            <div class="hub-sidebar-utilities z-10 -mx-4 -mb-4 shrink-0 border-t border-white/15 bg-blue-navy pt-2" style="box-shadow: 0 16px 0 0 var(--color-blue-navy);">
+                <a
+                    href="{{ route('profile.edit') }}"
+                    wire:navigate
+                    class="hub-sidebar-utility mx-3 flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                    <flux:icon name="cog-6-tooth" class="size-5 shrink-0" />
+                    <span>Configuración</span>
+                </a>
 
-            <div class="sticky bottom-0 z-10 -mx-4 -mb-4 hidden border-t border-white/15 bg-blue-navy p-4 lg:block" style="box-shadow: 0 16px 0 0 var(--color-blue-navy);">
-                <x-desktop-user-menu context="sidebar" />
+                <form method="POST" action="{{ route('logout') }}" class="mt-2 border-t border-white/15">
+                    @csrf
+                    <button
+                        type="submit"
+                        data-test="logout-button"
+                        class="flex min-h-12 w-full cursor-pointer items-center gap-3 px-6 text-start text-sm font-medium text-white/65 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+                    >
+                        <flux:icon name="arrow-right-start-on-rectangle" class="size-5 shrink-0" />
+                        <span>Cerrar sesión</span>
+                    </button>
+                </form>
             </div>
         </flux:sidebar>
 

@@ -48,11 +48,6 @@ final class EnviarSolicitudDepositoHandler
     public function __invoke(EnviarSolicitudDepositoInput $input): EnviarSolicitudDepositoOutput
     {
         $id = SolicitudDepositoId::from($input->solicitudId);
-        $solicitud = $this->repo->buscarPorId($id);
-
-        if ($solicitud === null) {
-            throw SolicitudNoEncontradaException::conId($input->solicitudId);
-        }
 
         if (! $this->solicitudFirmada->estaFirmada($input->solicitudId)) {
             throw new \DomainException(
@@ -60,17 +55,22 @@ final class EnviarSolicitudDepositoHandler
             );
         }
 
-        $matriz = $this->matrizRepo->buscarPorSolicitudId($input->solicitudId);
-        if ($matriz === null) {
-            throw MatrizEspeciesRequeridaException::paraFinalizar();
-        }
-        if (! $matriz->estaCompletaParaEnvio()) {
-            throw MatrizEspeciesRequeridaException::incompletaParaFinalizar();
-        }
+        $solicitud = null;
+        $this->transactionManager->executeTransactional(function () use ($id, $input, &$solicitud): void {
+            $solicitud = $this->repo->buscarPorIdParaActualizar($id);
+            if ($solicitud === null) {
+                throw SolicitudNoEncontradaException::conId($input->solicitudId);
+            }
 
-        $solicitud->avanzarARevisionCuraduria();
+            $matriz = $this->matrizRepo->buscarPorSolicitudId($input->solicitudId);
+            if ($matriz === null) {
+                throw MatrizEspeciesRequeridaException::paraFinalizar();
+            }
+            if (! $matriz->estaCompletaParaEnvio()) {
+                throw MatrizEspeciesRequeridaException::incompletaParaFinalizar();
+            }
 
-        $this->transactionManager->executeTransactional(function () use ($solicitud): void {
+            $solicitud->avanzarARevisionCuraduria();
             $this->repo->guardar($solicitud);
             foreach ($solicitud->pullEvents() as $event) {
                 $this->eventPublisher->publish($event);

@@ -6,7 +6,7 @@
     $verificado = in_array($recepcion->estadoRecepcion, ['Verificado Físicamente', 'Verificado con Observaciones'], true);
 @endphp
 
-<div class="hub-workspace p-4 sm:p-6 space-y-6"
+<div class="hub-transactional-ui hub-depositos-ui hub-workspace p-4 sm:p-6 space-y-5"
     x-data
     @toast.window="$flux.toast($event.detail.message)"
     @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">
@@ -34,33 +34,30 @@
         </div>
     </header>
 
-    {{-- Tiles de resumen --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 auto-rows-fr">
-        <div class="hub-panel min-w-0 p-4">
-            <p class="text-xs text-text-secondary">Código de lote (QR)</p>
-            <p class="mt-1 font-mono text-base font-semibold text-blue-navy tracking-wide break-all">{{ $recepcion->codigoQR ?? '—' }}</p>
+    {{-- Resumen único: datos breves relacionados, sin una tarjeta sobredimensionada por valor. --}}
+    <section class="hub-panel overflow-hidden" aria-labelledby="resumen-entrega">
+        <div class="border-b border-border px-4 py-3">
+            <h2 id="resumen-entrega" class="text-sm font-semibold text-blue-navy">Resumen de la entrega</h2>
         </div>
-        <div class="hub-panel min-w-0 p-4">
-            <p class="text-xs text-text-secondary">Depositante</p>
-            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $nombreInvestigador }}</p>
-        </div>
-        <div class="hub-panel min-w-0 p-4">
-            <p class="text-xs text-text-secondary">N.º de lotes</p>
-            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->nroLotes ?? '—' }}</p>
-        </div>
-        <div class="hub-panel min-w-0 p-4">
-            <p class="text-xs text-text-secondary">N.º de individuos</p>
-            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->nroIndividuos ?? '—' }}</p>
-        </div>
-        <div class="hub-panel min-w-0 p-4">
-            <p class="text-xs text-text-secondary">Grupo animal</p>
-            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->grupoAnimal ?? '—' }}</p>
-        </div>
-        <div class="hub-panel min-w-0 p-4">
-            <p class="text-xs text-text-secondary">Localidad</p>
-            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->localidad ?? '—' }}</p>
-        </div>
-    </div>
+        <dl class="grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-3 xl:grid-cols-6 xl:divide-y-0">
+            @foreach ([
+                ['Código de lote (QR)', $recepcion->codigoQR ?? '—', true],
+                ['Depositante', $nombreInvestigador, false],
+                ['Lotes', $recepcion->nroLotes ?? '—', false],
+                ['Individuos', $recepcion->nroIndividuos ?? '—', false],
+                ['Grupo animal', $recepcion->grupoAnimal ?? '—', false],
+                ['Localidad', $recepcion->localidad ?? '—', false],
+            ] as [$etiqueta, $valor, $monoespaciado])
+                <div class="min-w-0 px-4 py-3">
+                    <dt class="text-xs text-text-secondary">{{ $etiqueta }}</dt>
+                    <dd @class([
+                        'mt-1 break-words text-sm font-semibold text-text-primary',
+                        'font-mono tracking-wide text-blue-navy' => $monoespaciado,
+                    ])>{{ $valor }}</dd>
+                </div>
+            @endforeach
+        </dl>
+    </section>
 
     <section class="hub-panel p-4" aria-labelledby="documentacion-entrega">
         <div class="flex items-start gap-3">

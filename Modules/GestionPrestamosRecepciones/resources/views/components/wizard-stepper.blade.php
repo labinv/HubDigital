@@ -4,7 +4,7 @@
     'pasosCompletados' => [],
 ])
 
-<div class="flex items-center gap-1 p-1 rounded-lg bg-surface border border-border shadow-sm overflow-x-auto">
+<div class="grid auto-cols-[minmax(8.5rem,1fr)] grid-flow-col items-stretch gap-1 overflow-x-auto p-1 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-6 sm:overflow-visible">
     @foreach($pasos as $index => $paso)
         @php
             $numero = $index + 1;
@@ -13,7 +13,7 @@
             $esDeshabilitado = !$esCompletado && !$esActual;
         @endphp
 
-        <div class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-md min-w-0
+        <div class="flex min-w-[8.5rem] items-center gap-2 rounded-md px-3 py-2.5 sm:min-w-0
             {{ $esActual ? 'bg-blue-navy/5' : '' }}
             {{ $esCompletado ? 'cursor-default' : '' }}
         ">
@@ -29,18 +29,15 @@
                 @endif
             </div>
 
-            <div class="min-w-0 hidden sm:block">
-                <p class="text-xs font-semibold truncate
+            <div class="min-w-0">
+                <p class="text-xs font-semibold leading-4
                     {{ $esActual ? 'text-blue-navy' : ($esCompletado ? 'text-text-primary' : 'text-text-secondary') }}
                 ">
                     {{ $paso['label'] }}
                 </p>
-                <p class="text-[10px] text-text-secondary truncate">{{ $paso['sub'] }}</p>
+                <p class="hidden text-[10px] leading-4 text-text-secondary lg:block">{{ $paso['sub'] }}</p>
             </div>
         </div>
 
-        @if($index < count($pasos) - 1)
-            <div class="shrink-0 w-4 h-px bg-border"></div>
-        @endif
     @endforeach
 </div>

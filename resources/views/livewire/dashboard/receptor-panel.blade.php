@@ -1,4 +1,4 @@
-<div class="hub-workspace space-y-6 p-4 sm:p-6">
+<div class="hub-transactional-ui hub-depositos-dashboard hub-workspace space-y-5 p-4 sm:p-6">
     <header class="hub-page-header">
         <div>
             <p class="hub-page-kicker">Ventanilla institucional · EPN</p>
