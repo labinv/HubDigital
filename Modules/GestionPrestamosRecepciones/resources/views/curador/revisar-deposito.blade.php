@@ -933,7 +933,7 @@
     </div>
 
     {{-- Modal: confirmación de aprobación --}}
-    <flux:modal wire:model="showConfirmacionModal" class="max-w-md">
+    <flux:modal name="confirmar-aprobacion" wire:model="showConfirmacionModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-full bg-success/10 shrink-0">

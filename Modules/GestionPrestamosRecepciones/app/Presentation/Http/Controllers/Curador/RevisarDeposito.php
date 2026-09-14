@@ -155,6 +155,7 @@ final class RevisarDeposito extends Component
         ResolverRevisionDocumentalPreviaHandler $revisionPreviaHandler,
     ): void {
         $this->showConfirmacionModal = false;
+        $this->modal('confirmar-aprobacion')->close();
 
         match ($this->accionAprobar) {
             'deposito' => $this->aprobar($aprobarHandler),
