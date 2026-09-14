@@ -443,26 +443,27 @@
         </flux:sidebar>
 
         {{-- Mobile top bar --}}
-        <flux:header class="lg:hidden border-b border-blue-navy bg-blue-navy">
+        <flux:header class="hub-mobile-header lg:hidden border-b border-blue-navy bg-blue-navy">
             <flux:sidebar.toggle class="text-white/80 hover:text-white" icon="bars-2" inset="left" />
 
-            <div class="flex items-center gap-2 mx-auto">
+            <div class="hub-mobile-brand flex items-center gap-2">
                 <span class="flex h-6 w-6 items-center justify-center rounded bg-white/20">
                     <x-app-logo-icon class="size-5 fill-current text-white" />
                 </span>
                 <span class="font-display text-sm font-bold text-white">Hub Digital</span>
             </div>
 
-            <div class="flex items-center gap-1 text-white">
-                <livewire:campana-notificaciones />
-            </div>
+            <div class="hub-mobile-actions flex items-center justify-end gap-1 text-white">
+                <div class="flex items-center">
+                    <livewire:campana-notificaciones />
+                </div>
 
-            <flux:dropdown position="top" align="end">
-                <flux:profile
-                    :initials="auth()->user()->initials()"
-                    icon-trailing="chevron-down"
-                    class="text-white hover:bg-white/10"
-                />
+                <flux:dropdown position="top" align="end">
+                    <flux:profile
+                        :initials="auth()->user()->initials()"
+                        icon-trailing="chevron-down"
+                        class="text-white hover:bg-white/10"
+                    />
 
                 <flux:menu>
                     <flux:menu.radio.group>
@@ -517,8 +518,9 @@
                             Cerrar sesión
                         </flux:menu.item>
                     </form>
-                </flux:menu>
-            </flux:dropdown>
+                    </flux:menu>
+                </flux:dropdown>
+            </div>
         </flux:header>
 
         {{ $slot }}

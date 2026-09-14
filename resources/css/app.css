@@ -515,6 +515,36 @@ img, svg, video, canvas, iframe, embed, object {
     margin-inline: -1rem;
 }
 
+.hub-mobile-header {
+    display: grid;
+    grid-template-columns: minmax(2.75rem, 1fr) auto minmax(2.75rem, 1fr);
+    align-items: center;
+}
+
+.hub-mobile-brand {
+    grid-column: 2;
+    justify-self: center;
+    min-inline-size: 0;
+    white-space: nowrap;
+}
+
+.hub-mobile-actions {
+    grid-column: 3;
+    min-inline-size: 0;
+}
+
+.hub-depositos-ui .hub-form-breadcrumbs {
+    flex-wrap: wrap;
+    row-gap: .25rem;
+    min-inline-size: 0;
+}
+
+.hub-depositos-ui .hub-form-breadcrumbs * {
+    min-inline-size: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 .hub-sidebar-utility [data-flux-icon],
 .hub-sidebar-utility svg,
 .hub-sidebar-utilities button [data-flux-icon],

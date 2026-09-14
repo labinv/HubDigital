@@ -11,7 +11,7 @@
     @toast.window="$flux.toast($event.detail.message)"
     @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">
 
-    <flux:breadcrumbs>
+    <flux:breadcrumbs class="hub-form-breadcrumbs">
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.receptor.depositos') }}">
             Recepciones
         </flux:breadcrumbs.item>

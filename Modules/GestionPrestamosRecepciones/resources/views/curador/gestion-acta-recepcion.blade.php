@@ -4,7 +4,7 @@
 @endphp
 
 <div class="hub-transactional-ui hub-depositos-ui hub-workspace p-4 sm:p-6 space-y-5" @toast.window="$flux.toast($event.detail.message)">
-    <flux:breadcrumbs>
+    <flux:breadcrumbs class="hub-form-breadcrumbs">
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.depositos') }}">Depósitos</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $recepcion->numeroSolicitud }}</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>Acta final</flux:breadcrumbs.item>

@@ -1,6 +1,6 @@
 <div class="hub-transactional-ui hub-depositos-ui hub-workspace space-y-5 p-4 sm:p-6">
 
-    <flux:breadcrumbs>
+    <flux:breadcrumbs class="hub-form-breadcrumbs">
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-depositos') }}">
             Mis depósitos
         </flux:breadcrumbs.item>

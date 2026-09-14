@@ -35,7 +35,7 @@
     @if($paso < 7)
         {{-- Breadcrumbs --}}
         <div class="border-b border-blue-navy/10 pb-3">
-            <flux:breadcrumbs>
+            <flux:breadcrumbs class="hub-form-breadcrumbs">
                 <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-solicitudes') }}">
                     Mis solicitudes
                 </flux:breadcrumbs.item>
