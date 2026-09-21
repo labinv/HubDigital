@@ -27,6 +27,7 @@ yarn-error.log
 /.zed
 /.agents/
 /.tools/
+/.ai/
 Manual de Diseño.md
 docs/PITCH-VIDEO.md
 CLAUDE.local.md
