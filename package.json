@@ -5,7 +5,6 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:e2e": "playwright test",
         "test:signer": "node tests/js/firmador-smoke.mjs",
         "test:signer:ui-security": "node tests/js/firmador-ui-seguridad.mjs",
         "test:signer:p12-local": "node tests/js/firmador-p12-local.mjs"
@@ -30,8 +29,5 @@
         "@rollup/rollup-linux-x64-gnu": "4.9.5",
         "@tailwindcss/oxide-linux-x64-gnu": "^4.0.1",
         "lightningcss-linux-x64-gnu": "^1.29.1"
-    },
-    "devDependencies": {
-        "@playwright/test": "^1.62.1"
     }
 }

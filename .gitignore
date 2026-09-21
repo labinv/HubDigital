@@ -13,6 +13,10 @@
 .env.production
 /.env.testing
 /.codex-*
+/.local/
+/artifacts/
+/playwright-report/
+/test-results/
 .phpactor.json
 .phpunit.result.cache
 Homestead.json

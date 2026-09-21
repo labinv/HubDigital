@@ -12,8 +12,15 @@
 .editorconfig
 .claude
 .ai
+.agents
+.tools
+.local
+.codex-*
 .mcp.json
 boost.json
+artifacts
+playwright-report
+test-results
 
 # Node - rebuilt in frontend stage
 node_modules

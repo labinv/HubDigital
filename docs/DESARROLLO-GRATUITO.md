@@ -57,7 +57,7 @@ Actions:
 
 - formato PHP con Laravel Pint;
 - compilación de Vite y Tailwind;
-- pruebas PHPUnit/Pest con SQLite;
+- pruebas PHPUnit/Pest contra una base PostgreSQL aislada `hubdigital_test`;
 - escenarios Behat marcados con `@listo` en PHP 8.4 y 8.5.
 
 ## Prueba integral con usuarios desechables
