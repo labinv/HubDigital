@@ -1,10 +1,29 @@
+<#
+.SYNOPSIS
+Valida, publica en Git y crea un paquete de despliegue OCI para HubDigital.
+
+.PARAMETER SinPostgres
+Modo seguro para cambios exclusivamente frontend. Compila Vite pero no inicia
+PostgreSQL. Se rechaza automaticamente si hay archivos backend modificados.
+
+.EXAMPLE
+crear-paquete-oci -SinPostgres
+
+.EXAMPLE
+crear-paquete-oci -SinPostgres -DescripcionCambio "ajusta colores del portal"
+
+.EXAMPLE
+crear-paquete-oci -OmitirCompilacion -DescripcionCambio "corrige repositorio de depositos"
+#>
 [CmdletBinding()]
 param(
     [string]$Proyecto,
     [string]$Destino,
     [string]$DescripcionCambio,
     [switch]$OmitirCompilacion,
-    [switch]$OmitirPruebasPHP
+    [switch]$OmitirPruebasPHP,
+    [Alias('OmitirPruebasPostgreSQL', 'SoloFrontend')]
+    [switch]$SinPostgres
 )
 
 $ErrorActionPreference = 'Stop'
@@ -127,12 +146,26 @@ if ($atras -gt 0) {
     throw "Git remoto tiene $atras commit(s) que no estan localmente. Se detiene para no pisar codigo; revise y fusione esos cambios primero."
 }
 
-$archivosCambiados = @(Get-SalidaGit -Argumentos @('ls-files', '--modified', '--others', '--exclude-standard'))
+$archivosRastreadosCambiados = @(Get-SalidaGit -Argumentos @('diff', '--name-only', 'HEAD'))
+$archivosNuevos = @(Get-SalidaGit -Argumentos @('ls-files', '--others', '--exclude-standard'))
+$archivosCambiados = @(($archivosRastreadosCambiados + $archivosNuevos) | Sort-Object -Unique)
 $rutasProhibidas = @($archivosCambiados | Where-Object {
     $_ -match '(^|/)\.env($|\.(?!example$))' -or $_ -match '(^|/)\.codex-' -or $_ -match '\.(key|pem|p12|pfx|pass)$'
 })
 if ($rutasProhibidas) {
     throw "Hay archivos sensibles no ignorados. No se agrego nada a Git: $($rutasProhibidas -join ', ')"
+}
+
+if ($SinPostgres -and -not $OmitirPruebasPHP) {
+    $cambiosQueRequierenPostgres = @($archivosCambiados | Where-Object {
+        $_ -match '(?i)\.php$' -or
+        $_ -match '(?i)^(database|config|routes|bootstrap)/' -or
+        $_ -match '(?i)^(composer\.json|composer\.lock|phpunit\.xml|artisan)$'
+    })
+    if ($cambiosQueRequierenPostgres) {
+        throw "No se puede usar -SinPostgres porque hay cambios backend que requieren la suite PostgreSQL: $($cambiosQueRequierenPostgres -join ', ')"
+    }
+    Write-Host "`nModo frontend: PostgreSQL no se encendera; no se detectaron cambios backend." -ForegroundColor Yellow
 }
 
 Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'diff', 'HEAD', '--check') -Descripcion 'Validando espacios, conflictos y formato basico del diff'
@@ -184,12 +217,16 @@ if ($php) {
     if (-not $OmitirPruebasPHP) {
         Invoke-Comando -Programa $phpPrograma -Argumentos @('artisan', 'about', '--only=environment') -Descripcion 'Validando el arranque de Laravel' -DirectorioTrabajo $Proyecto
 
-        $validadorPostgres = Join-Path $raizTrabajo 'validar-postgresql-temporal.ps1'
-        if (-not (Test-Path -LiteralPath $validadorPostgres -PathType Leaf)) { throw "No se encontro el validador PostgreSQL: $validadorPostgres" }
-        Invoke-Comando -Programa 'powershell.exe' -Argumentos @(
-            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $validadorPostgres,
-            '-Proyecto', $Proyecto, '-Php', $phpPrograma
-        ) -Descripcion 'Validando con PostgreSQL temporal y apagado automatico'
+        if ($SinPostgres) {
+            Write-Host "`n==> Suite PostgreSQL omitida mediante -SinPostgres" -ForegroundColor Yellow
+        } else {
+            $validadorPostgres = Join-Path $raizTrabajo 'validar-postgresql-temporal.ps1'
+            if (-not (Test-Path -LiteralPath $validadorPostgres -PathType Leaf)) { throw "No se encontro el validador PostgreSQL: $validadorPostgres" }
+            Invoke-Comando -Programa 'powershell.exe' -Argumentos @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $validadorPostgres,
+                '-Proyecto', $Proyecto, '-Php', $phpPrograma
+            ) -Descripcion 'Validando con PostgreSQL temporal y apagado automatico'
+        }
 
     }
 } else {
