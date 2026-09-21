@@ -381,6 +381,11 @@ if [[ -f "${stage_script}" ]]; then
         "/srv/hubdigital/staging/${candidate}" \
         "/srv/hubdigital/staging/${candidate}.sha256"
     printf '============================================================\n'
+    printf '\nSOLAMENTE SI EL COMANDO ANTERIOR TERMINA CON\n'
+    printf '"Release preparada en mantenimiento", active la release con:\n'
+    printf 'sudo %q %q\n' \
+        "/srv/hubdigital/releases/${release_id}/deploy/oracle/scripts/activate-release.sh" \
+        "${release_id}"
     exit 0
 fi
 
@@ -457,6 +462,15 @@ COPIE Y PEGUE ESTE COMANDO EN LA VM (SIN MIGRACIONES)
 Copie y ejecute el comando completo sudo env APPLY_MIGRATIONS=0 que aparezca
 dentro de ese bloque. Su identificador y nombres se calculan en la VM, por lo
 que el comando exacto solamente existe despues de finalizar el staging.
+
+6. Ejecute el comando de activacion solamente si el paso anterior termina con
+   "Release preparada en mantenimiento". Tanto el script de staging como
+   deploy-release.sh mostraran el comando completo, con esta forma:
+
+sudo /srv/hubdigital/releases/ID/deploy/oracle/scripts/activate-release.sh ID
+
+Reemplace ID solamente con el identificador exacto que muestran los scripts.
+No active el scheduler todavia; es un paso separado que requiere revision.
 
 IMPORTANTE: copie solamente los comandos. No copie textos del prompt como
 hhhhhtroya@cloudshell o ubuntu@labinvepn-dev-vnic.

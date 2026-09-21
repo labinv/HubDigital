@@ -114,4 +114,8 @@ printf '{"release_id":"%s","release_sha256":"%s","manifest_sha256":"%s","content
     > "/var/lib/hubdigital/migration/release-${release_id}.json"
 chmod 0600 "/var/lib/hubdigital/migration/release-${release_id}.json"
 printf 'Release preparada en mantenimiento: %s\n' "${release_id}"
-printf 'No se iniciaron worker, scheduler ni Tunnel. Revise el estado restaurado y ejecute activate-release.sh %s cuando corresponda.\n' "${release_id}"
+printf 'No se iniciaron worker, scheduler ni Tunnel.\n'
+printf 'Revise el estado restaurado y, cuando corresponda, copie y ejecute:\n'
+printf 'sudo %q %q\n' \
+    "${release_dir}/deploy/oracle/scripts/activate-release.sh" \
+    "${release_id}"
