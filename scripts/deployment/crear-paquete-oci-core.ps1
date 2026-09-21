@@ -266,15 +266,22 @@ if ($commit -ne $commitRemoto) { throw 'El commit local y el remoto no coinciden
 
 New-Item -ItemType Directory -Path $Destino -Force | Out-Null
 $marcaTiempo = (Get-Date).ToString('yyyyMMdd-HHmmss')
-$nombre = "$nombreSeguro-$marcaTiempo.tar.gz"
-$nombreScriptTransferencia = "$nombreSeguro-$marcaTiempo-cloudshell-vm.sh"
-$nombreKitCloudShell = "$nombreSeguro-$marcaTiempo-cloudshell-upload.tar.gz"
-$nombreInstruccionesCloudShell = "$nombreSeguro-$marcaTiempo-INSTRUCCIONES-CLOUD-SHELL.txt"
-$paquete = Join-Path $Destino $nombre
+$identificadorPaquete = "$nombreSeguro-$marcaTiempo"
+$directorioPaquete = Join-Path $Destino $identificadorPaquete
+if (Test-Path -LiteralPath $directorioPaquete) {
+    throw "Ya existe el directorio de salida del paquete: $directorioPaquete"
+}
+New-Item -ItemType Directory -Path $directorioPaquete | Out-Null
+
+$nombre = "$identificadorPaquete.tar.gz"
+$nombreScriptTransferencia = "$identificadorPaquete-cloudshell-vm.sh"
+$nombreKitCloudShell = "$identificadorPaquete-cloudshell-upload.tar.gz"
+$nombreInstruccionesCloudShell = "$identificadorPaquete-INSTRUCCIONES-CLOUD-SHELL.txt"
+$paquete = Join-Path $directorioPaquete $nombre
 $suma = "$paquete.sha256"
-$scriptTransferencia = Join-Path $Destino $nombreScriptTransferencia
-$kitCloudShell = Join-Path $Destino $nombreKitCloudShell
-$instruccionesCloudShell = Join-Path $Destino $nombreInstruccionesCloudShell
+$scriptTransferencia = Join-Path $directorioPaquete $nombreScriptTransferencia
+$kitCloudShell = Join-Path $directorioPaquete $nombreKitCloudShell
+$instruccionesCloudShell = Join-Path $directorioPaquete $nombreInstruccionesCloudShell
 foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell, $instruccionesCloudShell)) {
     if (Test-Path -LiteralPath $salida) { throw "Ya existe un archivo de salida: $salida" }
 }
@@ -398,7 +405,7 @@ printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "
     [IO.File]::WriteAllText($suma, $contenidoChecksum, [Text.UTF8Encoding]::new($false))
 
     Invoke-Comando -Programa 'tar.exe' -Argumentos @(
-        '-czf', $kitCloudShell, '-C', $Destino,
+        '-czf', $kitCloudShell, '-C', $directorioPaquete,
         $nombre, [IO.Path]::GetFileName($suma), $nombreScriptTransferencia
     ) -Descripcion 'Agrupando el kit de subida unica para Cloud Shell'
     $contenidoKit = @(& tar.exe -tzf $kitCloudShell)
@@ -450,6 +457,7 @@ Write-Host "`nProceso completo." -ForegroundColor Green
 Write-Host "Commit:    $commit"
 Write-Host "Mensaje:   $mensajeCommit"
 Write-Host "Git:       $upstream sincronizado"
+Write-Host "Directorio: $directorioPaquete"
 Write-Host "Paquete:   $paquete"
 Write-Host "Checksum:  $suma"
 Write-Host "Script:    $scriptTransferencia"
