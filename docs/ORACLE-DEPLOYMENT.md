@@ -162,6 +162,30 @@ Usar `APPLY_MIGRATIONS=1` sólo tras revisar migraciones nuevas y contar con un
 `pg_dump` reciente. La activación cambia `current` únicamente después de que
 plataforma, PostgreSQL, R2, temporales y límites hayan pasado el preflight.
 
+## Retencion automatica
+
+Una activacion que termina correctamente ejecuta la politica de retencion. Se
+conservan la release apuntada por `/srv/hubdigital/current` y la release
+activada valida inmediatamente anterior. Se eliminan las demas releases, sus
+estados, las releases fallidas y el contenido antiguo de
+`/srv/hubdigital/staging`.
+
+La politica no accede a PostgreSQL, R2, `/var/lib/hubdigital/backups` ni
+`/etc/hubdigital/hubdigital.env`. Si la limpieza falla, la activacion permanece
+valida y se muestra una advertencia para que el operador la revise.
+
+Simulacion manual, sin borrar:
+
+```bash
+sudo /srv/hubdigital/current/deploy/oracle/scripts/cleanup-old-releases.sh --dry-run
+```
+
+Aplicacion manual:
+
+```bash
+sudo /srv/hubdigital/current/deploy/oracle/scripts/cleanup-old-releases.sh --apply
+```
+
 ## Acceso inicial
 
 El alta protegida se ejecutó exclusivamente para

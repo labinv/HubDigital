@@ -624,9 +624,21 @@ LIMPIEZA Y CONSERVACION
   transferirlos; conserva la clave SSH.
 - La VM elimina paquete, checksum y script de /tmp despues de un staging
   correcto.
+- Despues de una activacion exitosa, la VM conserva automaticamente current y
+  la release activada valida inmediatamente anterior. Elimina otras releases,
+  candidatos fallidos y todo el staging antiguo.
 - Windows conserva la carpeta del paquete en artifacts/oci hasta que usted la
   elimine. Puede regenerarla ejecutando crear-paquete-oci.
 - La release activa dentro de /srv/hubdigital/releases NO debe eliminarse.
+
+La limpieza automatica no toca PostgreSQL, R2, respaldos ni secretos. Para
+revisar manualmente la politica sin borrar nada:
+
+sudo /srv/hubdigital/current/deploy/oracle/scripts/cleanup-old-releases.sh --dry-run
+
+Para aplicarla manualmente:
+
+sudo /srv/hubdigital/current/deploy/oracle/scripts/cleanup-old-releases.sh --apply
 
 DIAGNOSTICO SI FALLA LA ACTIVACION
 ----------------------------------

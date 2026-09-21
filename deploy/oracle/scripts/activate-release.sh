@@ -176,3 +176,9 @@ chmod 0600 "${state_file}.tmp"
 mv "${state_file}.tmp" "${state_file}"
 echo 'Verificacion final OK: release, URLs publicas y servicios en el estado esperado.'
 echo "Release activa en el origen directo: ${release_id}. Worker limitado a ${validation_queue}; scheduler detenido."
+
+echo
+echo 'Aplicando politica automatica de retencion...'
+if ! "${release_dir}/deploy/oracle/scripts/cleanup-old-releases.sh" --apply; then
+    echo 'ADVERTENCIA: la release esta activa, pero la limpieza automatica fallo. Ejecute el script manual en modo simulacion para diagnosticar.' >&2
+fi
