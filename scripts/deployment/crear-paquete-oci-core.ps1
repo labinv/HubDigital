@@ -340,6 +340,7 @@ set -Eeuo pipefail
 
 package_name='__PACKAGE__'
 checksum_name='__CHECKSUM__'
+kit_name="${package_name%.tar.gz}-cloudshell-upload.tar.gz"
 vm_host="${VM_HOST:-129.153.23.57}"
 vm_user="${VM_USER:-ubuntu}"
 key_path="${SSH_KEY_PATH:-${HOME}/ssh-key-2026-09-18.key}"
@@ -406,6 +407,23 @@ scp -i "${key_path}" \
     "${vm_user}@${vm_host}:/tmp/"
 
 printf '\nTransferencia a la VM completada.\n'
+cleanup_failed=0
+for transferred_file in \
+    "${base_dir}/${package_name}" \
+    "${base_dir}/${checksum_name}" \
+    "${self_path}" \
+    "${HOME}/${kit_name}"; do
+    if [[ -e "${transferred_file}" ]] && ! rm -f -- "${transferred_file}"; then
+        printf 'ADVERTENCIA: no se pudo eliminar de Cloud Shell: %s\n' "${transferred_file}" >&2
+        cleanup_failed=1
+    fi
+done
+if [[ "${cleanup_failed}" -eq 0 ]]; then
+    printf 'Limpieza Cloud Shell: OK. Paquete, checksum, script y kit eliminados.\n'
+    printf 'Clave SSH conservada: %s\n' "${key_path}"
+else
+    printf 'Limpieza Cloud Shell: NO OK. Revise las advertencias anteriores.\n' >&2
+fi
 printf 'Conectate con:\nssh -i %q %q\n' "${key_path}" "${vm_user}@${vm_host}"
 printf '\nDentro de la VM verifica y ejecuta:\n'
 printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "${self_path}")"
@@ -447,6 +465,10 @@ tar -xzf ~/$nombreKitCloudShell \
 
 cd ~/hubdigital-upload
 bash ./$nombreScriptTransferencia
+
+Despues de una transferencia correcta, el script elimina automaticamente de
+Cloud Shell el kit y sus tres archivos extraidos. Conserva la clave SSH y deja
+la carpeta ~/hubdigital-upload vacia para reutilizarla.
 
 3. El script mostrara un comando SSH. Copielo y ejecutelo en Cloud Shell para
    conectarse a la VM. El comando tendra esta forma:
