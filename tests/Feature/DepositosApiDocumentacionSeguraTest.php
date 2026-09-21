@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
@@ -64,9 +63,7 @@ test('la API oculta un expediente ajeno aunque se envíe un archivo válido', fu
 });
 
 test('la API guarda archivos con claves privadas server-side y nunca autoavanza la solicitud', function (): void {
-    Storage::fake('local');
-    config()->set('deposit-storage.driver', 'local');
-    config()->set('deposit-storage.require_remote', false);
+    configurarR2FalsoParaPruebas();
 
     $depositante = User::factory()->depositante()->create();
     $solicitud = crearSolicitudApiDe($depositante, 'MEPN-INV-DEP-00003');
@@ -118,5 +115,5 @@ test('la API guarda archivos con claves privadas server-side y nunca autoavanza 
     $rutaPrivada = $persistida->documentos_adjuntos[0]['ruta'];
     expect($rutaPrivada)->toStartWith("depositos/{$solicitud->id}/documentos-api/");
     expect($rutaPrivada)->not->toContain('nombre-controlado-por-cliente');
-    Storage::disk('local')->assertExists($rutaPrivada);
+    expect(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->existe($rutaPrivada))->toBeTrue();
 });

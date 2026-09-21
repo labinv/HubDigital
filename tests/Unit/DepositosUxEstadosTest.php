@@ -35,7 +35,7 @@ test('las vistas comunican estados documentales y el formato real del QR', funct
     $recepcion = file_get_contents($raiz.'/Modules/GestionPrestamosRecepciones/resources/views/curador/recepcion-fisica-lote.blade.php');
 
     expect($documentos)
-        ->toContain('No se requieren archivos para esta modalidad.')
+        ->toContain('Esta modalidad genera internamente la solicitud y sus declaraciones; no necesitas adjuntar archivos en este paso.')
         ->not->toContain('Cargando documentos requeridos');
 
     expect($detalle)

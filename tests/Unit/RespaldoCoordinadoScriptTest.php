@@ -4,6 +4,36 @@ declare(strict_types=1);
 
 use Symfony\Component\Process\Process;
 
+function rutaParaShellRespaldo(string $ruta): string
+{
+    if (PHP_OS_FAMILY !== 'Windows') {
+        return $ruta;
+    }
+
+    $ruta = str_replace('\\', '/', $ruta);
+
+    return preg_replace_callback(
+        '/^([A-Za-z]):/',
+        static fn (array $coincidencia): string => '/'.strtolower($coincidencia[1]),
+        $ruta,
+    ) ?? $ruta;
+}
+
+function ejecutableShellRespaldo(): string
+{
+    if (PHP_OS_FAMILY !== 'Windows') {
+        return '/bin/sh';
+    }
+
+    foreach (['C:\\Program Files\\Git\\bin\\sh.exe', 'C:\\Program Files\\Git\\usr\\bin\\sh.exe'] as $candidato) {
+        if (is_file($candidato)) {
+            return $candidato;
+        }
+    }
+
+    throw new RuntimeException('Git Bash es necesario para validar el respaldo coordinado en Windows.');
+}
+
 function ejecutarRespaldoCoordinadoSintetico(string $raiz, array $entorno = []): Process
 {
     $proyecto = dirname(__DIR__, 2);
@@ -28,6 +58,7 @@ case " $* " in
     ;;
   *" pg_dump "*) printf '%s' 'dump-sintetico' ;;
   *" psql "*) printf '%s\n' '0' ;;
+  *"POSTGRES_DB"*) printf '%s' 'hubdigital_test' ;;
   *" start "*) [ "${QA_FAIL_START:-0}" = 1 ] && exit 43 ;;
 esac
 exit 0
@@ -36,16 +67,16 @@ SH;
     chmod($bin.'/docker', 0700);
 
     $process = new Process(
-        ['/bin/sh', $proyecto.'/scripts/depositos/respaldo-coordinado.sh'],
+        [ejecutableShellRespaldo(), rutaParaShellRespaldo($proyecto.'/scripts/depositos/respaldo-coordinado.sh')],
         $proyecto,
         array_merge([
-            'PATH' => $bin.':'.getenv('PATH'),
-            'COMPOSE_FILE' => $raiz.'/compose.yml',
+            'PATH' => rutaParaShellRespaldo($bin).':'.(PHP_OS_FAMILY === 'Windows' ? '/usr/bin:/bin' : getenv('PATH')),
+            'COMPOSE_FILE' => rutaParaShellRespaldo($raiz.'/compose.yml'),
             'COMPOSE_PROJECT' => 'qa-respaldo',
-            'BACKUP_ROOT' => $raiz.'/respaldos',
+            'BACKUP_ROOT' => rutaParaShellRespaldo($raiz.'/respaldos'),
             'BACKUP_ID' => 'qa-script',
             'BACKUP_PREFIX' => 'respaldos-depositos/qa-script',
-            'QA_DOCKER_LOG' => $raiz.'/docker.log',
+            'QA_DOCKER_LOG' => rutaParaShellRespaldo($raiz.'/docker.log'),
         ], $entorno),
     );
     $process->run();

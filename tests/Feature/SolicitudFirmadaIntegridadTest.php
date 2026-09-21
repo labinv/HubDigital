@@ -3,22 +3,19 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\InvalidarFirmaSolicitud;
 
 beforeEach(function (): void {
-    Storage::fake('local');
-    config()->set('deposit-storage.driver', 'local');
-    config()->set('deposit-storage.require_remote', false);
+    configurarR2FalsoParaPruebas();
 });
 
 function solicitudFirmadaParaIntegridad(User $depositante): SolicitudDepositoEloquentModel
 {
     $ruta = 'solicitudes-deposito/firmadas/'.Str::uuid().'-v1.pdf';
     $contenido = "%PDF-1.7\nsolicitud firmada vigente";
-    Storage::disk('local')->put($ruta, $contenido);
+    app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->guardarContenido($ruta, $contenido, 'application/pdf');
 
     return SolicitudDepositoEloquentModel::query()->create([
         'id' => (string) Str::uuid(),
@@ -58,7 +55,7 @@ test('un fallo al actualizar metadatos no elimina el documento firmado vigente',
     expect($vigente->solicitud_firmada_ruta)->toBe($ruta)
         ->and($vigente->solicitud_firmada_sha256)->toBe($solicitud->solicitud_firmada_sha256)
         ->and($vigente->solicitud_firmada_en)->not->toBeNull();
-    Storage::disk('local')->assertExists($ruta);
+    expect(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->existe($ruta))->toBeTrue();
 });
 
 test('la invalidación confirma metadatos antes de retirar la versión anterior', function (): void {
@@ -76,7 +73,7 @@ test('la invalidación confirma metadatos antes de retirar la versión anterior'
         ->and($vigente->solicitud_firmada_sha256)->toBeNull()
         ->and($vigente->solicitud_firmada_en)->toBeNull()
         ->and($vigente->solicitud_documento_version)->toBe(2);
-    Storage::disk('local')->assertMissing($ruta);
+    expect(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->existe($ruta))->toBeFalse();
 });
 
 test('reintentar la invalidación no incrementa otra vez la versión ni revive referencias', function (): void {
@@ -93,5 +90,5 @@ test('reintentar la invalidación no incrementa otra vez la versión ni revive r
         ->and($vigente->solicitud_firmada_ruta)->toBeNull()
         ->and($vigente->solicitud_firmada_sha256)->toBeNull()
         ->and($vigente->solicitud_firmada_en)->toBeNull();
-    Storage::disk('local')->assertMissing($ruta);
+    expect(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->existe($ruta))->toBeFalse();
 });

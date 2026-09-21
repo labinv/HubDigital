@@ -2,6 +2,8 @@
 
 namespace Tests;
 
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+
 /**
  * Base para integraciones que requieren el esquema completo de PostgreSQL.
  *
@@ -11,4 +13,5 @@ namespace Tests;
  */
 abstract class PostgresIntegrationTestCase extends TestCase
 {
+    use DatabaseTransactions;
 }

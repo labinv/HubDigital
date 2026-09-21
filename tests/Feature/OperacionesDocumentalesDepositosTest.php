@@ -5,21 +5,17 @@ declare(strict_types=1);
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 beforeEach(function (): void {
-    Storage::fake('local');
-    Storage::fake('public');
-    config()->set('deposit-storage.driver', 'local');
-    config()->set('deposit-storage.require_remote', false);
+    configurarR2FalsoParaPruebas();
 });
 
 function solicitudOperacionDocumental(string $numero, string $ruta, string $contenido): SolicitudDepositoEloquentModel
 {
     $usuario = User::factory()->depositante()->create();
-    Storage::disk('local')->put($ruta, $contenido);
+    app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->guardarContenido($ruta, $contenido);
 
     return SolicitudDepositoEloquentModel::query()->create([
         'id' => (string) Str::uuid(),
@@ -35,8 +31,9 @@ function solicitudOperacionDocumental(string $numero, string $ruta, string $cont
 
 test('concilia por expediente, detecta alteracion y limita huerfanos al prefijo indicado', function (): void {
     solicitudOperacionDocumental('MEPN-INV-DEP-99001', 'depositos/qa-ops/expediente/original.pdf', '%PDF-original');
-    Storage::disk('local')->put('depositos/otra-area/legitimo.pdf', '%PDF-legitimo');
-    Storage::disk('local')->put('depositos/qa-ops/huerfano.pdf', '%PDF-huerfano');
+    $almacenamiento = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class);
+    $almacenamiento->guardarContenido('depositos/otra-area/legitimo.pdf', '%PDF-legitimo');
+    $almacenamiento->guardarContenido('depositos/qa-ops/huerfano.pdf', '%PDF-huerfano');
 
     $codigo = Artisan::call('depositos:conciliar-documentos', ['--expediente' => 'MEPN-INV-DEP-99001', '--prefijo' => 'depositos/qa-ops']);
     $resultado = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
@@ -45,7 +42,7 @@ test('concilia por expediente, detecta alteracion y limita huerfanos al prefijo 
         ->and($resultado['resumen'])->toMatchArray(['referencias' => 1, 'correctas' => 1, 'huerfanos' => 1])
         ->and($resultado['huerfanos'][0]['ruta'])->toBe('depositos/qa-ops/huerfano.pdf');
 
-    Storage::disk('local')->put('depositos/qa-ops/expediente/original.pdf', '%PDF-alterado');
+    $almacenamiento->guardarContenido('depositos/qa-ops/expediente/original.pdf', '%PDF-alterado');
     Artisan::call('depositos:conciliar-documentos', ['--expediente' => 'MEPN-INV-DEP-99001']);
     $alterado = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
     expect($alterado['resultados'][0]['estado'])->toBe('ALTERADO');
@@ -64,14 +61,19 @@ test('respaldo reanudable verifica sha y restauracion rechaza manifiesto incompl
     $datos = json_decode((string) file_get_contents($manifiesto), true, 512, JSON_THROW_ON_ERROR);
     expect($datos['estado'])->toBe('COMPLETO')->and($datos['objetos'])->toHaveCount(1);
 
-    $destino = storage_path('framework/testing/restaurado-'.Str::uuid());
-    expect(Artisan::call('depositos:restaurar-documentos', ['--manifiesto' => $manifiesto, '--directorio-destino' => $destino]))->toBe(0)
-        ->and(hash_file('sha256', $destino.'/depositos/qa-ops/dos/original-v1.pdf'))->toBe(hash('sha256', '%PDF-respaldo'));
-    expect(Artisan::call('depositos:restaurar-documentos', ['--manifiesto' => $manifiesto, '--directorio-destino' => $destino]))->toBe(4);
+    $prefijoRestauracion = 'restauraciones-depositos/'.Str::uuid();
+    $rutaRestaurada = $prefijoRestauracion.'/depositos/qa-ops/dos/original-v1.pdf';
+    $almacenamiento = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class);
+    expect(Artisan::call('depositos:restaurar-documentos', ['--manifiesto' => $manifiesto, '--prefijo-destino' => $prefijoRestauracion]))->toBe(0)
+        ->and($almacenamiento->sha256($rutaRestaurada))->toBe(hash('sha256', '%PDF-respaldo'));
+    expect(Artisan::call('depositos:restaurar-documentos', ['--manifiesto' => $manifiesto, '--prefijo-destino' => $prefijoRestauracion]))->toBe(4);
 
     $datos['estado'] = 'INCOMPLETO';
     file_put_contents($manifiesto, json_encode($datos, JSON_THROW_ON_ERROR));
-    expect(Artisan::call('depositos:restaurar-documentos', ['--manifiesto' => $manifiesto, '--directorio-destino' => storage_path('framework/testing/otro-'.Str::uuid())]))->toBe(4);
+    expect(Artisan::call('depositos:restaurar-documentos', [
+        '--manifiesto' => $manifiesto,
+        '--prefijo-destino' => 'restauraciones-depositos/'.Str::uuid(),
+    ]))->toBe(4);
 });
 
 test('rechaza una segunda ejecucion mientras el bloqueo de respaldo esta vigente', function (): void {

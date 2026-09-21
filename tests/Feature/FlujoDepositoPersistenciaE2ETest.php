@@ -6,7 +6,6 @@ use App\Enums\RolUsuario;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
@@ -45,9 +44,7 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     $this->skipUnlessFortifyFeature(Features::registration());
 
     Notification::fake();
-    Storage::fake('local');
-    config()->set('deposit-storage.driver', 'local');
-    config()->set('deposit-storage.require_remote', false);
+    configurarR2FalsoParaPruebas();
     config()->set('firma-electronica.exigir_certificado_confiable', true);
 
     app()->instance(EventPublisherPort::class, new FakeEventPublisherAdapter);
@@ -183,7 +180,7 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->and($expediente->documentos_adjuntos)->toHaveCount(2)
         ->and($expediente->estado)->toBe(EstadoSolicitudDeposito::EnBorrador->value);
     foreach ($expediente->documentos_adjuntos as $documento) {
-        Storage::disk('local')->assertExists($documento['ruta']);
+        expect(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->existe($documento['ruta']))->toBeTrue();
     }
 
     $matrices = app(MatrizEspeciesRepositoryInterface::class);
@@ -220,7 +217,8 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->and($expediente->solicitud_firma_metadata['firmante_usuario_id'])->toBe((string) $depositante->id);
 
     $rutaFirmada = $expediente->solicitud_firmada_ruta;
-    $contenidoFirmado = Storage::disk('local')->get($rutaFirmada);
+    $almacenamiento = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class);
+    $contenidoFirmado = $almacenamiento->obtener($rutaFirmada);
     $this->actingAs($depositante)
         ->get(route('depositos.solicitud.documento', (string) $solicitud->id()))
         ->assertOk()
@@ -235,23 +233,23 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->assertHeader('Content-Type', 'application/pdf');
     expect($respuestaOriginal->getContent())->not->toBe($contenidoFirmado);
 
-    Storage::disk('local')->put($rutaFirmada, $contenidoFirmado."\ncontenido alterado");
+    $almacenamiento->guardarContenido($rutaFirmada, $contenidoFirmado."\ncontenido alterado", 'application/pdf');
     $this->actingAs($depositante)
         ->get(route('depositos.solicitud.documento', (string) $solicitud->id()))
         ->assertConflict();
     expect(fn () => app(EnviarSolicitudDepositoHandler::class)(new EnviarSolicitudDepositoInput(
         solicitudId: (string) $solicitud->id(),
     )))->toThrow(DomainException::class, 'Debes generar y firmar electrónicamente');
-    Storage::disk('local')->put($rutaFirmada, $contenidoFirmado);
+    $almacenamiento->guardarContenido($rutaFirmada, $contenidoFirmado, 'application/pdf');
 
-    Storage::disk('local')->delete($rutaFirmada);
+    $almacenamiento->eliminar($rutaFirmada);
     $this->actingAs($depositante)
         ->get(route('depositos.solicitud.documento', (string) $solicitud->id()))
         ->assertConflict();
     expect(fn () => app(EnviarSolicitudDepositoHandler::class)(new EnviarSolicitudDepositoInput(
         solicitudId: (string) $solicitud->id(),
     )))->toThrow(DomainException::class, 'Debes generar y firmar electrónicamente');
-    Storage::disk('local')->put($rutaFirmada, $contenidoFirmado);
+    $almacenamiento->guardarContenido($rutaFirmada, $contenidoFirmado, 'application/pdf');
 
     app(EnviarSolicitudDepositoHandler::class)(new EnviarSolicitudDepositoInput(
         solicitudId: (string) $solicitud->id(),
@@ -340,7 +338,7 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     expect($recepcion->acta_firmada_ruta)->not->toBeNull()
         ->and($recepcion->firma_metadata['firmante_usuario_id'])->toBe((string) $curador->id)
         ->and($recepcion->firma_metadata['proposito'])->toBe('acta_final_recepcion');
-    Storage::disk('local')->assertExists($recepcion->acta_firmada_ruta);
+    expect($almacenamiento->existe($recepcion->acta_firmada_ruta))->toBeTrue();
 
     $this->actingAs($depositante)
         ->get(route('prestamos.deposito.acta-recepcion', (string) $solicitud->id()))
