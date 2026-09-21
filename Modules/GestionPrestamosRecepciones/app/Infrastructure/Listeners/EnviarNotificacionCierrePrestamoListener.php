@@ -19,6 +19,10 @@ final class EnviarNotificacionCierrePrestamoListener
 
     public function handle(PrestamoCerrado $event): void
     {
+        if (config('hubdigital.validation_mode')) {
+            return;
+        }
+
         $prestamoId = (string) $event->prestamoId;
 
         $prestamo    = PrestamoEloquentModel::with('acta')->find($prestamoId);

@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PatenteAnualNoConfigurada;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Controlador para descargar el acta de préstamo como PDF generado por DomPDF.
@@ -20,7 +20,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PatenteAnualNoConfigur
  */
 final class DescargarActaPdf
 {
-    public function __invoke(string $id, ConsultarActaDocumentoHandler $handler, PdfGeneratorPort $pdf): Response
+    public function __invoke(
+        string $id,
+        ConsultarActaDocumentoHandler $handler,
+        PdfGeneratorPort $pdf,
+        AlmacenamientoDepositos $almacenamiento,
+    ): Response
     {
         $user = auth()->user();
 
@@ -51,8 +56,8 @@ final class DescargarActaPdf
         // Su ruta la fija la validación del curador.
         $firmadoCurador = 'actas-firmadas-curador/'.$acta->id.'.pdf';
 
-        if (! $sinFirma && Storage::exists($firmadoCurador)) {
-            return response(Storage::get($firmadoCurador), 200, [
+        if (! $sinFirma && $almacenamiento->existe($firmadoCurador)) {
+            return response($almacenamiento->obtener($firmadoCurador), 200, [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="Acta-'.$acta->numeroPrestamo.'.pdf"',
                 'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',

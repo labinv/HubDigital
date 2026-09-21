@@ -98,9 +98,19 @@ dump_sha="$(sha256sum "$dump" | cut -d ' ' -f 1)"
 docs_sha="$(sha256sum "$manifesto_documentos" | cut -d ' ' -f 1)"
 jobs="$(dc exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select count(*) from jobs"')"
 failed_jobs="$(dc exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select count(*) from failed_jobs"')"
+source_environment="${SOURCE_ENVIRONMENT:-codespaces}"
+source_instance="${SOURCE_INSTANCE:-$COMPOSE_PROJECT}"
+source_database="$(dc exec -T postgres sh -c 'printf %s "$POSTGRES_DB"')"
+source_revision="${SOURCE_REVISION:-$(git rev-parse --verify HEAD 2>/dev/null || printf sin-git)}"
+for value in "$source_environment" "$source_instance" "$source_database" "$source_revision"; do
+    [[ "$value" =~ ^[A-Za-z0-9._:@/-]+$ ]] || {
+        echo 'Los metadatos de origen contienen caracteres no permitidos.' >&2
+        exit 65
+    }
+done
 
 cat >"$manifesto" <<EOF
-{"version_formato":1,"id":"$BACKUP_ID","creado_en":"$(date -u +%FT%TZ)","estado":"COMPLETO","postgresql":{"archivo":"postgresql.dump","sha256":"$dump_sha"},"documentos":{"archivo":"manifiesto-documentos.json","sha256":"$docs_sha","prefijo":"$BACKUP_PREFIX"},"colas":{"pendientes":$jobs,"fallidos":$failed_jobs}}
+{"version_formato":1,"id":"$BACKUP_ID","creado_en":"$(date -u +%FT%TZ)","estado":"COMPLETO","origen":{"entorno":"$source_environment","instancia":"$source_instance","base_datos":"$source_database","revision":"$source_revision","capturado_en":"$(date -u +%FT%TZ)"},"postgresql":{"archivo":"postgresql.dump","sha256":"$dump_sha"},"documentos":{"archivo":"manifiesto-documentos.json","sha256":"$docs_sha","prefijo":"$BACKUP_PREFIX"},"colas":{"pendientes":$jobs,"fallidos":$failed_jobs}}
 EOF
 chmod 600 "$destino"/*
 

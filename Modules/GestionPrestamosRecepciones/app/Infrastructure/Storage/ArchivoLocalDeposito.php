@@ -10,6 +10,7 @@ final class ArchivoLocalDeposito
     public function __construct(
         private readonly string $ruta,
         private readonly bool $temporal,
+        private readonly ?string $directorioTemporal = null,
     ) {}
 
     public function ruta(): string
@@ -21,6 +22,9 @@ final class ArchivoLocalDeposito
     {
         if ($this->temporal && is_file($this->ruta)) {
             @unlink($this->ruta);
+        }
+        if ($this->temporal && is_string($this->directorioTemporal)) {
+            DirectorioTemporalHubDigital::eliminar($this->directorioTemporal);
         }
     }
 

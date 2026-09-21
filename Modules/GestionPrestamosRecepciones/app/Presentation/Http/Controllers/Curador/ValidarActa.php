@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador;
 
 use App\Concerns\HandlesDomainExceptions;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
@@ -22,6 +21,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaCuradorDi
 use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaCuradorDigitalmente\FirmarActaCuradorDigitalmenteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaInput;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Componente Livewire para que el curador valide un acta adjuntando su firma:
@@ -85,11 +85,14 @@ final class ValidarActa extends Component
     /**
      * El curador valida el acta cargando el PDF que firmó.
      */
-    public function subirActaFirmada(ValidarActaFirmadaHandler $handler): void
+    public function subirActaFirmada(
+        ValidarActaFirmadaHandler $handler,
+        AlmacenamientoDepositos $almacenamiento,
+    ): void
     {
         $this->validate(['pdfFirmadoCurador' => 'required|file|mimes:pdf|max:10240']);
 
-        $ruta = Storage::putFile('actas-firmadas-curador', $this->pdfFirmadoCurador);
+        $ruta = $almacenamiento->guardarArchivo($this->pdfFirmadoCurador, 'actas-firmadas-curador');
 
         $handler->handle(new ValidarActaFirmadaInput(
             actaId: $this->id,

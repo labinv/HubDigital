@@ -14,6 +14,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionF
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Application\Ports\OriginalActaRecepcionPort;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 
 /** Recibe solo el PDF que el firmador local produjo; nunca recibe el P12 o su clave. */
 final class FirmarActaRecepcion
@@ -47,11 +48,7 @@ final class FirmarActaRecepcion
             }
             $pdfOriginal = $original['contenido'];
 
-            $originalTemporal = tempnam(sys_get_temp_dir(), 'hubdigital-acta-');
-            if ($originalTemporal === false) {
-                abort(500, 'No se pudo preparar el documento oficial para validar.');
-            }
-            @chmod($originalTemporal, 0600);
+            $originalTemporal = DirectorioTemporalHubDigital::crearArchivo('firma-acta', 'original-', 16 * 1024 * 1024);
             if (file_put_contents($originalTemporal, $pdfOriginal, LOCK_EX) === false) {
                 abort(500, 'No se pudo preparar el documento oficial para validar.');
             }
@@ -97,7 +94,7 @@ final class FirmarActaRecepcion
             ], 500);
         } finally {
             if (is_string($originalTemporal)) {
-                @unlink($originalTemporal);
+                DirectorioTemporalHubDigital::eliminar(dirname($originalTemporal));
             }
         }
 

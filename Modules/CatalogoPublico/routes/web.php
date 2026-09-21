@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\GestionImagenesTaxonomicas;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
+use Modules\CatalogoPublico\Presentation\Http\Controllers\ServirImagenCatalogo;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\SincronizarEspecimenes;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\TablaEspecimenesDivulgados;
 
@@ -19,4 +20,7 @@ Route::prefix('portal')
     ->name('portal.')
     ->group(function () {
         Route::get('/', PortalCatalogo::class)->name('catalogo');
+        Route::get('/imagenes/{objeto}', ServirImagenCatalogo::class)
+            ->where('objeto', '[A-Za-z0-9_-]+')
+            ->name('imagen');
     });

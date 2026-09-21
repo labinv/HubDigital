@@ -13,6 +13,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectro
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito;
 
 /** Recibe exclusivamente el PDF firmado localmente; el P12 y su clave nunca salen del navegador. */
@@ -37,11 +38,9 @@ final class FirmarSolicitudDeposito
         ], true), 409, 'La solicitud ya fue enviada y no admite una nueva firma.');
 
         $pdfOriginal = $generador->generar($solicitud);
-        $originalTemporal = tempnam(sys_get_temp_dir(), 'hubdigital-solicitud-');
-        abort_if($originalTemporal === false, 500, 'No se pudo preparar el documento oficial.');
-        @chmod($originalTemporal, 0600);
+        $originalTemporal = DirectorioTemporalHubDigital::crearArchivo('firma-solicitud', 'original-', 16 * 1024 * 1024);
         if (file_put_contents($originalTemporal, $pdfOriginal, LOCK_EX) === false) {
-            @unlink($originalTemporal);
+            DirectorioTemporalHubDigital::eliminar(dirname($originalTemporal));
             abort(500, 'No se pudo preparar el documento oficial.');
         }
 
@@ -129,7 +128,7 @@ final class FirmarSolicitudDeposito
             }
             throw $e;
         } finally {
-            @unlink($originalTemporal);
+            DirectorioTemporalHubDigital::eliminar(dirname($originalTemporal));
         }
 
         return response()->json([

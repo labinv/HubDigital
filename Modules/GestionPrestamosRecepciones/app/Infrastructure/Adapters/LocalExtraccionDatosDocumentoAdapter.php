@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Domain\Services\AnalizadorDocumentoAmbiental;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
@@ -331,8 +332,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
 
     private function aplicarOcrPagina(string $archivo, int $numeroPagina): string
     {
-        $directorio = storage_path('app/private/tmp/ocr/'.Str::uuid());
-        File::ensureDirectoryExists($directorio, 0700, true);
+        $directorio = DirectorioTemporalHubDigital::crear('ocr', 32 * 1024 * 1024);
         $prefijo = $directorio.DIRECTORY_SEPARATOR.'pagina';
 
         try {
@@ -352,7 +352,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
 
             return trim(implode("\n", $texto));
         } finally {
-            File::deleteDirectory($directorio);
+            DirectorioTemporalHubDigital::eliminar($directorio);
         }
     }
 

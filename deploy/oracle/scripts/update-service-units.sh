@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Sincroniza solamente las unidades que controlan worker y scheduler. No
+# reinicia servicios, no toca PostgreSQL ni modifica la configuración de base.
+if [[ "${EUID}" -ne 0 ]]; then
+    echo 'Ejecuta la actualizacion de unidades con sudo.' >&2
+    exit 64
+fi
+
+app_dir="${1:-}"
+[[ -n "${app_dir}" && -f "${app_dir}/artisan" ]] || {
+    echo 'Uso: sudo update-service-units.sh /srv/hubdigital/releases/<id>' >&2
+    exit 64
+}
+for unit in hubdigital-worker.service hubdigital-schedule.service hubdigital-schedule.timer; do
+    [[ -f "${app_dir}/deploy/oracle/systemd/${unit}" ]] || { echo "Falta unidad ${unit}." >&2; exit 66; }
+    install -m 0644 "${app_dir}/deploy/oracle/systemd/${unit}" "/etc/systemd/system/${unit}"
+done
+systemctl daemon-reload
+systemctl disable hubdigital-schedule.timer >/dev/null 2>&1 || true
+echo 'Unidades worker/scheduler actualizadas; scheduler queda deshabilitado.'

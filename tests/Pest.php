@@ -1,5 +1,8 @@
 <?php
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\InfrastructureTestCase;
+use Tests\PostgresIntegrationTestCase;
 use Tests\TestCase;
 
 /*
@@ -13,9 +16,39 @@ use Tests\TestCase;
 |
 */
 
+// Los flujos funcionales que persisten datos usan una base aislada. Se
+// enumeran expresamente para que una prueba nueva no ejecute DDL sin declarar
+// su dependencia de PostgreSQL.
 pest()->extend(TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature');
+    ->use(RefreshDatabase::class)
+    ->in(
+        'Feature/DashboardCuraduriaTest.php',
+        'Feature/DashboardTest.php',
+        'Feature/DepositosApiDocumentacionSeguraTest.php',
+        'Feature/DepositosCincoPuntosTest.php',
+        'Feature/DepositosPortalTest.php',
+        'Feature/ExampleTest.php',
+        'Feature/FlujoDepositoE2ETest.php',
+        'Feature/FlujoDepositoPersistenciaE2ETest.php',
+        'Feature/OperacionesDocumentalesDepositosTest.php',
+        'Feature/PwaPushSubscriptionTest.php',
+        'Feature/SolicitudFirmadaIntegridadTest.php',
+    );
+
+// Estas pruebas sólo cubren adaptadores y el directorio temporal. Arrancan el
+// contenedor Laravel, pero no necesitan ni deben tocar una base de datos.
+pest()->extend(InfrastructureTestCase::class)
+    ->in(
+        'Feature/AlmacenamientoDepositosTest.php',
+        'Feature/DirectorioTemporalHubDigitalTest.php',
+    );
+
+// Las rutas que verifican R2 con relaciones reales se ejecutan contra una
+// base PostgreSQL aislada y previamente migrada. No emplean SQLite ni hacen
+// DDL por caso de prueba: el procedimiento de integración crea y elimina esa
+// base efímera completa.
+pest()->extend(PostgresIntegrationTestCase::class)
+    ->in('Feature/RutasObjetosR2Test.php');
 
 /*
 |--------------------------------------------------------------------------

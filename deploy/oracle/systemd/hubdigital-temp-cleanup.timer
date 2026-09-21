@@ -1,0 +1,12 @@
+[Unit]
+Description=Run HubDigital temporary-file cleanup every ten minutes
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=10min
+AccuracySec=1min
+Persistent=true
+Unit=hubdigital-temp-cleanup.service
+
+[Install]
+WantedBy=timers.target

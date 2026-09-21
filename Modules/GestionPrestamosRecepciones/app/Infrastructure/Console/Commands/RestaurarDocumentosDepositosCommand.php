@@ -29,6 +29,9 @@ final class RestaurarDocumentosDepositosCommand extends Command
             if (($prefijoDestino === '') === ($directorioDestino === '')) {
                 throw new \RuntimeException('Indique exactamente un destino remoto o local.');
             }
+            if ($directorioDestino !== '' && $almacenamiento->driver() === 'r2') {
+                throw new \RuntimeException('El perfil R2 no permite restaurar documentos a un directorio local.');
+            }
             $manifiesto = json_decode((string) file_get_contents($rutaManifiesto), true, 512, JSON_THROW_ON_ERROR);
             if (($manifiesto['version_formato'] ?? null) !== 1 || ($manifiesto['estado'] ?? null) !== 'COMPLETO') {
                 throw new \RuntimeException('El manifiesto es incompatible o esta incompleto.');

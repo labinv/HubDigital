@@ -4,18 +4,22 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters;
 
-use Illuminate\Support\Facades\Storage;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeneradorActaPdfPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EntidadDepositante;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 class SimplePdfActaAdapter implements GeneradorActaPdfPort
 {
+    public function __construct(
+        private readonly AlmacenamientoDepositos $almacenamiento,
+    ) {}
+
     /** @param Especimen[] $especimenes */
     public function generar(EntidadDepositante $entidad, array $especimenes): string
     {
         $fecha = (new \DateTimeImmutable)->format('Y-m-d_H-i-s');
-        $nombreArchivo = "actas/acta_entrega_{$entidad->id()}_{$fecha}.txt";
+        $nombreArchivo = "inventario/actas/acta_entrega_{$entidad->id()}_{$fecha}.txt";
 
         $lineas = [
             'ACTA DE ENTREGA DE ESPECÍMENES',
@@ -36,8 +40,8 @@ class SimplePdfActaAdapter implements GeneradorActaPdfPort
         $lineas[] = '';
         $lineas[] = 'Total de especímenes: '.count($especimenes);
 
-        Storage::put($nombreArchivo, implode("\n", $lineas));
+        $this->almacenamiento->guardarContenido($nombreArchivo, implode("\n", $lineas), 'text/plain; charset=UTF-8');
 
-        return Storage::path($nombreArchivo);
+        return $nombreArchivo;
     }
 }

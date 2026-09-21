@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Storage;
 
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -17,8 +16,8 @@ final class AlmacenamientoDepositos
     public function driver(): string
     {
         $seleccionado = strtolower(trim((string) config('deposit-storage.driver', 'auto')));
-        if (! in_array($seleccionado, ['auto', 'local', 'r2'], true)) {
-            throw new \RuntimeException('DEPOSIT_STORAGE_DRIVER debe ser auto, local o r2.');
+        if ($seleccionado !== 'r2') {
+            throw new \RuntimeException('DEPOSIT_STORAGE_DRIVER debe ser r2; los expedientes no admiten fallback local.');
         }
 
         $configR2 = (array) config('deposit-storage.r2', []);
@@ -26,22 +25,11 @@ final class AlmacenamientoDepositos
         $presentes = array_filter($campos, static fn (string $campo): bool => trim((string) ($configR2[$campo] ?? '')) !== '');
         $r2Completo = count($presentes) === count($campos);
 
-        if ($seleccionado === 'r2' && ! $r2Completo) {
+        if (! $r2Completo) {
             throw new \RuntimeException('R2 fue exigido pero faltan endpoint, bucket o credenciales S3.');
         }
-        if ($seleccionado === 'auto' && $presentes !== [] && ! $r2Completo) {
-            throw new \RuntimeException('La configuracion R2 esta incompleta; no se aplicara fallback silencioso.');
-        }
 
-        $driver = $seleccionado === 'auto' ? ($r2Completo ? 'r2' : 'local') : $seleccionado;
-        if ($driver === 'local' && (bool) config('deposit-storage.require_remote', false)) {
-            throw new \RuntimeException('Este ambiente exige R2 y no permite almacenamiento local de expedientes.');
-        }
-        if ($driver === 'local' && ! app()->environment(['local', 'testing'])) {
-            throw new \RuntimeException('El fallback local de expedientes solo esta permitido en local o testing.');
-        }
-
-        return $driver;
+        return 'r2';
     }
 
     public function guardarArchivo(UploadedFile $archivo, string $directorio): string
@@ -79,11 +67,12 @@ final class AlmacenamientoDepositos
             throw new \RuntimeException("El objeto excede el limite interno de {$maximo} bytes.");
         }
         if ($this->driver() === 'r2') {
-            $this->clienteR2()->put($ruta, $contenido, $mime);
+            $rutaR2 = $this->rutaR2($ruta);
+            $this->clienteR2()->put($rutaR2, $contenido, $mime);
             if ((bool) config('deposit-storage.verify_after_write', true)) {
-                $cabecera = $this->clienteR2()->head($ruta);
+                $cabecera = $this->clienteR2()->head($rutaR2);
                 if ($cabecera['content_length'] !== null && $cabecera['content_length'] !== strlen($contenido)) {
-                    $this->clienteR2()->delete($ruta);
+                    $this->clienteR2()->delete($rutaR2);
                     throw new \RuntimeException('R2 no confirmo el tamano integro del objeto guardado.');
                 }
             }
@@ -107,23 +96,33 @@ final class AlmacenamientoDepositos
     public function existe(string $ruta): bool
     {
         $ruta = $this->normalizarRuta($ruta);
-        if ($this->driver() === 'r2' && $this->clienteR2()->exists($ruta)) {
-            return true;
+        if ($this->driver() === 'r2') {
+            // R2 es la fuente autoritativa en los entornos remotos. No se
+            // consulta un disco local/legado si el objeto no esta en R2: hacerlo
+            // ocultaria una perdida remota y podria exponer una copia residual.
+            return $this->clienteR2()->exists($this->rutaR2($ruta));
         }
-        if ($this->driver() === 'local' && Storage::disk($this->discoLocal())->exists($ruta)) {
+        if (Storage::disk($this->discoLocal())->exists($ruta)) {
             return true;
         }
 
+        // Compatibilidad solo para local/testing durante la migracion de
+        // objetos historicos. El driver r2 retorna antes de llegar aqui.
         return Storage::disk($this->discoPublicoLegado())->exists($ruta);
     }
 
     public function obtener(string $ruta): string
     {
         $ruta = $this->normalizarRuta($ruta);
-        if ($this->driver() === 'r2' && $this->clienteR2()->exists($ruta)) {
-            return $this->clienteR2()->get($ruta);
+        if ($this->driver() === 'r2') {
+            $rutaR2 = $this->rutaR2($ruta);
+            if (! $this->clienteR2()->exists($rutaR2)) {
+                throw new \RuntimeException('El documento solicitado no existe en Cloudflare R2.');
+            }
+
+            return $this->clienteR2()->get($rutaR2);
         }
-        if ($this->driver() === 'local' && Storage::disk($this->discoLocal())->exists($ruta)) {
+        if (Storage::disk($this->discoLocal())->exists($ruta)) {
             return Storage::disk($this->discoLocal())->get($ruta);
         }
         if (Storage::disk($this->discoPublicoLegado())->exists($ruta)) {
@@ -137,8 +136,13 @@ final class AlmacenamientoDepositos
     public function readStream(string $ruta)
     {
         $ruta = $this->normalizarRuta($ruta);
-        if ($this->driver() === 'r2' && $this->clienteR2()->exists($ruta)) {
-            return $this->clienteR2()->readStream($ruta);
+        if ($this->driver() === 'r2') {
+            $rutaR2 = $this->rutaR2($ruta);
+            if (! $this->clienteR2()->exists($rutaR2)) {
+                throw new \RuntimeException('El documento solicitado no existe en Cloudflare R2.');
+            }
+
+            return $this->clienteR2()->readStream($rutaR2);
         }
         if (Storage::disk($this->discoLocal())->exists($ruta)) {
             $stream = Storage::disk($this->discoLocal())->readStream($ruta);
@@ -157,8 +161,13 @@ final class AlmacenamientoDepositos
     public function eliminar(string $ruta): void
     {
         $ruta = $this->normalizarRuta($ruta);
-        if ($this->driver() === 'r2' && $this->clienteR2()->exists($ruta)) {
-            $this->clienteR2()->delete($ruta);
+        if ($this->driver() === 'r2') {
+            $rutaR2 = $this->rutaR2($ruta);
+            if ($this->clienteR2()->exists($rutaR2)) {
+                $this->clienteR2()->delete($rutaR2);
+            }
+
+            return;
         }
         Storage::disk($this->discoLocal())->delete($ruta);
         Storage::disk($this->discoPublicoLegado())->delete($ruta);
@@ -167,8 +176,13 @@ final class AlmacenamientoDepositos
     public function mimeType(string $ruta): string
     {
         $ruta = $this->normalizarRuta($ruta);
-        if ($this->driver() === 'r2' && $this->clienteR2()->exists($ruta)) {
-            return (string) ($this->clienteR2()->head($ruta)['content_type'] ?: 'application/octet-stream');
+        if ($this->driver() === 'r2') {
+            $rutaR2 = $this->rutaR2($ruta);
+            if (! $this->clienteR2()->exists($rutaR2)) {
+                throw new \RuntimeException('El documento solicitado no existe en Cloudflare R2.');
+            }
+
+            return (string) ($this->clienteR2()->head($rutaR2)['content_type'] ?: 'application/octet-stream');
         }
         if (Storage::disk($this->discoLocal())->exists($ruta)) {
             return Storage::disk($this->discoLocal())->mimeType($ruta) ?: 'application/octet-stream';
@@ -195,7 +209,7 @@ final class AlmacenamientoDepositos
     {
         $ruta = $this->normalizarRuta($ruta);
         if ($this->driver() === 'r2') {
-            return $this->clienteR2()->head($ruta);
+            return $this->clienteR2()->head($this->rutaR2($ruta));
         }
         if (! Storage::disk($this->discoLocal())->exists($ruta)) {
             throw new \RuntimeException('El objeto no existe.');
@@ -215,7 +229,21 @@ final class AlmacenamientoDepositos
     {
         $prefijo = $this->normalizarPrefijo($prefijo);
         if ($this->driver() === 'r2') {
-            return $this->clienteR2()->listar($prefijo, $cursor, $limite);
+            $prefijoR2 = $this->rutaR2($prefijo);
+            $resultado = $this->clienteR2()->listar($prefijoR2, $cursor, $limite);
+            $baseR2 = $this->prefijoR2();
+
+            if ($baseR2 !== '') {
+                $resultado['objetos'] = array_map(
+                    static fn (array $objeto): array => [
+                        ...$objeto,
+                        'ruta' => substr($objeto['ruta'], strlen($baseR2) + 1),
+                    ],
+                    $resultado['objetos'],
+                );
+            }
+
+            return $resultado;
         }
         $todos = collect(Storage::disk($this->discoLocal())->allFiles($prefijo))->sort()->values();
         $inicio = $cursor === null ? 0 : max(0, (int) $cursor);
@@ -243,15 +271,15 @@ final class AlmacenamientoDepositos
         // En R2 siempre se materializa primero el objeto remoto autoritativo. Una
         // copia publica heredada nunca debe prevalecer sobre el expediente remoto.
         $contenido = $this->obtener($ruta);
-        $directorio = (string) config('deposit-storage.temporary_directory');
-        File::ensureDirectoryExists($directorio, 0700, true);
-        $temporal = $directorio.DIRECTORY_SEPARATOR.Str::uuid().'-'.basename($ruta);
+        $directorio = DirectorioTemporalHubDigital::crear('r2-copia', strlen($contenido));
+        $temporal = $directorio.DIRECTORY_SEPARATOR.basename($ruta);
         if (file_put_contents($temporal, $contenido, LOCK_EX) === false) {
+            DirectorioTemporalHubDigital::eliminar($directorio);
             throw new \RuntimeException('No se pudo crear la copia local temporal del objeto R2.');
         }
         @chmod($temporal, 0600);
 
-        return new ArchivoLocalDeposito($temporal, true);
+        return new ArchivoLocalDeposito($temporal, true, $directorio);
     }
 
     private function clienteR2(): R2S3Client
@@ -267,6 +295,20 @@ final class AlmacenamientoDepositos
     private function discoPublicoLegado(): string
     {
         return (string) config('deposit-storage.legacy_public_disk', 'public');
+    }
+
+    private function prefijoR2(): string
+    {
+        $prefijo = trim((string) config('deposit-storage.prefix', ''), '/');
+
+        return $prefijo === '' ? '' : $this->normalizarRuta($prefijo);
+    }
+
+    private function rutaR2(string $ruta): string
+    {
+        $prefijo = $this->prefijoR2();
+
+        return $prefijo === '' ? $ruta : $prefijo.'/'.$ruta;
     }
 
     private function normalizarRuta(string $ruta): string

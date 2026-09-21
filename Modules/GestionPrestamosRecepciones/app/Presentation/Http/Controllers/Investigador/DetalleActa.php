@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador;
 
 use App\Concerns\HandlesDomainExceptions;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -21,6 +20,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalme
 use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalmente\FirmarActaDigitalmenteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaInput;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Componente Livewire para el detalle de un acta.
@@ -86,7 +86,11 @@ final class DetalleActa extends Component
     /**
      * Sube un acta firmada.
      */
-    public function subirActa(SubirActaFirmadaHandler $handler, ConsultarDetalleActaHandler $detalleHandler): void
+    public function subirActa(
+        SubirActaFirmadaHandler $handler,
+        ConsultarDetalleActaHandler $detalleHandler,
+        AlmacenamientoDepositos $almacenamiento,
+    ): void
     {
         $acta = $detalleHandler->handle(new ConsultarDetalleActaInput(actaId: $this->actaId));
 
@@ -99,9 +103,9 @@ final class DetalleActa extends Component
         }
         $this->validate($reglas);
 
-        $rutaActa = Storage::putFile('actas-firmadas', $this->pdfFirmado);
+        $rutaActa = $almacenamiento->guardarArchivo($this->pdfFirmado, 'actas-firmadas');
         $rutaIdentidad = $necesitaIdentidad
-            ? Storage::putFile('documentos-identidad', $this->documentoIdentidad)
+            ? $almacenamiento->guardarArchivo($this->documentoIdentidad, 'documentos-identidad')
             : null;
 
         $handler->handle(new SubirActaFirmadaInput(
@@ -173,13 +177,16 @@ final class DetalleActa extends Component
     /**
      * Sube el documento de identidad.
      */
-    public function subirDocumentoIdentidad(CompletarFirmaDigitalConIdentidadHandler $handler): void
+    public function subirDocumentoIdentidad(
+        CompletarFirmaDigitalConIdentidadHandler $handler,
+        AlmacenamientoDepositos $almacenamiento,
+    ): void
     {
         $this->validate([
             'documentoIdentidadSolo' => 'required|file|mimes:pdf|max:10240',
         ]);
 
-        $rutaIdentidad = Storage::putFile('documentos-identidad', $this->documentoIdentidadSolo);
+        $rutaIdentidad = $almacenamiento->guardarArchivo($this->documentoIdentidadSolo, 'documentos-identidad');
 
         $handler->handle(new CompletarFirmaDigitalConIdentidadInput(
             actaId: $this->actaId,

@@ -1,0 +1,20 @@
+[Unit]
+Description=HubDigital single scheduled-task tick
+After=network-online.target postgresql@16-main.service php8.4-fpm.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/hubdigital/current
+EnvironmentFile=/etc/hubdigital/hubdigital.env
+ExecStart=/usr/bin/php8.4 artisan schedule:run --no-interaction
+TimeoutStartSec=180s
+MemoryAccounting=true
+MemoryMax=80M
+CPUAccounting=true
+NoNewPrivileges=true
+PrivateTmp=true
+LimitCORE=0
+UMask=0077

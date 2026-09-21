@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 
 use Illuminate\Support\Facades\Log;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DetalleValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
 use Symfony\Component\Process\ExecutableFinder;
@@ -153,10 +154,7 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
 
     private function contenidoVisibleCoincide(string $original, string $firmado): bool
     {
-        $directorio = sys_get_temp_dir().DIRECTORY_SEPARATOR.'hubdigital-firma-'.bin2hex(random_bytes(8));
-        if (! mkdir($directorio, 0700, true) && ! is_dir($directorio)) {
-            throw new \RuntimeException('No se pudo crear el directorio de validacion.');
-        }
+        $directorio = DirectorioTemporalHubDigital::crear('firma', 48 * 1024 * 1024);
 
         try {
             $estructuraOriginal = $this->estructuraPdf($original);
@@ -234,10 +232,7 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
             // Un stream AP vacio o transparente no constituye una firma visible.
             return $paginasConSello === 1;
         } finally {
-            foreach (glob($directorio.DIRECTORY_SEPARATOR.'*') ?: [] as $archivo) {
-                @unlink($archivo);
-            }
-            @rmdir($directorio);
+            DirectorioTemporalHubDigital::eliminar($directorio);
         }
     }
 
@@ -349,11 +344,7 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
     /** @return array<string, string> */
     private function entorno(): array
     {
-        $home = function_exists('posix_getpwuid') && function_exists('posix_getuid')
-            ? (string) (posix_getpwuid(posix_getuid())['dir'] ?? '/tmp')
-            : (string) (getenv('USERPROFILE') ?: sys_get_temp_dir());
-
-        return ['LANG' => 'C', 'HOME' => $home];
+        return DirectorioTemporalHubDigital::entornoProcesos();
     }
 
     private function capturar(string $salida, string $campo): ?string

@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoActa\ConsultarDocumentoActaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoActa\ConsultarDocumentoActaInput;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Controlador para servir el documento de identidad asociado a un acta de préstamo.
  */
 final class ServirDocumentoIdentidad
 {
-    public function __invoke(string $id, ConsultarDocumentoActaHandler $handler): Response
+    public function __invoke(
+        string $id,
+        ConsultarDocumentoActaHandler $handler,
+        AlmacenamientoDepositos $almacenamiento,
+    ): Response
     {
         $user = auth()->user();
 
@@ -32,11 +36,11 @@ final class ServirDocumentoIdentidad
             abort(403);
         }
 
-        if (! $documento->documentoIdentidadRuta || ! Storage::exists($documento->documentoIdentidadRuta)) {
+        if (! $documento->documentoIdentidadRuta || ! $almacenamiento->existe($documento->documentoIdentidadRuta)) {
             abort(404);
         }
 
-        return response(Storage::get($documento->documentoIdentidadRuta), 200, [
+        return response($almacenamiento->obtener($documento->documentoIdentidadRuta), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="documento-identidad.pdf"',
         ]);

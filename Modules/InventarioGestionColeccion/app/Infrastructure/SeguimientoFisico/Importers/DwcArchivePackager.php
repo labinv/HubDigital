@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers;
 
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ExportarDarwinCoreArchive\ExportarDarwinCoreArchiveOutput;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 use ZipArchive;
 
 /**
@@ -47,10 +48,8 @@ final class DwcArchivePackager
      */
     public static function comoString(ExportarDarwinCoreArchiveOutput $output): string
     {
-        $tmp = tempnam(sys_get_temp_dir(), 'dwca_');
-        if ($tmp === false) {
-            throw new \RuntimeException('No se pudo crear archivo temporal para el ZIP.');
-        }
+        $tmp = DirectorioTemporalHubDigital::crearArchivo('gbif', 'dwca_', 8 * 1024 * 1024);
+        $directorio = dirname($tmp);
         try {
             self::empaquetar($output, $tmp);
             $contenido = file_get_contents($tmp);
@@ -61,6 +60,7 @@ final class DwcArchivePackager
             return $contenido;
         } finally {
             @unlink($tmp);
+            DirectorioTemporalHubDigital::eliminar($directorio);
         }
     }
 }

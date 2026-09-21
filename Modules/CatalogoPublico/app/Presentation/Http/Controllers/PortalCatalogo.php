@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -24,6 +23,7 @@ use Modules\CatalogoPublico\Application\UseCases\ExportarRegistrosEspecimenes\Ex
 use Modules\CatalogoPublico\Domain\Entities\EspecimenDivulgable;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
+use Modules\CatalogoPublico\Infrastructure\Adapters\StorageImagenesAdapter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('layouts.portal', params: ['title' => 'Catálogo taxonómico · Departamento de Biología — EPN'])]
@@ -358,7 +358,7 @@ final class PortalCatalogo extends Component
             ->select('d.nivel', 'd.valor_taxon', 'i.ruta', 'i.disco')
             ->get()
             ->mapWithKeys(fn ($r): array => [
-                $r->nivel.':'.$r->valor_taxon => Storage::disk($r->disco)->url($r->ruta),
+                $r->nivel.':'.$r->valor_taxon => StorageImagenesAdapter::urlPublica($r->ruta),
             ])
             ->all();
     }
@@ -381,7 +381,7 @@ final class PortalCatalogo extends Component
             ->get(['occurrence_id', 'ruta', 'disco', 'nombre_original'])
             ->groupBy('occurrence_id')
             ->map(fn ($grupo): array => $grupo->map(fn ($r): array => [
-                'url' => Storage::disk($r->disco)->url($r->ruta),
+                'url' => StorageImagenesAdapter::urlPublica($r->ruta),
                 'nombre' => $r->nombre_original,
             ])->values()->all())
             ->all();

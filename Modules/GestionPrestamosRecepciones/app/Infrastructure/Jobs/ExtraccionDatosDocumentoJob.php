@@ -49,7 +49,18 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
         private readonly array $documentos,
         private readonly string $versionDocumental = '',
         private readonly string $ejecucionId = '',
-    ) {}
+    ) {
+        if (! config('hubdigital.validation_mode')) {
+            return;
+        }
+
+        $cola = trim((string) config('hubdigital.validation_queue', ''));
+        if ($cola === 'default' || preg_match('/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/', $cola) !== 1) {
+            throw new \RuntimeException('La validacion requiere una cola dedicada valida distinta de default.');
+        }
+
+        $this->onQueue($cola);
+    }
 
     /**
      * Ejecuta el procesamiento de los documentos.

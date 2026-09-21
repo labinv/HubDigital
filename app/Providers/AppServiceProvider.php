@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -25,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureTranslations();
+        $this->preventExternalNotificationsDuringValidation();
     }
 
     /**
@@ -57,5 +60,22 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null,
         );
+    }
+
+    /**
+     * La restauracion se valida sobre datos coordinados que pueden conservar
+     * destinatarios reales. MAIL_MAILER=log por si solo no cubre Web Push u
+     * otros canales de Laravel Notification; en modo de validacion se permite
+     * solamente la campana interna de base de datos.
+     */
+    protected function preventExternalNotificationsDuringValidation(): void
+    {
+        if (! config('hubdigital.validation_mode')) {
+            return;
+        }
+
+        Event::listen(NotificationSending::class, static function (NotificationSending $event): ?bool {
+            return $event->channel === 'database' ? null : false;
+        });
     }
 }

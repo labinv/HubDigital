@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ActaEntregaController;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DescargarActaEntregaController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonController;
@@ -44,5 +45,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
             // Acta de entrega
             Route::post('entidades-depositantes/{entidadId}/actas', [ActaEntregaController::class, 'generar'])
                 ->name('entidades-depositantes.actas.generar');
+            Route::get('actas/{objeto}', DescargarActaEntregaController::class)
+                ->where('objeto', '[A-Za-z0-9_-]+')
+                ->name('entidades-depositantes.actas.descargar');
         });
 });

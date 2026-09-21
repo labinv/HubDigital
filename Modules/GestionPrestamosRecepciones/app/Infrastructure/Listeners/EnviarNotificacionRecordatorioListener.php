@@ -38,6 +38,10 @@ final class EnviarNotificacionRecordatorioListener
      */
     public function handle(RecordatorioDevolucionEnviado $event): void
     {
+        if (config('hubdigital.validation_mode')) {
+            return;
+        }
+
         $prestamo = $this->prestamoRepo->buscarPorId($event->prestamoId);
 
         if ($prestamo === null) {

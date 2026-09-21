@@ -47,6 +47,16 @@ return [
             'report' => false,
         ],
 
+        // Solo para archivos transitorios (por ejemplo, cargas Livewire) en el
+        // perfil Oracle. Nunca se usa como repositorio documental: el perfil
+        // apunta su raiz a /run, que se limpia al reiniciar el host.
+        'ephemeral' => [
+            'driver' => 'local',
+            'root' => env('HUBDIGITAL_EPHEMERAL_PATH', storage_path('app/private/tmp')),
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

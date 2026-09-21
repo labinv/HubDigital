@@ -7,6 +7,7 @@ namespace Modules\InventarioGestionColeccion\Presentation\Http\Resources\Seguimi
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarActaEntrega\GenerarActaEntregaOutput;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DescargarActaEntregaController;
 
 /** @property GenerarActaEntregaOutput $resource */
 final class ActaEntregaResource extends JsonResource
@@ -19,6 +20,7 @@ final class ActaEntregaResource extends JsonResource
             'entidad_nombre' => $this->resource->entidadNombre,
             'total_especimenes' => $this->resource->totalEspecimenes,
             'pdf_ruta' => $this->resource->pdfRuta,
+            'pdf_url' => DescargarActaEntregaController::urlParaRuta($this->resource->pdfRuta),
         ];
     }
 }

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ExportarDarwinCoreArchive\ExportarDarwinCoreArchiveHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ExportarDarwinCoreArchive\ExportarDarwinCoreArchiveInput;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\DwcArchivePackager;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
  * Genera el Darwin Core Archive (DwC-A) y lo escribe a
@@ -23,9 +23,9 @@ final class ExportarGbifCommand extends Command
     protected $signature = 'inventario:exportar-gbif
         {--incluir-no-publicables : Incluir especímenes que no cumplen CriteriosCalidadGbif}';
 
-    protected $description = 'Genera el Darwin Core Archive y lo guarda en storage/app/exports/gbif/.';
+    protected $description = 'Genera el Darwin Core Archive y lo guarda exclusivamente en R2.';
 
-    public function handle(ExportarDarwinCoreArchiveHandler $handler): int
+    public function handle(ExportarDarwinCoreArchiveHandler $handler, AlmacenamientoDepositos $almacenamiento): int
     {
         $incluir = (bool) $this->option('incluir-no-publicables');
 
@@ -43,15 +43,19 @@ final class ExportarGbifCommand extends Command
         }
 
         $timestamp = date('Ymd-His');
-        $carpeta = "exports/gbif/{$timestamp}";
+        $carpeta = "inventario/exports/gbif/{$timestamp}";
 
-        Storage::disk('local')->put("{$carpeta}/meta.xml", $output->metaXml);
-        Storage::disk('local')->put("{$carpeta}/eml.xml", $output->emlXml);
-        Storage::disk('local')->put("{$carpeta}/occurrence.txt", $output->occurrenceTxt);
-        Storage::disk('local')->put("{$carpeta}/taxon.txt", $output->taxonTxt);
+        try {
+            $almacenamiento->guardarContenido("{$carpeta}/meta.xml", $output->metaXml, 'application/xml');
+            $almacenamiento->guardarContenido("{$carpeta}/eml.xml", $output->emlXml, 'application/xml');
+            $almacenamiento->guardarContenido("{$carpeta}/occurrence.txt", $output->occurrenceTxt, 'text/tab-separated-values; charset=UTF-8');
+            $almacenamiento->guardarContenido("{$carpeta}/taxon.txt", $output->taxonTxt, 'text/tab-separated-values; charset=UTF-8');
+            $almacenamiento->guardarContenido("{$carpeta}/dwc-a.zip", DwcArchivePackager::comoString($output), 'application/zip');
+        } catch (\Throwable $e) {
+            $this->error('Fallo la escritura verificada en R2: '.$e->getMessage());
 
-        $zipPath = storage_path("app/{$carpeta}/dwc-a.zip");
-        DwcArchivePackager::empaquetar($output, $zipPath);
+            return self::FAILURE;
+        }
 
         $this->info($output->resumenLinea());
         $this->newLine();

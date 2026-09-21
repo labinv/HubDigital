@@ -26,6 +26,7 @@ use Modules\CatalogoPublico\Infrastructure\Adapters\MarcaAguaAdapter;
 use Modules\CatalogoPublico\Infrastructure\Adapters\NullEventPublisher;
 use Modules\CatalogoPublico\Infrastructure\Adapters\PhpSpreadsheetGeneradorXlsxAdapter;
 use Modules\CatalogoPublico\Infrastructure\Adapters\StorageImagenesAdapter;
+use Modules\CatalogoPublico\Infrastructure\Console\MigrarImagenesCatalogoAR2Command;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentEspecimenDivulgableRepository;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentImagenPorDefectoRepository;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentImagenTaxonomicaRepository;
@@ -61,6 +62,10 @@ class CatalogoPublicoServiceProvider extends ModuleServiceProvider
     public function register(): void
     {
         parent::register();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([MigrarImagenesCatalogoAR2Command::class]);
+        }
 
         $this->app->bind(ClasificadorIntencionPort::class, fn () => new GroqClasificadorIntencionAdapter(
             modelo: (string) config('ai.providers.groq.model'),

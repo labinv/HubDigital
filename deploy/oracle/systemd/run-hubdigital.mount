@@ -1,0 +1,12 @@
+[Unit]
+Description=HubDigital protected temporary workspace
+Before=php8.4-fpm.service nginx.service hubdigital-worker.service
+
+[Mount]
+What=tmpfs
+Where=/run/hubdigital
+Type=tmpfs
+Options=mode=0710,uid=33,gid=33,nosuid,nodev,noexec,size=192M
+
+[Install]
+WantedBy=local-fs.target

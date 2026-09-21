@@ -115,7 +115,7 @@ En el dominio eso es `RangoTaxonomico::Species`, con `valorTaxon = scientificNam
 - `Repositories/EloquentImagenTaxonomicaRepository`, `Repositories/EloquentImagenPorDefectoRepository` (mapean Eloquent ↔ entidad).
 
 ### 5.3 Adapters (`Infrastructure/Adapters/`)
-- **`StorageImagenesAdapter`** implementa `AlmacenamientoImagenesPort` sobre `Storage::disk('public')` (carpeta `divulgacion/imagenes`).
+- **`StorageImagenesAdapter`** implementa `AlmacenamientoImagenesPort` sobre R2 bajo `divulgacion/imagenes`. El portal no expone una URL de disco: su controlador decodifica el identificador, exige que la imagen siga asociada a un espécimen divulgable con `disco=r2` y recién entonces abre el stream remoto.
 - **`MarcaAguaAdapter`** implementa `GeneradorMarcaAguaPort`. **Requiere dependencia nueva** → propuesta: `intervention/image` v3 (usa `gd`/`imagick` ya disponibles). Aislada tras el Port, así el dominio/los tests no la conocen.
 - **`JerarquiaDeEspecimenAdapter`** implementa `ProveedorJerarquiaDeEspecimenPort` reusando `TaxonomiaEspecimenReadModel` / `EloquentProveedorEspecimenesParaArbol`.
 

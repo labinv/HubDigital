@@ -1,0 +1,11 @@
+[Unit]
+Description=Run HubDigital schedule exactly once per minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+Persistent=true
+AccuracySec=1s
+Unit=hubdigital-schedule.service
+
+[Install]
+WantedBy=timers.target

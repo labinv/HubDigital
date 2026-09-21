@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Comprueba el lock instalado; nunca resuelve dependencias ni ignora requisitos.
+repo_dir="${1:-}"
+[[ -n "${repo_dir}" && -f "${repo_dir}/composer.json" && -d "${repo_dir}/vendor" ]] || {
+    echo 'Uso: verify-platform.sh /ruta/a/release-con-vendor' >&2
+    exit 64
+}
+php_bin="${PHP_BIN:-php}"
+composer_bin="${COMPOSER_BIN:-$(command -v composer || true)}"
+[[ -x "${php_bin}" || "${php_bin}" == php ]] || { echo "No se encontró ${php_bin}." >&2; exit 66; }
+[[ -n "${composer_bin}" && -r "${composer_bin}" ]] || { echo 'No se encontró Composer.' >&2; exit 66; }
+
+"${php_bin}" -r 'exit(PHP_VERSION_ID >= 80400 ? 0 : 1);' || {
+    echo 'HubDigital bloqueado requiere PHP >= 8.4.' >&2
+    exit 65
+}
+php_modules="$("${php_bin}" -m)"
+for extension in curl gd intl mbstring openssl pdo_pgsql xml zip bcmath; do
+    grep -Fxq "${extension}" <<<"${php_modules}" || { echo "Falta la extensión PHP ${extension}." >&2; exit 65; }
+done
+(
+    cd "${repo_dir}"
+    "${php_bin}" "${composer_bin}" check-platform-reqs --no-dev --no-interaction
+)

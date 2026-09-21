@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Gateways;
 
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use setasign\Fpdi\Fpdi;
 use setasign\Fpdi\PdfParser\StreamReader;
 
@@ -19,6 +19,8 @@ use setasign\Fpdi\PdfParser\StreamReader;
 final class DomPdfGeneratorAdapter implements PdfGeneratorPort
 {
     private const VISTA = 'gestionprestamosrecepciones::pdf.acta-documento';
+
+    public function __construct(private readonly AlmacenamientoDepositos $almacenamiento) {}
 
     /**
      * Genera el acta completa. DomPDF no soporta orientación mixta en un mismo
@@ -50,7 +52,7 @@ final class DomPdfGeneratorAdapter implements PdfGeneratorPort
      */
     public function generarActaYAlmacenar(array $datos, string $rutaDestino): string
     {
-        Storage::put($rutaDestino, $this->generarActa($datos));
+        $this->almacenamiento->guardarContenido($rutaDestino, $this->generarActa($datos), 'application/pdf');
 
         return $rutaDestino;
     }
@@ -62,7 +64,7 @@ final class DomPdfGeneratorAdapter implements PdfGeneratorPort
     {
         $data = base64_decode(str_replace(' ', '+', substr($base64, strpos($base64, ',') + 1)));
 
-        Storage::put($rutaDestino, $data);
+        $this->almacenamiento->guardarContenido($rutaDestino, $data, 'image/png');
     }
 
     /**
@@ -70,11 +72,11 @@ final class DomPdfGeneratorAdapter implements PdfGeneratorPort
      */
     public function leerImagenBase64(string $ruta): ?string
     {
-        if (! Storage::exists($ruta)) {
+        if (! $this->almacenamiento->existe($ruta)) {
             return null;
         }
 
-        return 'data:image/png;base64,'.base64_encode(Storage::get($ruta));
+        return 'data:image/png;base64,'.base64_encode($this->almacenamiento->obtener($ruta));
     }
 
     /**
