@@ -269,11 +269,13 @@ $marcaTiempo = (Get-Date).ToString('yyyyMMdd-HHmmss')
 $nombre = "$nombreSeguro-$marcaTiempo.tar.gz"
 $nombreScriptTransferencia = "$nombreSeguro-$marcaTiempo-cloudshell-vm.sh"
 $nombreKitCloudShell = "$nombreSeguro-$marcaTiempo-cloudshell-upload.tar.gz"
+$nombreInstruccionesCloudShell = "$nombreSeguro-$marcaTiempo-INSTRUCCIONES-CLOUD-SHELL.txt"
 $paquete = Join-Path $Destino $nombre
 $suma = "$paquete.sha256"
 $scriptTransferencia = Join-Path $Destino $nombreScriptTransferencia
 $kitCloudShell = Join-Path $Destino $nombreKitCloudShell
-foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell)) {
+$instruccionesCloudShell = Join-Path $Destino $nombreInstruccionesCloudShell
+foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell, $instruccionesCloudShell)) {
     if (Test-Path -LiteralPath $salida) { throw "Ya existe un archivo de salida: $salida" }
 }
 
@@ -408,6 +410,32 @@ printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "
         throw "El kit de Cloud Shell no contiene exactamente los tres archivos esperados: $($contenidoKit -join ', ')"
     }
     $hashKit = (Get-FileHash -LiteralPath $kitCloudShell -Algorithm SHA256).Hash.ToLowerInvariant()
+
+    $contenidoInstruccionesCloudShell = @"
+INSTRUCCIONES PARA OCI CLOUD SHELL
+=================================
+
+1. En OCI Cloud Shell, use Menu > Upload y suba solamente:
+   $nombreKitCloudShell
+
+2. Copie y ejecute este bloque completo en Cloud Shell:
+
+mkdir -p ~/hubdigital-upload
+tar -xzf ~/$nombreKitCloudShell \
+  -C ~/hubdigital-upload
+
+cd ~/hubdigital-upload
+bash ./$nombreScriptTransferencia
+
+3. Cuando el script termine, siga los comandos que apareceran en pantalla
+   para conectarse a la VM. No vuelva a pegar el prompt de Cloud Shell dentro
+   de la VM.
+"@
+    [IO.File]::WriteAllText(
+        $instruccionesCloudShell,
+        ($contenidoInstruccionesCloudShell.Trim() + "`r`n"),
+        [Text.UTF8Encoding]::new($false)
+    )
     $tamanoMiB = [Math]::Round((Get-Item -LiteralPath $paquete).Length / 1MB, 2)
 }
 finally {
@@ -426,6 +454,7 @@ Write-Host "Paquete:   $paquete"
 Write-Host "Checksum:  $suma"
 Write-Host "Script:    $scriptTransferencia"
 Write-Host "Kit unico: $kitCloudShell"
+Write-Host "Guia:      $instruccionesCloudShell"
 Write-Host "SHA-256:   $hash"
 Write-Host "SHA kit:   $hashKit"
 Write-Host "Tamano:    $tamanoMiB MiB"
@@ -433,3 +462,4 @@ Write-Host "`nSube solamente este archivo a OCI Cloud Shell: $nombreKitCloudShel
 Write-Host "Luego ejecuta:"
 Write-Host "  mkdir -p ~/hubdigital-upload && tar -xzf ~/$nombreKitCloudShell -C ~/hubdigital-upload"
 Write-Host "  cd ~/hubdigital-upload && bash ./$nombreScriptTransferencia"
+Write-Host "`nEstos mismos comandos quedaron guardados en: $nombreInstruccionesCloudShell"
