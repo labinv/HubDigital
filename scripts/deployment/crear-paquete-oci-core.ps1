@@ -268,10 +268,12 @@ New-Item -ItemType Directory -Path $Destino -Force | Out-Null
 $marcaTiempo = (Get-Date).ToString('yyyyMMdd-HHmmss')
 $nombre = "$nombreSeguro-$marcaTiempo.tar.gz"
 $nombreScriptTransferencia = "$nombreSeguro-$marcaTiempo-cloudshell-vm.sh"
+$nombreKitCloudShell = "$nombreSeguro-$marcaTiempo-cloudshell-upload.tar.gz"
 $paquete = Join-Path $Destino $nombre
 $suma = "$paquete.sha256"
 $scriptTransferencia = Join-Path $Destino $nombreScriptTransferencia
-foreach ($salida in @($paquete, $suma, $scriptTransferencia)) {
+$kitCloudShell = Join-Path $Destino $nombreKitCloudShell
+foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell)) {
     if (Test-Path -LiteralPath $salida) { throw "Ya existe un archivo de salida: $salida" }
 }
 
@@ -392,6 +394,20 @@ printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "
     $hashScript = (Get-FileHash -LiteralPath $scriptTransferencia -Algorithm SHA256).Hash.ToLowerInvariant()
     $contenidoChecksum = "$hash  $nombre`n$hashScript  $nombreScriptTransferencia`n"
     [IO.File]::WriteAllText($suma, $contenidoChecksum, [Text.UTF8Encoding]::new($false))
+
+    Invoke-Comando -Programa 'tar.exe' -Argumentos @(
+        '-czf', $kitCloudShell, '-C', $Destino,
+        $nombre, [IO.Path]::GetFileName($suma), $nombreScriptTransferencia
+    ) -Descripcion 'Agrupando el kit de subida unica para Cloud Shell'
+    $contenidoKit = @(& tar.exe -tzf $kitCloudShell)
+    if ($LASTEXITCODE -ne 0) { throw 'No se pudo volver a leer el kit de Cloud Shell.' }
+    $esperadoKit = @($nombre, [IO.Path]::GetFileName($suma), $nombreScriptTransferencia) | Sort-Object
+    $contenidoKitOrdenado = @($contenidoKit | Sort-Object)
+    if (($contenidoKitOrdenado -join "`n") -ne ($esperadoKit -join "`n")) {
+        Remove-Item -LiteralPath $kitCloudShell -Force
+        throw "El kit de Cloud Shell no contiene exactamente los tres archivos esperados: $($contenidoKit -join ', ')"
+    }
+    $hashKit = (Get-FileHash -LiteralPath $kitCloudShell -Algorithm SHA256).Hash.ToLowerInvariant()
     $tamanoMiB = [Math]::Round((Get-Item -LiteralPath $paquete).Length / 1MB, 2)
 }
 finally {
@@ -409,6 +425,11 @@ Write-Host "Git:       $upstream sincronizado"
 Write-Host "Paquete:   $paquete"
 Write-Host "Checksum:  $suma"
 Write-Host "Script:    $scriptTransferencia"
+Write-Host "Kit unico: $kitCloudShell"
 Write-Host "SHA-256:   $hash"
+Write-Host "SHA kit:   $hashKit"
 Write-Host "Tamano:    $tamanoMiB MiB"
-Write-Host "`nSiguiente paso: carga los tres archivos en OCI Cloud Shell y ejecuta bash $nombreScriptTransferencia"
+Write-Host "`nSube solamente este archivo a OCI Cloud Shell: $nombreKitCloudShell"
+Write-Host "Luego ejecuta:"
+Write-Host "  mkdir -p ~/hubdigital-upload && tar -xzf ~/$nombreKitCloudShell -C ~/hubdigital-upload"
+Write-Host "  cd ~/hubdigital-upload && bash ./$nombreScriptTransferencia"
