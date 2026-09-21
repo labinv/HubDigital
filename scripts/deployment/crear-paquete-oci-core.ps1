@@ -31,7 +31,6 @@ Set-StrictMode -Version Latest
 
 $directorioScript = Split-Path -Parent $MyInvocation.MyCommand.Path
 $raizRepositorio = Split-Path -Parent (Split-Path -Parent $directorioScript)
-$raizTrabajo = Split-Path -Parent $raizRepositorio
 if ([string]::IsNullOrWhiteSpace($Proyecto)) { $Proyecto = $raizRepositorio }
 
 function Invoke-Comando {
@@ -220,7 +219,7 @@ if ($php) {
         if ($SinPostgres) {
             Write-Host "`n==> Suite PostgreSQL omitida mediante -SinPostgres" -ForegroundColor Yellow
         } else {
-            $validadorPostgres = Join-Path $raizTrabajo 'validar-postgresql-temporal.ps1'
+            $validadorPostgres = Join-Path $raizRepositorio 'scripts\deployment\windows\validar-postgresql-temporal.ps1'
             if (-not (Test-Path -LiteralPath $validadorPostgres -PathType Leaf)) { throw "No se encontro el validador PostgreSQL: $validadorPostgres" }
             Invoke-Comando -Programa 'powershell.exe' -Argumentos @(
                 '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $validadorPostgres,
