@@ -477,6 +477,9 @@ sudo /srv/hubdigital/releases/ID/deploy/oracle/scripts/activate-release.sh ID
 
 Reemplace ID solamente con el identificador exacto que muestran los scripts.
 No active el scheduler todavia; es un paso separado que requiere revision.
+El script de activacion verificara automaticamente current, las URLs publicas
+de inicio y /depositos, Nginx, PHP-FPM, worker, scheduler y Tunnel. Mostrara
+OK o NO OK con la causa; ante un fallo volvera a mantenimiento.
 
 IMPORTANTE: copie solamente los comandos. No copie textos del prompt como
 hhhhhtroya@cloudshell o ubuntu@labinvepn-dev-vnic.

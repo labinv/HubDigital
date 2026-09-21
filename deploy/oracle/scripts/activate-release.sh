@@ -115,8 +115,64 @@ fi
 systemctl is-active --quiet hubdigital-worker.service
 ! systemctl is-active --quiet hubdigital-schedule.service
 ! systemctl is-active --quiet hubdigital-schedule.timer
+
+verification_failed=0
+echo
+echo 'Verificacion final automatica:'
+
+current_target="$(readlink -f /srv/hubdigital/current 2>/dev/null || true)"
+if [[ "${current_target}" == "${release_dir}" ]]; then
+    echo "OK current: ${current_target}"
+else
+    echo "NO OK current: se esperaba ${release_dir}, se obtuvo ${current_target:-sin destino}." >&2
+    verification_failed=1
+fi
+
+check_public_url() {
+    local url="$1" status
+    if ! status="$(curl --silent --show-error --location --max-time 20 \
+        --output /dev/null --write-out '%{http_code}' "${url}" 2>&1)"; then
+        echo "NO OK ${url}: curl fallo: ${status}." >&2
+        return 1
+    fi
+    if [[ "${status}" != 200 ]]; then
+        echo "NO OK ${url}: respondio HTTP ${status}; se esperaba HTTP 200." >&2
+        return 1
+    fi
+    echo "OK ${url}: HTTP ${status}"
+}
+
+check_public_url 'https://dev.labinvepn.org/' || verification_failed=1
+check_public_url 'https://dev.labinvepn.org/depositos' || verification_failed=1
+
+for unit in hubdigital-worker.service php8.4-fpm.service nginx.service; do
+    if systemctl is-active --quiet "${unit}"; then
+        echo "OK ${unit}: active"
+    else
+        echo "NO OK ${unit}: estado $(systemctl is-active "${unit}" 2>/dev/null || true); se esperaba active." >&2
+        verification_failed=1
+    fi
+done
+
+for unit in hubdigital-schedule.service hubdigital-schedule.timer cloudflared-hubdigital.service; do
+    if systemctl is-active --quiet "${unit}"; then
+        echo "NO OK ${unit}: esta active y debe permanecer detenido durante la validacion." >&2
+        verification_failed=1
+    else
+        echo "OK ${unit}: detenido"
+    fi
+done
+
+if [[ "${verification_failed}" -ne 0 ]]; then
+    systemctl stop hubdigital-worker.service || true
+    artisan down --retry=60 --no-interaction || true
+    echo 'Verificacion final NO OK: la aplicacion volvio a mantenimiento y el worker fue detenido.' >&2
+    exit 1
+fi
+
 jq --arg activated_at "$(date --utc +%FT%TZ)" --arg worker_queue "${validation_queue}" \
     '. + {activado_local_en:$activated_at, worker_queue:$worker_queue, estado:"activo_local_validacion"}' "${state_file}" > "${state_file}.tmp"
 chmod 0600 "${state_file}.tmp"
 mv "${state_file}.tmp" "${state_file}"
+echo 'Verificacion final OK: release, URLs publicas y servicios en el estado esperado.'
 echo "Release activa en el origen directo: ${release_id}. Worker limitado a ${validation_queue}; scheduler detenido."
