@@ -373,11 +373,14 @@ if [[ -f "${stage_script}" ]]; then
     printf 'Candidato: %s\n' "${candidate}"
     printf 'Staging: %s\n' "${staging}"
     printf 'Release ID previsto: %s\n\n' "${release_id}"
-    printf 'Siguiente comando, sin migraciones:\n'
+    printf '\n============================================================\n'
+    printf 'COPIE Y PEGUE ESTE COMANDO EN LA VM (SIN MIGRACIONES):\n'
+    printf '============================================================\n'
     printf 'sudo env APPLY_MIGRATIONS=0 %q %q %q\n' \
         "${staging}/deploy/oracle/scripts/deploy-release.sh" \
         "/srv/hubdigital/staging/${candidate}" \
         "/srv/hubdigital/staging/${candidate}.sha256"
+    printf '============================================================\n'
     exit 0
 fi
 
@@ -434,9 +437,29 @@ tar -xzf ~/$nombreKitCloudShell \
 cd ~/hubdigital-upload
 bash ./$nombreScriptTransferencia
 
-3. Cuando el script termine, siga los comandos que apareceran en pantalla
-   para conectarse a la VM. No vuelva a pegar el prompt de Cloud Shell dentro
-   de la VM.
+3. El script mostrara un comando SSH. Copielo y ejecutelo en Cloud Shell para
+   conectarse a la VM. El comando tendra esta forma:
+
+ssh -i ~/ssh-key-2026-09-18.key ubuntu@129.153.23.57
+
+4. Cuando el prompt comience con ubuntu@labinvepn-dev-vnic, ya estara dentro
+   de la VM. Ejecute los comandos que el script mostro para verificar y
+   preparar el candidato. Tendran esta forma, con los nombres de este paquete:
+
+cd /tmp
+sha256sum -c ${nombre}.sha256
+bash ./$nombreScriptTransferencia
+
+5. Al finalizar el staging, el script imprimira un bloque titulado:
+
+COPIE Y PEGUE ESTE COMANDO EN LA VM (SIN MIGRACIONES)
+
+Copie y ejecute el comando completo sudo env APPLY_MIGRATIONS=0 que aparezca
+dentro de ese bloque. Su identificador y nombres se calculan en la VM, por lo
+que el comando exacto solamente existe despues de finalizar el staging.
+
+IMPORTANTE: copie solamente los comandos. No copie textos del prompt como
+hhhhhtroya@cloudshell o ubuntu@labinvepn-dev-vnic.
 "@
     [IO.File]::WriteAllText(
         $instruccionesCloudShell,
