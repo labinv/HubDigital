@@ -12,6 +12,17 @@ composer_bin="${COMPOSER_BIN:-$(command -v composer || true)}"
 [[ -x "${php_bin}" || "${php_bin}" == php ]] || { echo "No se encontró ${php_bin}." >&2; exit 66; }
 [[ -n "${composer_bin}" && -r "${composer_bin}" ]] || { echo 'No se encontró Composer.' >&2; exit 66; }
 
+for runtime_file in \
+    artisan \
+    vendor/autoload.php \
+    vendor/livewire/flux/dist/manifest.json \
+    public/build/manifest.json; do
+    [[ -f "${repo_dir}/${runtime_file}" ]] || {
+        echo "Falta archivo runtime obligatorio: ${runtime_file}." >&2
+        exit 65
+    }
+done
+
 "${php_bin}" -r 'exit(PHP_VERSION_ID >= 80400 ? 0 : 1);' || {
     echo 'HubDigital bloqueado requiere PHP >= 8.4.' >&2
     exit 65

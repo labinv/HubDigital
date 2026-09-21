@@ -238,7 +238,8 @@ if (-not $OmitirCompilacion) {
 }
 
 $requeridos = @(
-    'vendor/autoload.php', 'public/build/manifest.json', 'deploy/oracle/scripts/stage-linux-candidate.sh',
+    'vendor/autoload.php', 'vendor/livewire/flux/dist/manifest.json',
+    'public/build/manifest.json', 'deploy/oracle/scripts/stage-linux-candidate.sh',
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',
     'composer.json', 'composer.lock', 'modules_statuses.json'
 )
@@ -296,7 +297,7 @@ $argumentosTar = @(
     '-czf', $paquete,
     '--exclude=.git', '--exclude=.env', '--exclude=.env.*', '--exclude=.codex-*',
     '--exclude=.ai', '--exclude=.claude', '--exclude=.agents', '--exclude=.tools', '--exclude=.local',
-    '--exclude=artifacts', '--exclude=docs', '--exclude=tests', '--exclude=postman', '--exclude=docker', '--exclude=dist',
+    '--exclude=artifacts', '--exclude=docs', '--exclude=tests', '--exclude=postman', '--exclude=docker',
     '--exclude=node_modules', '--exclude=public/hot', '--exclude=public/storage',
     '--exclude=Modules/*/tests', '--exclude=Modules/*/tests/*',
     '--exclude=*.key', '--exclude=*.pem', '--exclude=*.p12', '--exclude=*.pfx', '--exclude=*.pass',
@@ -320,12 +321,17 @@ try {
         $_ -match '(^|/)\.codex-' -or $_ -match '(^|/)\.(ai|claude|agents|tools|local)(/|$)' -or
         $_ -match '(^|/)(artifacts|docs|tests|postman|docker)(/|$)' -or
         $_ -match '\.(key|pem|p12|pfx|pass)$' -or
-        $_ -match '(^|/)node_modules(/|$)' -or $_ -match '(^|/)dist(/|$)' -or
+        $_ -match '(^|/)node_modules(/|$)' -or
         $_ -match '(^|/)vendor/(phpunit|pestphp)(/|$)'
     })
     if ($prohibidos) {
         Remove-Item -LiteralPath $paquete -Force
         throw "El paquete contenia rutas prohibidas: $($prohibidos -join ', ')"
+    }
+    $faltantesPaquete = @($requeridos | Where-Object { $contenido -notcontains $_ })
+    if ($faltantesPaquete) {
+        Remove-Item -LiteralPath $paquete -Force
+        throw "El paquete no contiene archivos runtime obligatorios: $($faltantesPaquete -join ', ')"
     }
 
     $contenidoScript = @'
