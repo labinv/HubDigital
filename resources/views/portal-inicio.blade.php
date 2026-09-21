@@ -8,7 +8,7 @@
                             Ciencia, colecciones y biodiversidad del Ecuador
                         </h1>
                         <p class="mt-6 max-w-xl text-base leading-7 text-text-secondary sm:text-lg sm:leading-8">
-                            El Laboratorio de Invertebrados de la Escuela Politécnica Nacional conserva, estudia y conecta con la sociedad el patrimonio biológico que custodia el Museo de Historia Natural Gustavo Orcés V.
+                            El Laboratorio de Invertebrados de la Escuela Politécnica Nacional conserva, estudia y conecta con la sociedad el patrimonio biológico que custodia el Museo de Historia Natural Gustavo Orcés&nbsp;V.
                         </p>
 
                         <div class="portal-responsive-actions mt-8">
@@ -20,7 +20,7 @@
                                 <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                             </a>
                             <a
-                                href="#colecciones"
+                                href="{{ route('portal.catalogo') }}"
                                 class="inline-flex min-h-12 items-center justify-center gap-3 rounded-md border border-blue-navy/40 bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:border-blue-navy hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
                             >
                                 Conocer las colecciones
@@ -41,9 +41,6 @@
                         decoding="async"
                     />
                     <div class="absolute inset-y-0 left-0 hidden w-40 bg-gradient-to-r from-white to-transparent lg:block" aria-hidden="true"></div>
-                    <figcaption class="absolute bottom-4 right-4 max-w-[17rem] border-l-2 border-bio-green bg-white/95 px-3 py-2 text-xs leading-5 text-blue-navy shadow-sm backdrop-blur-sm">
-                        Conservación y documentación de ejemplares de la colección científica.
-                    </figcaption>
                 </figure>
             </div>
         </section>
@@ -61,46 +58,6 @@
                         <p class="mt-1 text-xs uppercase tracking-[0.1em] text-text-secondary">{{ $resultado }}</p>
                     </div>
                 @endforeach
-            </div>
-        </section>
-
-        <section id="colecciones" class="scroll-mt-28 bg-white" aria-labelledby="titulo-colecciones">
-            <div class="portal-container mx-auto py-16 lg:py-24">
-                <div class="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
-                    <div>
-                        <div class="h-1 w-14 bg-bio-green" aria-hidden="true"></div>
-                        <h2 id="titulo-colecciones" class="mt-6 font-display text-3xl font-bold tracking-[-0.02em] text-blue-navy sm:text-4xl">
-                            Una infraestructura científica para la biodiversidad
-                        </h2>
-                        <p class="mt-5 max-w-md leading-8 text-text-secondary">
-                            Las colecciones vinculan cada ejemplar con su identificación, procedencia, permisos y trayectoria curatorial para que pueda volver a ser estudiado.
-                        </p>
-                    </div>
-
-                    <div class="divide-y divide-blue-navy/15 border-y border-blue-navy/15">
-                        <article class="grid gap-4 py-7 sm:grid-cols-[3.5rem_1fr] sm:gap-6">
-                            <span class="font-display text-3xl font-semibold text-bio-green" aria-hidden="true">01</span>
-                            <div>
-                                <h3 class="font-display text-2xl font-semibold text-blue-navy">Colecciones de referencia</h3>
-                                <p class="mt-2 leading-7 text-text-secondary">Material entomológico y de otros grupos de invertebrados preservado con información sobre su origen e identificación taxonómica.</p>
-                            </div>
-                        </article>
-                        <article class="grid gap-4 py-7 sm:grid-cols-[3.5rem_1fr] sm:gap-6">
-                            <span class="font-display text-3xl font-semibold text-bio-green" aria-hidden="true">02</span>
-                            <div>
-                                <h3 class="font-display text-2xl font-semibold text-blue-navy">Gestión y curaduría</h3>
-                                <p class="mt-2 leading-7 text-text-secondary">Ingreso, catalogación, conservación preventiva, revisión de datos y seguimiento de movimientos bajo responsabilidad institucional.</p>
-                            </div>
-                        </article>
-                        <article class="grid gap-4 py-7 sm:grid-cols-[3.5rem_1fr] sm:gap-6">
-                            <span class="font-display text-3xl font-semibold text-bio-green" aria-hidden="true">03</span>
-                            <div>
-                                <h3 class="font-display text-2xl font-semibold text-blue-navy">Acceso responsable</h3>
-                                <p class="mt-2 leading-7 text-text-secondary">Consulta de registros públicos y atención de solicitudes científicas, respetando restricciones sobre localidades y datos sensibles.</p>
-                            </div>
-                        </article>
-                    </div>
-                </div>
             </div>
         </section>
 
@@ -189,7 +146,7 @@
                     <article class="py-8 lg:pl-9">
                         <h3 class="font-display text-2xl font-semibold text-blue-navy">Educación y divulgación</h3>
                         <p class="mt-3 leading-7 text-text-secondary">Recursos de apoyo para acercar la diversidad de invertebrados, las colecciones y el trabajo curatorial a nuevos públicos.</p>
-                        <a href="#divulgacion" class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold !text-science-blue hover:underline">Conocer este trabajo <span aria-hidden="true">→</span></a>
+                        <a href="#contacto" class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold !text-science-blue hover:underline">Contactar al laboratorio <span aria-hidden="true">→</span></a>
                     </article>
                 </div>
             </div>
@@ -222,43 +179,6 @@
                             </li>
                         @endforeach
                     </ol>
-                </div>
-            </div>
-        </section>
-
-        <section id="divulgacion" class="scroll-mt-28 bg-[#EAF2EC]" aria-labelledby="titulo-divulgacion">
-            <div class="portal-container mx-auto grid gap-10 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:items-center lg:gap-20 lg:py-20">
-                <div>
-                    <h2 id="titulo-divulgacion" class="font-display text-3xl font-bold tracking-[-0.02em] text-blue-navy sm:text-4xl">Una colección también es una herramienta educativa</h2>
-                    <p class="mt-5 max-w-2xl leading-8 text-text-secondary">La documentación de los ejemplares ayuda a explicar cómo se reconoce una especie, por qué importa su procedencia y cómo las colecciones sostienen la memoria ambiental del país.</p>
-                </div>
-                <div class="border-l-2 border-bio-green pl-7">
-                    <p class="font-display text-xl font-semibold leading-8 text-blue-navy">Investigar, enseñar y divulgar son partes de una misma responsabilidad: conservar conocimiento verificable para el futuro.</p>
-                </div>
-            </div>
-        </section>
-
-        <section id="equipo" class="scroll-mt-28 bg-white" aria-labelledby="titulo-equipo">
-            <div class="portal-container mx-auto py-16 lg:py-24">
-                <div class="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
-                    <div>
-                        <h2 id="titulo-equipo" class="font-display text-3xl font-bold tracking-[-0.02em] text-blue-navy sm:text-4xl">Equipo y responsabilidades</h2>
-                        <p class="mt-5 leading-8 text-text-secondary">El trabajo del laboratorio articula conocimiento taxonómico, cuidado de colecciones, gestión documental y atención a usuarios.</p>
-                    </div>
-                    <dl class="divide-y divide-blue-navy/15 border-y border-blue-navy/15">
-                        <div class="grid gap-2 py-5 sm:grid-cols-[11rem_1fr] sm:gap-8">
-                            <dt class="font-semibold text-blue-navy">Curaduría</dt>
-                            <dd class="leading-7 text-text-secondary">Evalúa la pertinencia científica, la identificación y el ingreso formal del material.</dd>
-                        </div>
-                        <div class="grid gap-2 py-5 sm:grid-cols-[11rem_1fr] sm:gap-8">
-                            <dt class="font-semibold text-blue-navy">Colecciones</dt>
-                            <dd class="leading-7 text-text-secondary">Custodia ejemplares, registra movimientos y mantiene condiciones de conservación.</dd>
-                        </div>
-                        <div class="grid gap-2 py-5 sm:grid-cols-[11rem_1fr] sm:gap-8">
-                            <dt class="font-semibold text-blue-navy">Datos y atención</dt>
-                            <dd class="leading-7 text-text-secondary">Apoya la calidad de la información y orienta solicitudes de consulta, depósito y uso científico.</dd>
-                        </div>
-                    </dl>
                 </div>
             </div>
         </section>
