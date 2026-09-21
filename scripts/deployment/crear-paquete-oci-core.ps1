@@ -268,9 +268,13 @@ if ($commit -ne $commitRemoto) { throw 'El commit local y el remoto no coinciden
 New-Item -ItemType Directory -Path $Destino -Force | Out-Null
 $marcaTiempo = (Get-Date).ToString('yyyyMMdd-HHmmss')
 $nombre = "$nombreSeguro-$marcaTiempo.tar.gz"
+$nombreScriptTransferencia = "$nombreSeguro-$marcaTiempo-cloudshell-vm.sh"
 $paquete = Join-Path $Destino $nombre
 $suma = "$paquete.sha256"
-if (Test-Path -LiteralPath $paquete) { throw "Ya existe un paquete con ese nombre: $paquete" }
+$scriptTransferencia = Join-Path $Destino $nombreScriptTransferencia
+foreach ($salida in @($paquete, $suma, $scriptTransferencia)) {
+    if (Test-Path -LiteralPath $salida) { throw "Ya existe un archivo de salida: $salida" }
+}
 
 $incluir = @(
     'app', 'config', 'database', 'lang', 'Modules', 'public', 'resources', 'routes', 'vendor', 'deploy',
@@ -314,8 +318,81 @@ try {
         throw "El paquete contenia rutas prohibidas: $($prohibidos -join ', ')"
     }
 
+    $contenidoScript = @'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+package_name='__PACKAGE__'
+checksum_name='__CHECKSUM__'
+vm_host="${VM_HOST:-129.153.23.57}"
+vm_user="${VM_USER:-ubuntu}"
+key_path="${SSH_KEY_PATH:-${HOME}/ssh-key-2026-09-18.key}"
+self_path="$(readlink -f -- "$0")"
+base_dir="$(dirname -- "${self_path}")"
+stage_script='/srv/hubdigital/current/deploy/oracle/scripts/stage-linux-candidate.sh'
+
+fail() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+verify_transfer() {
+    [[ -f "${base_dir}/${package_name}" ]] || fail "Falta ${base_dir}/${package_name}"
+    [[ -f "${base_dir}/${checksum_name}" ]] || fail "Falta ${base_dir}/${checksum_name}"
+    (cd "${base_dir}" && sha256sum -c "${checksum_name}")
+}
+
+if [[ -f "${stage_script}" ]]; then
+    printf 'Entorno detectado: VM OCI.\n'
+    verify_transfer
+    stage_log="/tmp/${package_name%.tar.gz}-stage.log"
+    sudo "${stage_script}" "${base_dir}/${package_name}" | tee "${stage_log}"
+
+    candidate="$(awk -F= '$1 == "candidate" {print $2}' "${stage_log}" | tail -n 1)"
+    checksum="$(awk -F= '$1 == "checksum" {print $2}' "${stage_log}" | tail -n 1)"
+    staging="$(awk -F= '$1 == "staging" {print $2}' "${stage_log}" | tail -n 1)"
+    [[ "${candidate}" =~ ^[A-Za-z0-9._-]+\.tar\.gz$ ]] || fail 'El staging no devolvio un candidato valido.'
+    [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] || fail 'El staging no devolvio un checksum valido.'
+    [[ "${staging}" =~ ^/srv/hubdigital/staging/[0-9a-f]{16}$ ]] || fail 'El staging no devolvio una ruta valida.'
+    release_id="${checksum:0:16}"
+
+    rm -f -- "${base_dir}/${package_name}" "${base_dir}/${checksum_name}" "${self_path}"
+    printf '\nCandidato preparado correctamente.\n'
+    printf 'Archivos temporales enviados a /tmp eliminados.\n'
+    printf 'Registro conservado: %s\n' "${stage_log}"
+    printf 'Candidato: %s\n' "${candidate}"
+    printf 'Staging: %s\n' "${staging}"
+    printf 'Release ID previsto: %s\n\n' "${release_id}"
+    printf 'Siguiente comando, sin migraciones:\n'
+    printf 'sudo env APPLY_MIGRATIONS=0 %q %q %q\n' \
+        "${staging}/deploy/oracle/scripts/deploy-release.sh" \
+        "/srv/hubdigital/staging/${candidate}" \
+        "/srv/hubdigital/staging/${candidate}.sha256"
+    exit 0
+fi
+
+printf 'Entorno detectado: OCI Cloud Shell.\n'
+verify_transfer
+[[ -f "${key_path}" ]] || fail "No se encontro la clave SSH: ${key_path}"
+chmod 600 "${key_path}"
+scp -i "${key_path}" \
+    "${base_dir}/${package_name}" \
+    "${base_dir}/${checksum_name}" \
+    "${self_path}" \
+    "${vm_user}@${vm_host}:/tmp/"
+
+printf '\nTransferencia a la VM completada.\n'
+printf 'Conectate con:\nssh -i %q %q\n' "${key_path}" "${vm_user}@${vm_host}"
+printf '\nDentro de la VM verifica y ejecuta:\n'
+printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "${self_path}")"
+'@
+    $contenidoScript = $contenidoScript.Replace('__PACKAGE__', $nombre).Replace('__CHECKSUM__', [IO.Path]::GetFileName($suma))
+    [IO.File]::WriteAllText($scriptTransferencia, ($contenidoScript.TrimStart() + "`n"), [Text.UTF8Encoding]::new($false))
+
     $hash = (Get-FileHash -LiteralPath $paquete -Algorithm SHA256).Hash.ToLowerInvariant()
-    [IO.File]::WriteAllText($suma, "$hash  $nombre`n", [Text.UTF8Encoding]::new($false))
+    $hashScript = (Get-FileHash -LiteralPath $scriptTransferencia -Algorithm SHA256).Hash.ToLowerInvariant()
+    $contenidoChecksum = "$hash  $nombre`n$hashScript  $nombreScriptTransferencia`n"
+    [IO.File]::WriteAllText($suma, $contenidoChecksum, [Text.UTF8Encoding]::new($false))
     $tamanoMiB = [Math]::Round((Get-Item -LiteralPath $paquete).Length / 1MB, 2)
 }
 finally {
@@ -332,6 +409,7 @@ Write-Host "Mensaje:   $mensajeCommit"
 Write-Host "Git:       $upstream sincronizado"
 Write-Host "Paquete:   $paquete"
 Write-Host "Checksum:  $suma"
+Write-Host "Script:    $scriptTransferencia"
 Write-Host "SHA-256:   $hash"
 Write-Host "Tamano:    $tamanoMiB MiB"
-Write-Host "`nSiguiente paso: carga el .tar.gz en OCI Cloud Shell."
+Write-Host "`nSiguiente paso: carga los tres archivos en OCI Cloud Shell y ejecuta bash $nombreScriptTransferencia"
