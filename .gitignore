@@ -25,6 +25,8 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/.agents/
+/.tools/
 Manual de Diseño.md
 docs/PITCH-VIDEO.md
 CLAUDE.local.md
