@@ -451,13 +451,62 @@ printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "
     $hashKit = (Get-FileHash -LiteralPath $kitCloudShell -Algorithm SHA256).Hash.ToLowerInvariant()
 
     $contenidoInstruccionesCloudShell = @"
-INSTRUCCIONES PARA OCI CLOUD SHELL
-=================================
+MANUAL COMPLETO DE DESPLIEGUE OCI - HUBDIGITAL
+==============================================
 
-1. En OCI Cloud Shell, use Menu > Upload y suba solamente:
-   $nombreKitCloudShell
+Paquete: $identificadorPaquete
+Commit Git: $commit
+Rama remota: $upstream
+Kit que debe subirse: $nombreKitCloudShell
+VM OCI: ubuntu@129.153.23.57
+Migraciones de base de datos: DESHABILITADAS
 
-2. Copie y ejecute este bloque completo en Cloud Shell:
+OBJETIVO
+--------
+Este procedimiento transfiere una release validada desde Windows a OCI Cloud
+Shell, luego a la VM y finalmente la activa en https://dev.labinvepn.org.
+El despliegue usa checksums SHA-256 y no modifica el esquema PostgreSQL.
+
+ARCHIVOS GENERADOS EN WINDOWS
+-----------------------------
+La carpeta de este paquete contiene cinco archivos:
+
+1. $nombreKitCloudShell
+   Es el unico archivo que debe subir manualmente a Cloud Shell.
+2. $nombre
+   Es el paquete fuente de produccion.
+3. $([IO.Path]::GetFileName($suma))
+   Contiene los checksums SHA-256.
+4. $nombreScriptTransferencia
+   Automatiza Cloud Shell y el staging dentro de la VM.
+5. $nombreInstruccionesCloudShell
+   Es este manual; no necesita subirlo.
+
+REQUISITOS PREVIOS
+------------------
+- La VM debe responder por SSH desde OCI Cloud Shell.
+- La clave debe existir en:
+  ~/ssh-key-2026-09-18.key
+- Para comprobarla en Cloud Shell:
+
+ls -l ~/ssh-key-2026-09-18.key
+
+Si la clave no existe, use Cloud Shell > Menu > Upload y subala una sola vez.
+Cloud Shell conserva el directorio personal entre sesiones. El script aplica
+chmod 600 automaticamente antes de usar la clave. Nunca comparta, renombre,
+incluya en Git ni copie la clave dentro del paquete.
+
+PASO 1 - SUBIR EL KIT A CLOUD SHELL
+-----------------------------------
+En OCI Cloud Shell use Menu > Upload y seleccione solamente:
+
+$nombreKitCloudShell
+
+No suba por separado el paquete, checksum ni script: ya estan dentro del kit.
+
+PASO 2 - EXTRAER Y EJECUTAR EN CLOUD SHELL
+-------------------------------------------
+Copie y ejecute este bloque completo en Cloud Shell:
 
 mkdir -p ~/hubdigital-upload
 tar -xzf ~/$nombreKitCloudShell \
@@ -466,45 +515,135 @@ tar -xzf ~/$nombreKitCloudShell \
 cd ~/hubdigital-upload
 bash ./$nombreScriptTransferencia
 
-Despues de una transferencia correcta, el script elimina automaticamente de
-Cloud Shell el kit y sus tres archivos extraidos. Conserva la clave SSH y deja
-la carpeta ~/hubdigital-upload vacia para reutilizarla.
+El script realiza estas acciones:
+- Comprueba los checksums del paquete y del propio script.
+- Aplica permisos 600 a la clave SSH.
+- Copia paquete, checksum y script a /tmp de la VM mediante scp.
+- Si scp termina correctamente, elimina de Cloud Shell el kit y los tres
+  archivos extraidos. No elimina la clave SSH.
+- Muestra "Limpieza Cloud Shell: OK" o explica que archivo no pudo eliminar.
 
-3. El script mostrara un comando SSH. Copielo y ejecutelo en Cloud Shell para
-   conectarse a la VM. El comando tendra esta forma:
+Si aparece ERROR, FAILED, checksum distinto de OK o scp incompleto, detengase.
+No continue con la VM hasta resolverlo.
+
+PASO 3 - CONECTARSE A LA VM
+---------------------------
+Despues de la transferencia, el script mostrara este comando:
 
 ssh -i ~/ssh-key-2026-09-18.key ubuntu@129.153.23.57
 
-4. Cuando el prompt comience con ubuntu@labinvepn-dev-vnic, ya estara dentro
-   de la VM. Ejecute los comandos que el script mostro para verificar y
-   preparar el candidato. Tendran esta forma, con los nombres de este paquete:
+Ejecutelo desde Cloud Shell. Sabra que entro en la VM cuando el prompt comience
+con ubuntu@labinvepn-dev-vnic. No copie el texto del prompt como si fuera parte
+de un comando.
+
+PASO 4 - VERIFICAR Y PREPARAR EL CANDIDATO EN LA VM
+----------------------------------------------------
+Dentro de la VM ejecute:
 
 cd /tmp
 sha256sum -c ${nombre}.sha256
 bash ./$nombreScriptTransferencia
 
-5. Al finalizar el staging, el script imprimira un bloque titulado:
+Que hace este paso:
+- Vuelve a verificar SHA-256 dentro de la VM.
+- Extrae y construye un candidato Linux en /srv/hubdigital/staging.
+- Comprueba PHP, extensiones, Composer y archivos runtime obligatorios.
+- Verifica especificamente los recursos de Livewire Flux.
+- No cambia current, no activa servicios y no aplica migraciones.
+- Elimina de /tmp los tres archivos transferidos solo si el staging termina
+  correctamente.
+
+Los mensajes "Deprecated" de Composer son advertencias. El exito real se
+confirma con "platform=ok" y "Candidato preparado correctamente".
+
+PASO 5 - PREPARAR LA RELEASE SIN MIGRACIONES
+--------------------------------------------
+Al terminar el staging aparecera un bloque titulado:
 
 COPIE Y PEGUE ESTE COMANDO EN LA VM (SIN MIGRACIONES)
 
-Copie y ejecute el comando completo sudo env APPLY_MIGRATIONS=0 que aparezca
-dentro de ese bloque. Su identificador y nombres se calculan en la VM, por lo
-que el comando exacto solamente existe despues de finalizar el staging.
+Copie y ejecute exactamente el comando sudo env APPLY_MIGRATIONS=0 mostrado.
+El ID, candidato y checksum se calculan dentro de la VM y por eso no pueden
+escribirse anticipadamente en este manual.
 
-6. Ejecute el comando de activacion solamente si el paso anterior termina con
-   "Release preparada en mantenimiento". Tanto el script de staging como
-   deploy-release.sh mostraran el comando completo, con esta forma:
+APPLY_MIGRATIONS=0 significa que NO se ejecutan migraciones nuevas. Las filas
+de migrate:status que terminan en "Ran" solo informan migraciones aplicadas con
+anterioridad; no indican que este despliegue las este ejecutando.
+
+Este paso valida PostgreSQL, R2, correo, temporales, colas y caches. Detiene
+worker y scheduler y deja la release preparada en mantenimiento. Continue solo
+si termina con:
+
+Release preparada en mantenimiento: ID
+Validaciones superadas. Puede activar ahora copiando y ejecutando:
+
+Si aparece un error, no repita comandos ni active la release. Conserve toda la
+salida para diagnosticar la causa.
+
+PASO 6 - ACTIVAR LA RELEASE
+---------------------------
+El paso anterior mostrara el comando completo. Tendra esta forma:
 
 sudo /srv/hubdigital/releases/ID/deploy/oracle/scripts/activate-release.sh ID
 
-Reemplace ID solamente con el identificador exacto que muestran los scripts.
-No active el scheduler todavia; es un paso separado que requiere revision.
-El script de activacion verificara automaticamente current, las URLs publicas
-de inicio y /depositos, Nginx, PHP-FPM, worker, scheduler y Tunnel. Mostrara
-OK o NO OK con la causa; ante un fallo volvera a mantenimiento.
+Use el mismo ID en la ruta y en el argumento. No use el ID de otro paquete.
 
-IMPORTANTE: copie solamente los comandos. No copie textos del prompt como
-hhhhhtroya@cloudshell o ubuntu@labinvepn-dev-vnic.
+La activacion comprueba automaticamente:
+- La identidad e integridad de la release.
+- Que current apunte a la release esperada.
+- https://dev.labinvepn.org/ con HTTP 200.
+- https://dev.labinvepn.org/depositos con HTTP 200.
+- Nginx, PHP-FPM y el worker en estado active.
+- Scheduler y Tunnel detenidos durante la validacion.
+
+Cada comprobacion muestra OK o NO OK con la causa. Si alguna falla, el script
+detiene el worker, devuelve Laravel a mantenimiento y termina con error.
+El despliegue solo esta activo cuando aparece:
+
+Verificacion final OK: release, URLs publicas y servicios en el estado esperado.
+Release activa en el origen directo: ID.
+
+PASO 7 - VERIFICACION EN EL NAVEGADOR
+-------------------------------------
+Abra https://dev.labinvepn.org y haga una recarga completa con Ctrl+F5.
+Compruebe visualmente los cambios incluidos en este paquete.
+
+SCHEDULER Y TUNNEL
+------------------
+El Scheduler ejecuta tareas Laravel programadas, como limpiar borradores y
+evaluar plazos de devolucion. Permanece detenido hasta revisar sus efectos y
+autorizarlo expresamente; no debe activarse como parte automatica de este flujo.
+
+Cloudflare Tunnel es una via alternativa de entrada. Esta arquitectura publica
+el origen directamente mediante Nginx y HTTPS, por lo que el servicio Tunnel
+permanece detenido. El proxy DNS de Cloudflare no es lo mismo que Tunnel.
+
+LIMPIEZA Y CONSERVACION
+-----------------------
+- Cloud Shell elimina automaticamente los archivos del despliegue despues de
+  transferirlos; conserva la clave SSH.
+- La VM elimina paquete, checksum y script de /tmp despues de un staging
+  correcto.
+- Windows conserva la carpeta del paquete en artifacts/oci hasta que usted la
+  elimine. Puede regenerarla ejecutando crear-paquete-oci.
+- La release activa dentro de /srv/hubdigital/releases NO debe eliminarse.
+
+DIAGNOSTICO SI FALLA LA ACTIVACION
+----------------------------------
+No use chmod 777, no cambie current manualmente y no habilite migraciones.
+Consulte estos registros y conserve la salida:
+
+sudo tail -n 150 /var/log/php8.4-fpm.log
+sudo tail -n 150 /var/log/nginx/error.log
+sudo journalctl -u php8.4-fpm.service --since "15 minutes ago" --no-pager -n 150
+
+REGLAS IMPORTANTES
+-------------------
+- Copie solamente comandos, nunca los textos del prompt.
+- No ejecute APPLY_MIGRATIONS=1 sin revision y respaldo PostgreSQL.
+- No active Scheduler ni Tunnel durante este procedimiento.
+- No borre la clave SSH ni la release activa.
+- Ante cualquier NO OK, detengase y revise la causa antes de reintentar.
 "@
     [IO.File]::WriteAllText(
         $instruccionesCloudShell,
