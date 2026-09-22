@@ -18,8 +18,7 @@ final class ServirDocumentoExportacion
         string $id,
         ConsultarDocumentoActaHandler $handler,
         AlmacenamientoDepositos $almacenamiento,
-    ): Response
-    {
+    ): Response {
         $user = auth()->user();
 
         $documento = $handler->handle(new ConsultarDocumentoActaInput(
@@ -40,7 +39,7 @@ final class ServirDocumentoExportacion
             abort(404);
         }
 
-        return response($almacenamiento->obtener($documento->documentoExportacionRuta), 200, [
+        return response($almacenamiento->obtenerVerificado($documento->documentoExportacionRuta, $documento->documentoExportacionSha256), 200, [
             'Content-Type' => $almacenamiento->mimeType($documento->documentoExportacionRuta),
             'Content-Disposition' => 'inline; filename="documento-exportacion.pdf"',
         ]);

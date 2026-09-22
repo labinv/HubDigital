@@ -39,6 +39,7 @@ final class ValidarActaFirmadaHandler
         $acta->validarConFirmaCurador(
             curadorId: $input->curadorId,
             pdfFirmadoCuradorRuta: $input->pdfFirmadoCuradorRuta,
+            pdfFirmadoCuradorSha256: $input->pdfFirmadoCuradorSha256,
         );
 
         $this->transactionManager->executeTransactional(function () use ($acta): void {

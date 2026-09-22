@@ -34,13 +34,17 @@ final class ActaPrestamoModel extends Model
         'pdf_ruta',
         'condiciones_generales',
         'pdf_firmado_ruta',
+        'pdf_firmado_sha256',
         'documento_identidad_ruta',
+        'documento_identidad_sha256',
         'documento_exportacion_ruta',
+        'documento_exportacion_sha256',
         'motivo_devolucion',
         'firmada_subida_en',
         'validada_en',
         'validada_por',
         'pdf_firmado_curador_ruta',
+        'pdf_firmado_curador_sha256',
     ];
 
     protected $casts = [

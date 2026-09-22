@@ -25,8 +25,7 @@ final class DescargarActaPdf
         ConsultarActaDocumentoHandler $handler,
         PdfGeneratorPort $pdf,
         AlmacenamientoDepositos $almacenamiento,
-    ): Response
-    {
+    ): Response {
         $user = auth()->user();
 
         $acta = $handler->handle(new ConsultarActaDocumentoInput(actaId: $id));
@@ -54,10 +53,10 @@ final class DescargarActaPdf
         // Si el curador ya firmó, ese PDF (acta-documento con ambas firmas ya
         // incrustadas) es el documento oficial: se sirve tal cual, sin regenerar.
         // Su ruta la fija la validación del curador.
-        $firmadoCurador = 'actas-firmadas-curador/'.$acta->id.'.pdf';
+        $firmadoCurador = $acta->pdfFirmadoCuradorRuta;
 
-        if (! $sinFirma && $almacenamiento->existe($firmadoCurador)) {
-            return response($almacenamiento->obtener($firmadoCurador), 200, [
+        if (! $sinFirma && $firmadoCurador !== null && $almacenamiento->existe($firmadoCurador)) {
+            return response($almacenamiento->obtenerVerificado($firmadoCurador, $acta->pdfFirmadoCuradorSha256), 200, [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="Acta-'.$acta->numeroPrestamo.'.pdf"',
                 'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
@@ -70,7 +69,10 @@ final class DescargarActaPdf
         $datos = ['acta' => $acta];
 
         if (! $sinFirma) {
-            $firmaInvestigador = $pdf->leerImagenBase64('firmas-investigador/'.$acta->id.'.png');
+            $firmaInvestigador = ($acta->pdfFirmadoRuta !== null
+                && str_starts_with($acta->pdfFirmadoRuta, 'firmas-investigador/'))
+                ? $pdf->leerImagenBase64($acta->pdfFirmadoRuta, $acta->pdfFirmadoSha256)
+                : null;
 
             if ($firmaInvestigador !== null) {
                 $datos['firmaBase64'] = $firmaInvestigador;

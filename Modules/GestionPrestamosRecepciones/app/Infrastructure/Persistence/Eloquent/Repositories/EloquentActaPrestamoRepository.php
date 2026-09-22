@@ -41,13 +41,17 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
                 'pdf_ruta' => $acta->pdfRuta(),
                 'condiciones_generales' => $acta->condicionesGenerales(),
                 'pdf_firmado_ruta' => $acta->pdfFirmadoRuta(),
+                'pdf_firmado_sha256' => $acta->pdfFirmadoSha256(),
                 'documento_identidad_ruta' => $acta->documentoIdentidadRuta(),
+                'documento_identidad_sha256' => $acta->documentoIdentidadSha256(),
                 'documento_exportacion_ruta' => $acta->documentoExportacionRuta(),
+                'documento_exportacion_sha256' => $acta->documentoExportacionSha256(),
                 'motivo_devolucion' => $acta->motivoDevolucion(),
                 'firmada_subida_en' => $acta->firmadaSubidaEn()?->format('Y-m-d H:i:s'),
                 'validada_en' => $acta->validadaEn()?->format('Y-m-d H:i:s'),
                 'validada_por' => $acta->validadaPor(),
                 'pdf_firmado_curador_ruta' => $acta->pdfFirmadoCuradorRuta(),
+                'pdf_firmado_curador_sha256' => $acta->pdfFirmadoCuradorSha256(),
             ],
         );
     }
@@ -70,6 +74,16 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
         $model = ActaPrestamoModel::where('solicitud_prestamo_id', (string) $solicitudId)->first();
 
         return $model !== null ? $this->toDomain($model) : null;
+    }
+
+    public function rutaEstaReferenciada(string $ruta): bool
+    {
+        return ActaPrestamoModel::query()
+            ->where('pdf_firmado_ruta', $ruta)
+            ->orWhere('documento_identidad_ruta', $ruta)
+            ->orWhere('documento_exportacion_ruta', $ruta)
+            ->orWhere('pdf_firmado_curador_ruta', $ruta)
+            ->exists();
     }
 
     /**
@@ -160,6 +174,10 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
                 : null,
             validadaPor: $model->validada_por,
             pdfFirmadoCuradorRuta: $model->pdf_firmado_curador_ruta,
+            pdfFirmadoSha256: $model->pdf_firmado_sha256,
+            documentoIdentidadSha256: $model->documento_identidad_sha256,
+            documentoExportacionSha256: $model->documento_exportacion_sha256,
+            pdfFirmadoCuradorSha256: $model->pdf_firmado_curador_sha256,
         );
     }
 }

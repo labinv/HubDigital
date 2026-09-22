@@ -142,6 +142,70 @@ test('una escritura R2 fallida no se confirma ni intenta verificar el objeto', f
     Http::assertSent(fn (Request $request): bool => $request->method() === 'PUT');
 });
 
+test('rechaza y elimina una escritura R2 alterada aunque conserve el mismo tamano', function (): void {
+    $metodos = [];
+    Http::fake(function (Request $request) use (&$metodos) {
+        $metodos[] = $request->method();
+
+        return match ($request->method()) {
+            'PUT' => Http::response('', 200),
+            'HEAD' => Http::response('', 200, ['Content-Length' => '8', 'Content-Type' => 'application/pdf']),
+            'GET' => Http::response('%PDF-R2X', 200, ['Content-Type' => 'application/pdf']),
+            'DELETE' => Http::response('', 204),
+            default => Http::response('', 404),
+        };
+    });
+    config()->set('deposit-storage.driver', 'r2');
+    config()->set('deposit-storage.verify_after_write', true);
+    config()->set('deposit-storage.r2', [
+        'endpoint' => 'https://cuenta.r2.cloudflarestorage.com',
+        'bucket' => 'hubdigital-depositos-dev',
+        'access_key_id' => 'clave-prueba',
+        'secret_access_key' => 'secreto-prueba',
+        'max_attempts' => 1,
+    ]);
+
+    expect(fn () => (new AlmacenamientoDepositos)->guardarContenido(
+        'depositos/alterado.pdf',
+        '%PDF-R2Y',
+        'application/pdf',
+    ))->toThrow(RuntimeException::class, 'integridad SHA-256');
+
+    expect($metodos)->toBe(['PUT', 'HEAD', 'GET', 'DELETE']);
+});
+
+test('elimina el candidato si falla la verificacion posterior al put', function (): void {
+    $metodos = [];
+    Http::fake(function (Request $request) use (&$metodos) {
+        $metodos[] = $request->method();
+
+        return match ($request->method()) {
+            'PUT' => Http::response('', 200),
+            'HEAD' => Http::response('', 200, ['Content-Length' => '7']),
+            'GET' => Http::response('fallo', 500),
+            'DELETE' => Http::response('', 204),
+            default => Http::response('', 404),
+        };
+    });
+    config()->set('deposit-storage.driver', 'r2');
+    config()->set('deposit-storage.verify_after_write', true);
+    config()->set('deposit-storage.r2', [
+        'endpoint' => 'https://cuenta.r2.cloudflarestorage.com',
+        'bucket' => 'hubdigital-depositos-dev',
+        'access_key_id' => 'clave-prueba',
+        'secret_access_key' => 'secreto-prueba',
+        'max_attempts' => 1,
+    ]);
+
+    expect(fn () => (new AlmacenamientoDepositos)->guardarContenido(
+        'depositos/verificacion-fallida.pdf',
+        '%PDF-R2',
+        'application/pdf',
+    ))->toThrow(RuntimeException::class);
+
+    expect($metodos)->toBe(['PUT', 'HEAD', 'GET', 'DELETE']);
+});
+
 test('r2 ausente no se sustituye por una copia local o publica heredada', function (): void {
     Storage::fake('local');
     Storage::fake('public');
@@ -166,6 +230,29 @@ test('r2 ausente no se sustituye por una copia local o publica heredada', functi
         ->and($almacenamiento->existe('depositos/solo-publico.pdf'))->toBeFalse()
         ->and(fn () => $almacenamiento->obtener('depositos/solo-local.pdf'))
         ->toThrow(RuntimeException::class, 'no existe en Cloudflare R2');
+});
+
+test('rechaza al leer un objeto cuya huella ya no coincide con PostgreSQL', function (): void {
+    Http::fake(function (Request $request) {
+        return match ($request->method()) {
+            'HEAD' => Http::response('', 200, ['Content-Length' => '13']),
+            'GET' => Http::response('%PDF-alterado', 200, ['Content-Type' => 'application/pdf']),
+            default => Http::response('', 404),
+        };
+    });
+    config()->set('deposit-storage.driver', 'r2');
+    config()->set('deposit-storage.r2', [
+        'endpoint' => 'https://cuenta.r2.cloudflarestorage.com',
+        'bucket' => 'hubdigital-depositos-dev',
+        'access_key_id' => 'clave-prueba',
+        'secret_access_key' => 'secreto-prueba',
+        'max_attempts' => 1,
+    ]);
+
+    expect(fn () => (new AlmacenamientoDepositos)->obtenerVerificado(
+        'actas-firmadas/documento.pdf',
+        hash('sha256', '%PDF-original'),
+    ))->toThrow(RuntimeException::class, 'no coincide con PostgreSQL');
 });
 
 test('readStream y mimeType R2 ausentes no consultan copias locales', function (): void {

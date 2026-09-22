@@ -59,58 +59,51 @@
 }
 
 @layer theme {
-    /* Dark mode disabled — Hub Digital uses only light theme.
-       These overrides neutralize Flux's .dark variable swaps. */
+    /* Paleta oscura de Hub Digital. Mantiene contraste legible y conserva
+       la identidad azul/verde sin aplicar filtros sobre toda la interfaz. */
     .dark {
-        /* Flux accent */
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
-
-        /* ── Dark Mode Token Overrides ─────────────────────────────────────── */
-
-        /* Fondos — escala slate (tinte azul frío, armoniza con blue-navy) */
-        --color-bg-main:  #0f172a;   /* slate-900 — fondo base de página */
-        --color-surface:  #1e293b;   /* slate-800 — tarjetas y paneles */
-
-        /* Relleno de gráficas: paso propio para la superficie oscura (#1e293b). */
+        --color-bg-main: #08131f;
+        --color-surface: #111f2d;
+        --color-text-primary: #e7eef5;
+        --color-text-secondary: #a9b8c7;
+        --color-border: #2d4153;
+        --color-blue-navy: #dce9f5;
+        --color-bio-green: #75d8ac;
+        --color-science-blue: #74c7f2;
+        --color-success: #75d8ac;
+        --color-warning: #f4c96b;
+        --color-error: #ffb4ab;
+        --color-info: #74c7f2;
         --color-chart-serie: #3987e5;
-
-        /* Texto */
-        --color-text-primary:   #f1f5f9;  /* slate-100 */
-        --color-text-secondary: #94a3b8;  /* slate-400 */
-
-        /* Bordes */
-        --color-border: #334155;          /* slate-700 */
-
-        /* Blue-Navy — aclarado para ser legible sobre fondos oscuros */
-        --color-blue-navy: #93c5fd;       /* blue-300 */
-
-        /* Bio-Green — aclarado */
-        --color-bio-green: #86efac;       /* green-300 */
-
-        /* Science Blue — aclarado */
-        --color-science-blue: #7dd3fc;    /* sky-300 */
-
-        /* Semánticos — aclarados a nivel 300 para pasar WCAG AA como texto */
-        --color-success: #86efac;         /* green-300 */
-        --color-warning: #fcd34d;         /* amber-300 */
-        --color-error:   #fca5a5;         /* red-300 */
-        --color-info:    #7dd3fc;         /* sky-300 */
-        --color-accent: var(--color-bio-green);
+        --color-accent: #1d7356;
         --color-accent-content: #ffffff;
         --color-accent-foreground: #ffffff;
-        --color-bg-main: #F5F7FA;
-        --color-surface: #FFFFFF;
-        --color-text-primary: #212121;
-        --color-text-secondary: #757575;
-        --color-border: #E0E0E0;
     }
 }
 
 /* flux.css importa --color-accent-foreground como estilo sin capa (unlayered),
    ganando al @theme. Esta regla también es unlayered y viene después, por lo que gana. */
 :root {
+    --color-accent-foreground: #ffffff;
+}
+
+/* Tema oscuro real. Estas variables se declaran después del bloque heredado
+   para evitar que sus antiguos valores claros vuelvan a lavar la interfaz. */
+.dark {
+    --color-bg-main: #08131f;
+    --color-surface: #111f2d;
+    --color-text-primary: #e7eef5;
+    --color-text-secondary: #a9b8c7;
+    --color-border: #2d4153;
+    --color-blue-navy: #dce9f5;
+    --color-bio-green: #75d8ac;
+    --color-science-blue: #74c7f2;
+    --color-success: #75d8ac;
+    --color-warning: #f4c96b;
+    --color-error: #ffb4ab;
+    --color-info: #74c7f2;
+    --color-accent: #1d7356;
+    --color-accent-content: #ffffff;
     --color-accent-foreground: #ffffff;
 }
 
@@ -844,4 +837,125 @@ select:focus[data-flux-control] {
     cursor: pointer;
     font-size: 1.4375rem;
     line-height: 1;
+}
+
+/* Cuenta y preferencias: superficies editoriales compactas, sin tarjetas
+   decorativas ni badges ajenos a la jerarquia de la informacion. */
+.hub-account-menu {
+    overflow: hidden;
+    border-color: var(--color-border) !important;
+    background: var(--color-surface) !important;
+    box-shadow: 0 18px 48px rgb(8 25 40 / .18) !important;
+}
+
+.hub-appearance-choice {
+    display: flex;
+    min-height: 3.5rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
+    border: 1px solid var(--color-border);
+    border-radius: .5rem;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: .75rem;
+    font-weight: 600;
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+
+.hub-appearance-choice:hover { border-color: color-mix(in srgb, var(--color-bio-green) 55%, var(--color-border)); }
+.hub-appearance-choice:focus-visible { outline: 2px solid var(--color-science-blue); outline-offset: 2px; }
+.hub-appearance-choice[data-selected="true"] {
+    border-color: var(--color-bio-green);
+    background: color-mix(in srgb, var(--color-bio-green) 10%, var(--color-surface));
+    color: var(--color-bio-green);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-bio-green) 24%, transparent);
+}
+
+.hub-account-settings-modal {
+    max-height: min(90dvh, 54rem);
+    overflow-y: auto;
+    border-color: var(--color-border) !important;
+    background: var(--color-surface) !important;
+    color: var(--color-text-primary);
+}
+
+.hub-settings-rail__item {
+    display: flex;
+    min-width: 10.5rem;
+    align-items: flex-start;
+    gap: .65rem;
+    border-inline-start: 2px solid transparent;
+    border-radius: .35rem;
+    padding: .75rem .7rem;
+    color: var(--color-text-secondary);
+    text-align: start;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.hub-settings-rail__item span { display: grid; gap: .15rem; }
+.hub-settings-rail__item strong { color: var(--color-text-primary); font-size: .875rem; }
+.hub-settings-rail__item small { font-size: .7rem; line-height: 1.3; }
+.hub-settings-rail__item:hover { background: color-mix(in srgb, var(--color-bg-main) 78%, transparent); }
+.hub-settings-rail__item[aria-current="page"] {
+    border-inline-start-color: var(--color-bio-green);
+    background: color-mix(in srgb, var(--color-bio-green) 9%, var(--color-surface));
+    color: var(--color-bio-green);
+}
+.hub-settings-rail__item:focus-visible { outline: 2px solid var(--color-science-blue); outline-offset: 2px; }
+.hub-settings-rail__item--danger,
+.hub-settings-rail__item--danger strong { color: var(--color-error); }
+
+.hub-dashboard-hero {
+    position: relative;
+    min-height: 11.5rem;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: .65rem;
+    background: #0a130f;
+    box-shadow: 0 9px 30px rgb(8 25 40 / .14);
+}
+
+.hub-dashboard-hero img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.hub-dashboard-hero__copy {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    min-height: 11.5rem;
+    max-width: 30rem;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(1.25rem, 3vw, 2.25rem);
+    color: #fff;
+    text-shadow: 0 1px 12px rgb(0 0 0 / .38);
+}
+
+.dark body,
+.dark [data-flux-main] { background: var(--color-bg-main); color: var(--color-text-primary); }
+.dark [data-flux-sidebar],
+.dark [data-flux-header],
+.dark .bg-blue-navy { background-color: #071b2c !important; }
+.dark .bg-bio-green { background-color: #1d7356 !important; }
+.dark .bg-science-blue { background-color: #096da5 !important; }
+.dark :is(input, textarea, select, [data-flux-control]) {
+    border-color: var(--color-border) !important;
+    background: #0d1a27 !important;
+    color: var(--color-text-primary) !important;
+}
+.dark [role="dialog"] { color-scheme: dark; }
+
+@media (max-width: 767px) {
+    .hub-account-settings-modal { max-height: 94dvh; }
+    .hub-settings-rail__item { min-width: 9.5rem; }
+    .hub-dashboard-hero,
+    .hub-dashboard-hero__copy { min-height: 14rem; }
+    .hub-dashboard-hero img { object-position: 63% center; opacity: .72; }
 }

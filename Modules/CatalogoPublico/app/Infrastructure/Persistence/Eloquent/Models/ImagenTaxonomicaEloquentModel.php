@@ -22,6 +22,7 @@ final class ImagenTaxonomicaEloquentModel extends Model
         'nombre_original',
         'ruta',
         'disco',
+        'sha256',
         'autor_nombre',
         'autor_apellido',
         'autor_nombre_completo',

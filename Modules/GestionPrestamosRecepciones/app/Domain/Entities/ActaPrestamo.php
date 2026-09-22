@@ -59,6 +59,10 @@ final class ActaPrestamo
         private ?DateTimeImmutable $validadaEn,
         private ?string $validadaPor,
         private ?string $pdfFirmadoCuradorRuta = null,
+        private ?string $pdfFirmadoSha256 = null,
+        private ?string $documentoIdentidadSha256 = null,
+        private ?string $documentoExportacionSha256 = null,
+        private ?string $pdfFirmadoCuradorSha256 = null,
     ) {}
 
     // ── Named constructors ────────────────────────────────────────────────────
@@ -130,6 +134,10 @@ final class ActaPrestamo
         ?DateTimeImmutable $validadaEn,
         ?string $validadaPor,
         ?string $pdfFirmadoCuradorRuta = null,
+        ?string $pdfFirmadoSha256 = null,
+        ?string $documentoIdentidadSha256 = null,
+        ?string $documentoExportacionSha256 = null,
+        ?string $pdfFirmadoCuradorSha256 = null,
     ): self {
         return new self(
             id: $id,
@@ -150,6 +158,10 @@ final class ActaPrestamo
             validadaEn: $validadaEn,
             validadaPor: $validadaPor,
             pdfFirmadoCuradorRuta: $pdfFirmadoCuradorRuta,
+            pdfFirmadoSha256: $pdfFirmadoSha256,
+            documentoIdentidadSha256: $documentoIdentidadSha256,
+            documentoExportacionSha256: $documentoExportacionSha256,
+            pdfFirmadoCuradorSha256: $pdfFirmadoCuradorSha256,
         );
     }
 
@@ -187,8 +199,12 @@ final class ActaPrestamo
      * Si el curador devolvió solo el acta (la identidad sigue válida), se puede
      * omitir el documento de identidad pasando null; se conserva el ya cargado.
      */
-    public function subirFirma(string $pdfFirmadoRuta, ?string $documentoIdentidadRuta = null): void
-    {
+    public function subirFirma(
+        string $pdfFirmadoRuta,
+        ?string $documentoIdentidadRuta = null,
+        ?string $pdfFirmadoSha256 = null,
+        ?string $documentoIdentidadSha256 = null,
+    ): void {
         if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
             throw TransicionDeEstadoInvalidaException::para(
                 'ActaPrestamo',
@@ -203,6 +219,7 @@ final class ActaPrestamo
 
         if ($documentoIdentidadRuta !== null && trim($documentoIdentidadRuta) !== '') {
             $this->documentoIdentidadRuta = trim($documentoIdentidadRuta);
+            $this->documentoIdentidadSha256 = $this->normalizarSha256($documentoIdentidadSha256);
         }
 
         if ($this->documentoIdentidadRuta === null) {
@@ -213,6 +230,7 @@ final class ActaPrestamo
 
         $this->estado = EstadoActa::PendienteValidacion;
         $this->pdfFirmadoRuta = trim($pdfFirmadoRuta);
+        $this->pdfFirmadoSha256 = $this->normalizarSha256($pdfFirmadoSha256);
         $this->firmadaSubidaEn = $ahora;
 
         $this->events[] = new ActaFirmadaSubida(
@@ -230,7 +248,7 @@ final class ActaPrestamo
      * hasta que el investigador suba su documento de identidad. Solo permitido
      * desde PendienteFirma.
      */
-    public function firmarDigitalmente(string $firmaImagenRuta): void
+    public function firmarDigitalmente(string $firmaImagenRuta, ?string $firmaImagenSha256 = null): void
     {
         if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
             throw TransicionDeEstadoInvalidaException::para(
@@ -247,6 +265,7 @@ final class ActaPrestamo
         $ahora = new DateTimeImmutable;
 
         $this->pdfFirmadoRuta = trim($firmaImagenRuta);
+        $this->pdfFirmadoSha256 = $this->normalizarSha256($firmaImagenSha256);
 
         $this->events[] = new ActaFirmadaDigitalmente(
             actaId: $this->id,
@@ -275,8 +294,10 @@ final class ActaPrestamo
      * Completa la firma digital subiendo el documento de identidad.
      * Solo permitido desde PendienteFirma cuando ya existe firma digital.
      */
-    public function completarFirmaDigitalConIdentidad(string $documentoIdentidadRuta): void
-    {
+    public function completarFirmaDigitalConIdentidad(
+        string $documentoIdentidadRuta,
+        ?string $documentoIdentidadSha256 = null,
+    ): void {
         if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
             throw TransicionDeEstadoInvalidaException::para(
                 'ActaPrestamo',
@@ -297,6 +318,7 @@ final class ActaPrestamo
 
         $this->estado = EstadoActa::PendienteValidacion;
         $this->documentoIdentidadRuta = trim($documentoIdentidadRuta);
+        $this->documentoIdentidadSha256 = $this->normalizarSha256($documentoIdentidadSha256);
         $this->firmadaSubidaEn = $ahora;
 
         $this->events[] = new ActaFirmadaSubida(
@@ -344,9 +366,11 @@ final class ActaPrestamo
         $this->estado = EstadoActa::PendienteFirma;
         if ($devolverActa) {
             $this->pdfFirmadoRuta = null;
+            $this->pdfFirmadoSha256 = null;
         }
         if ($devolverIdentidad) {
             $this->documentoIdentidadRuta = null;
+            $this->documentoIdentidadSha256 = null;
         }
         $this->motivoDevolucion = trim($motivo);
 
@@ -362,7 +386,7 @@ final class ActaPrestamo
      * El curador adjunta el documento de exportación del Ministerio del Ambiente.
      * Solo aplica para actas de alcance Internacional.
      */
-    public function adjuntarDocumentoExportacion(string $ruta): void
+    public function adjuntarDocumentoExportacion(string $ruta, ?string $sha256 = null): void
     {
         if (! $this->alcancePrestamo->esInternacional()) {
             throw new \DomainException('Solo préstamos internacionales requieren documento de exportación.');
@@ -373,6 +397,7 @@ final class ActaPrestamo
         }
 
         $this->documentoExportacionRuta = trim($ruta);
+        $this->documentoExportacionSha256 = $this->normalizarSha256($sha256);
 
         $this->events[] = new DocumentoExportacionSubido(
             actaId: $this->id,
@@ -393,6 +418,7 @@ final class ActaPrestamo
     public function validarConFirmaCurador(
         string $curadorId,
         string $pdfFirmadoCuradorRuta,
+        ?string $pdfFirmadoCuradorSha256 = null,
     ): void {
         if (! $this->estado->equals(EstadoActa::PendienteValidacion)) {
             throw TransicionDeEstadoInvalidaException::para(
@@ -412,6 +438,7 @@ final class ActaPrestamo
         $this->validadaEn = $ahora;
         $this->validadaPor = $curadorId;
         $this->pdfFirmadoCuradorRuta = trim($pdfFirmadoCuradorRuta);
+        $this->pdfFirmadoCuradorSha256 = $this->normalizarSha256($pdfFirmadoCuradorSha256);
 
         $this->events[] = new ActaValidada(
             actaId: $this->id,
@@ -499,14 +526,29 @@ final class ActaPrestamo
         return $this->pdfFirmadoRuta;
     }
 
+    public function pdfFirmadoSha256(): ?string
+    {
+        return $this->pdfFirmadoSha256;
+    }
+
     public function documentoIdentidadRuta(): ?string
     {
         return $this->documentoIdentidadRuta;
     }
 
+    public function documentoIdentidadSha256(): ?string
+    {
+        return $this->documentoIdentidadSha256;
+    }
+
     public function documentoExportacionRuta(): ?string
     {
         return $this->documentoExportacionRuta;
+    }
+
+    public function documentoExportacionSha256(): ?string
+    {
+        return $this->documentoExportacionSha256;
     }
 
     public function motivoDevolucion(): ?string
@@ -532,5 +574,23 @@ final class ActaPrestamo
     public function pdfFirmadoCuradorRuta(): ?string
     {
         return $this->pdfFirmadoCuradorRuta;
+    }
+
+    public function pdfFirmadoCuradorSha256(): ?string
+    {
+        return $this->pdfFirmadoCuradorSha256;
+    }
+
+    private function normalizarSha256(?string $sha256): ?string
+    {
+        $normalizado = strtolower(trim((string) $sha256));
+        if ($normalizado === '') {
+            return null;
+        }
+        if (preg_match('/^[a-f0-9]{64}$/', $normalizado) !== 1) {
+            throw new InvalidArgumentException('La huella SHA-256 del documento no es valida.');
+        }
+
+        return $normalizado;
     }
 }

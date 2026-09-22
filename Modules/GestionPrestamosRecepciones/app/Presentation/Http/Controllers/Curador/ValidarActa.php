@@ -21,6 +21,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaCuradorDi
 use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaCuradorDigitalmente\FirmarActaCuradorDigitalmenteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaInput;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
@@ -88,17 +89,27 @@ final class ValidarActa extends Component
     public function subirActaFirmada(
         ValidarActaFirmadaHandler $handler,
         AlmacenamientoDepositos $almacenamiento,
-    ): void
-    {
+        ActaPrestamoRepositoryInterface $actas,
+    ): void {
         $this->validate(['pdfFirmadoCurador' => 'required|file|mimes:pdf|max:10240']);
 
-        $ruta = $almacenamiento->guardarArchivo($this->pdfFirmadoCurador, 'actas-firmadas-curador');
+        $archivo = $almacenamiento->guardarArchivoConHuella($this->pdfFirmadoCurador, 'actas-firmadas-curador');
+        $ruta = $archivo['ruta'];
 
-        $handler->handle(new ValidarActaFirmadaInput(
-            actaId: $this->id,
-            curadorId: (string) auth()->id(),
-            pdfFirmadoCuradorRuta: $ruta,
-        ));
+        try {
+            $handler->handle(new ValidarActaFirmadaInput(
+                actaId: $this->id,
+                curadorId: (string) auth()->id(),
+                pdfFirmadoCuradorRuta: $ruta,
+                pdfFirmadoCuradorSha256: $archivo['sha256'],
+            ));
+        } catch (\Throwable $e) {
+            if (! $actas->rutaEstaReferenciada($ruta)) {
+                $almacenamiento->eliminarCandidatosSinOcultarError([$ruta]);
+            }
+
+            throw $e;
+        }
 
         $this->showUploadModal = false;
         $this->pdfFirmadoCurador = null;

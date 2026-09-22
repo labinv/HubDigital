@@ -98,6 +98,10 @@
 
         {{ $slot }}
 
+        @auth
+            <x-account-settings-modal />
+        @endauth
+
         @fluxScripts
     </body>
 </html>

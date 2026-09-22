@@ -36,7 +36,10 @@ final class CompletarFirmaDigitalConIdentidadHandler
             throw ActaNoPerteneceAlInvestigador::conActaId($actaId);
         }
 
-        $acta->completarFirmaDigitalConIdentidad($input->documentoIdentidadRuta);
+        $acta->completarFirmaDigitalConIdentidad(
+            $input->documentoIdentidadRuta,
+            $input->documentoIdentidadSha256,
+        );
 
         $this->transactionManager->executeTransactional(function () use ($acta): void {
             $this->actaRepo->guardar($acta);

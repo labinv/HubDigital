@@ -25,14 +25,12 @@ final class SubirActaFirmadaHandler
     ) {}
 
     /**
-     * @param SubirActaFirmadaInput $input
-     * @return SubirActaFirmadaOutput
      * @throws ActaPrestamoNoEncontradaException
      */
     public function handle(SubirActaFirmadaInput $input): SubirActaFirmadaOutput
     {
         $solicitudId = SolicitudPrestamoId::fromString($input->solicitudId);
-        $acta        = $this->actaRepo->buscarPorSolicitudId($solicitudId);
+        $acta = $this->actaRepo->buscarPorSolicitudId($solicitudId);
 
         if ($acta === null) {
             throw ActaPrestamoNoEncontradaException::paraSolicitud($solicitudId);
@@ -41,6 +39,8 @@ final class SubirActaFirmadaHandler
         $acta->subirFirma(
             pdfFirmadoRuta: $input->pdfFirmadoRuta,
             documentoIdentidadRuta: $input->documentoIdentidadRuta,
+            pdfFirmadoSha256: $input->pdfFirmadoSha256,
+            documentoIdentidadSha256: $input->documentoIdentidadSha256,
         );
 
         $this->transactionManager->executeTransactional(function () use ($acta): void {

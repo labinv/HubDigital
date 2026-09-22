@@ -52,40 +52,52 @@ final class SubirImagenEspecimenHandler
         );
         $archivo = $this->almacenamiento->guardar($contenidoConMarca, $nombreDeseado);
 
-        $id = $this->repoImagenes->nextIdentity();
-        $imagen = ImagenTaxonomica::subir($id, $input->occurrenceID, $archivo, $autor);
+        try {
+            $id = $this->repoImagenes->nextIdentity();
+            $imagen = ImagenTaxonomica::subir($id, $input->occurrenceID, $archivo, $autor);
 
-        // R4/R5: la portada bubbleea solo a especie y género sin defecto previo.
-        $clavesConDefecto = $this->repoDefectos->clavesConDefecto([
-            [RangoTaxonomico::Species, $jerarquia->nombreEspecie()],
-            [RangoTaxonomico::Genus, $jerarquia->padreDeEspecie()],
-        ]);
-        $nuevosDefectos = $this->propagador->nuevosDefectos($jerarquia, $id, $clavesConDefecto);
+            // R4/R5: la portada bubbleea solo a especie y género sin defecto previo.
+            $clavesConDefecto = $this->repoDefectos->clavesConDefecto([
+                [RangoTaxonomico::Species, $jerarquia->nombreEspecie()],
+                [RangoTaxonomico::Genus, $jerarquia->padreDeEspecie()],
+            ]);
+            $nuevosDefectos = $this->propagador->nuevosDefectos($jerarquia, $id, $clavesConDefecto);
 
-        $this->transactionManager->executeTransactional(function () use ($imagen, $nuevosDefectos): void {
-            $this->repoImagenes->guardar($imagen);
+            $this->transactionManager->executeTransactional(function () use ($imagen, $nuevosDefectos): void {
+                $this->repoImagenes->guardar($imagen);
 
-            foreach ($nuevosDefectos as $defecto) {
-                $this->repoDefectos->guardar($defecto);
+                foreach ($nuevosDefectos as $defecto) {
+                    $this->repoDefectos->guardar($defecto);
+                }
+
+                foreach ($imagen->pullEvents() as $event) {
+                    $this->eventPublisher->publish($event);
+                }
+            });
+
+            $niveles = array_map(
+                fn ($defecto): string => $defecto->nivel()->value.':'.$defecto->valorTaxon(),
+                $nuevosDefectos,
+            );
+
+            return SubirImagenEspecimenOutput::crear(
+                imagenId: $id->toString(),
+                nombreArchivo: $archivo->nombreOriginal,
+                occurrenceID: $input->occurrenceID,
+                autor: $autor->nombreCompleto(),
+                nivelesActualizados: $niveles,
+            );
+        } catch (\Throwable $e) {
+            if (! $this->repoImagenes->rutaEstaReferenciada($archivo->ruta)) {
+                try {
+                    $this->almacenamiento->eliminar($archivo);
+                } catch (\Throwable $cleanupError) {
+                    report($cleanupError);
+                }
             }
 
-            foreach ($imagen->pullEvents() as $event) {
-                $this->eventPublisher->publish($event);
-            }
-        });
-
-        $niveles = array_map(
-            fn ($defecto): string => $defecto->nivel()->value.':'.$defecto->valorTaxon(),
-            $nuevosDefectos,
-        );
-
-        return SubirImagenEspecimenOutput::crear(
-            imagenId: $id->toString(),
-            nombreArchivo: $archivo->nombreOriginal,
-            occurrenceID: $input->occurrenceID,
-            autor: $autor->nombreCompleto(),
-            nivelesActualizados: $niveles,
-        );
+            throw $e;
+        }
     }
 
     private function componerNombreArchivo(string $occurrenceID, string $vistaSufijo, string $nombreOriginal): string

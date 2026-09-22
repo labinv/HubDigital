@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'turnstile' => [
+        'enabled' => env('TURNSTILE_ENABLED', true),
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret' => env('TURNSTILE_SECRET'),
+        'expected_hostname' => env('TURNSTILE_EXPECTED_HOSTNAME'),
+        'expected_action' => 'turnstile-spin-v2',
+    ],
+
 ];

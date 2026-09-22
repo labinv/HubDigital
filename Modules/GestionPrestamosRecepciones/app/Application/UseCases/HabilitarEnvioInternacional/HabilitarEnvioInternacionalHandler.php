@@ -28,8 +28,6 @@ final class HabilitarEnvioInternacionalHandler
     ) {}
 
     /**
-     * @param HabilitarEnvioInternacionalInput $input
-     * @return HabilitarEnvioInternacionalOutput
      * @throws ActaPrestamoNoEncontradaException
      * @throws RuntimeException
      */
@@ -42,7 +40,7 @@ final class HabilitarEnvioInternacionalHandler
             throw ActaPrestamoNoEncontradaException::conId($actaId);
         }
 
-        $acta->adjuntarDocumentoExportacion($input->documentoRuta);
+        $acta->adjuntarDocumentoExportacion($input->documentoRuta, $input->documentoSha256);
 
         $prestamo = $this->prestamoRepo->buscarPorActaId($actaId);
 

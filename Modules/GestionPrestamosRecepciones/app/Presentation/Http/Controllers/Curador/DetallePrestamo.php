@@ -18,6 +18,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificaci
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalInput;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
@@ -37,11 +38,6 @@ final class DetallePrestamo extends Component
     #[Validate('required|file|mimes:pdf|max:10240')]
     public $documentoExportacion = null;
 
-    /**
-     * @param string $id
-     * @param ConsultarDetallePrestamoHandler $handler
-     * @return void
-     */
     public function mount(string $id, ConsultarDetallePrestamoHandler $handler): void
     {
         $this->id = $id;
@@ -51,15 +47,11 @@ final class DetallePrestamo extends Component
         }
     }
 
-    /**
-     * @param ConsultarDetallePrestamoHandler $detalleHandler
-     * @param HabilitarEnvioInternacionalHandler $handler
-     * @return void
-     */
     public function habilitarEnvio(
         ConsultarDetallePrestamoHandler $detalleHandler,
         HabilitarEnvioInternacionalHandler $handler,
         AlmacenamientoDepositos $almacenamiento,
+        ActaPrestamoRepositoryInterface $actas,
     ): void {
         $this->validate(['documentoExportacion' => 'required|file|mimes:pdf|max:10240']);
 
@@ -69,24 +61,28 @@ final class DetallePrestamo extends Component
             abort(404);
         }
 
-        $ruta = $almacenamiento->guardarArchivo($this->documentoExportacion, 'prestamos/exportaciones');
+        $archivo = $almacenamiento->guardarArchivoConHuella($this->documentoExportacion, 'prestamos/exportaciones');
+        $ruta = $archivo['ruta'];
 
-        $handler->handle(new HabilitarEnvioInternacionalInput(
-            actaId: $detalle->actaId,
-            curadorId: (string) auth()->id(),
-            documentoRuta: $ruta,
-        ));
+        try {
+            $handler->handle(new HabilitarEnvioInternacionalInput(
+                actaId: $detalle->actaId,
+                curadorId: (string) auth()->id(),
+                documentoRuta: $ruta,
+                documentoSha256: $archivo['sha256'],
+            ));
+        } catch (\Throwable $e) {
+            if (! $actas->rutaEstaReferenciada($ruta)) {
+                $almacenamiento->eliminarCandidatosSinOcultarError([$ruta]);
+            }
+
+            throw $e;
+        }
 
         $this->successMessage = 'Documento de exportación registrado. El préstamo pasa a en tránsito.';
         $this->documentoExportacion = null;
     }
 
-    /**
-     * @param ConsultarDetallePrestamoHandler $detalleHandler
-     * @param ConsultarHistorialPrestamoHandler $historialHandler
-     * @param ConsultarVerificacionEspecimenesHandler $verificacionHandler
-     * @return View
-     */
     public function render(
         ConsultarDetallePrestamoHandler $detalleHandler,
         ConsultarHistorialPrestamoHandler $historialHandler,

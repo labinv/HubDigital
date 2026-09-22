@@ -18,8 +18,7 @@ final class ServirPdfFirmado
         string $id,
         ConsultarDocumentoActaHandler $handler,
         AlmacenamientoDepositos $almacenamiento,
-    ): Response
-    {
+    ): Response {
         $user = auth()->user();
 
         $documento = $handler->handle(new ConsultarDocumentoActaInput(
@@ -44,7 +43,7 @@ final class ServirPdfFirmado
         $contentType = $isFirmaDigital ? 'image/png' : 'application/pdf';
         $filename = $isFirmaDigital ? 'acta-firma.png' : 'acta-firmada.pdf';
 
-        return response($almacenamiento->obtener($documento->pdfFirmadoRuta), 200, [
+        return response($almacenamiento->obtenerVerificado($documento->pdfFirmadoRuta, $documento->pdfFirmadoSha256), 200, [
             'Content-Type' => $contentType,
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
         ]);

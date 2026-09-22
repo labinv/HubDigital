@@ -26,6 +26,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInter
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ReiterarRecordatorioVencimiento\ReiterarRecordatorioVencimientoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ReiterarRecordatorioVencimiento\ReiterarRecordatorioVencimientoInput;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
@@ -57,12 +58,6 @@ final class AuditarPrestamo extends Component
 
     public string $nuevoDiaModal = '';
 
-    /**
-     * @param string $id
-     * @param ConsultarDetallePrestamoHandler $detalleHandler
-     * @param ConsultarRecordatoriosPrestamoHandler $recordatoriosHandler
-     * @return void
-     */
     public function mount(
         string $id,
         ConsultarDetallePrestamoHandler $detalleHandler,
@@ -77,9 +72,6 @@ final class AuditarPrestamo extends Component
         $this->cargarRecordatorios($recordatoriosHandler);
     }
 
-    /**
-     * @return void
-     */
     public function abrirModalRecordatorios(): void
     {
         $this->diasAntesModal = count($this->recordatoriosPersonalizados) > 0
@@ -90,10 +82,6 @@ final class AuditarPrestamo extends Component
         $this->mostrarModalRecordatorios = true;
     }
 
-    /**
-     * @param int $dia
-     * @return void
-     */
     public function toggleDiaModal(int $dia): void
     {
         if (in_array($dia, array_map('intval', $this->diasAntesModal), true)) {
@@ -106,9 +94,6 @@ final class AuditarPrestamo extends Component
         }
     }
 
-    /**
-     * @return void
-     */
     public function agregarDiaModal(): void
     {
         $dia = (int) $this->nuevoDiaModal;
@@ -124,10 +109,6 @@ final class AuditarPrestamo extends Component
         $this->nuevoDiaModal = '';
     }
 
-    /**
-     * @param int $dia
-     * @return void
-     */
     public function quitarDiaModal(int $dia): void
     {
         $this->diasAntesModal = array_values(
@@ -135,11 +116,6 @@ final class AuditarPrestamo extends Component
         );
     }
 
-    /**
-     * @param ActualizarRecordatoriosPrestamoEspecificoHandler $handler
-     * @param ConsultarRecordatoriosPrestamoHandler $recordatoriosHandler
-     * @return void
-     */
     public function actualizarRecordatorios(
         ActualizarRecordatoriosPrestamoEspecificoHandler $handler,
         ConsultarRecordatoriosPrestamoHandler $recordatoriosHandler,
@@ -163,14 +139,11 @@ final class AuditarPrestamo extends Component
         }
     }
 
-    /**
-     * @param HabilitarEnvioInternacionalHandler $handler
-     * @return void
-     */
     public function habilitarEnvio(
         ConsultarDetallePrestamoHandler $detalleHandler,
         HabilitarEnvioInternacionalHandler $handler,
         AlmacenamientoDepositos $almacenamiento,
+        ActaPrestamoRepositoryInterface $actas,
     ): void {
         $this->validate(['documentoExportacion' => 'required|file|mimes:pdf|max:10240']);
 
@@ -180,13 +153,23 @@ final class AuditarPrestamo extends Component
             abort(404);
         }
 
-        $ruta = $almacenamiento->guardarArchivo($this->documentoExportacion, 'prestamos/exportaciones');
+        $archivo = $almacenamiento->guardarArchivoConHuella($this->documentoExportacion, 'prestamos/exportaciones');
+        $ruta = $archivo['ruta'];
 
-        $handler->handle(new HabilitarEnvioInternacionalInput(
-            actaId: $detalle->actaId,
-            curadorId: (string) auth()->id(),
-            documentoRuta: $ruta,
-        ));
+        try {
+            $handler->handle(new HabilitarEnvioInternacionalInput(
+                actaId: $detalle->actaId,
+                curadorId: (string) auth()->id(),
+                documentoRuta: $ruta,
+                documentoSha256: $archivo['sha256'],
+            ));
+        } catch (\Throwable $e) {
+            if (! $actas->rutaEstaReferenciada($ruta)) {
+                $almacenamiento->eliminarCandidatosSinOcultarError([$ruta]);
+            }
+
+            throw $e;
+        }
 
         $this->successMessage = 'Documento registrado. El préstamo pasa a en tránsito.';
         $this->documentoExportacion = null;
@@ -194,9 +177,6 @@ final class AuditarPrestamo extends Component
 
     /**
      * Reenvía el recordatorio de vencimiento al investigador de un préstamo vencido.
-     *
-     * @param ReiterarRecordatorioVencimientoHandler $handler
-     * @return void
      */
     public function notificarDevolucion(ReiterarRecordatorioVencimientoHandler $handler): void
     {
@@ -221,13 +201,6 @@ final class AuditarPrestamo extends Component
         );
     }
 
-    /**
-     * @param ConsultarDetallePrestamoHandler $detalleHandler
-     * @param ConsultarHistorialSolicitudHandler $historialSolicitudHandler
-     * @param ConsultarHistorialPrestamoHandler $historialPrestamoHandler
-     * @param ConsultarVerificacionEspecimenesHandler $verificacionHandler
-     * @return View
-     */
     public function render(
         ConsultarDetallePrestamoHandler $detalleHandler,
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,

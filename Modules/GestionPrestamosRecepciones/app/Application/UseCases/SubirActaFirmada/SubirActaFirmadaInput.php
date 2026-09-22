@@ -14,5 +14,7 @@ final readonly class SubirActaFirmadaInput
         public string $investigadorId,
         public string $pdfFirmadoRuta,
         public ?string $documentoIdentidadRuta,
+        public ?string $pdfFirmadoSha256 = null,
+        public ?string $documentoIdentidadSha256 = null,
     ) {}
 }

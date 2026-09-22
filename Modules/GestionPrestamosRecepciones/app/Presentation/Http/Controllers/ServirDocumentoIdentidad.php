@@ -18,8 +18,7 @@ final class ServirDocumentoIdentidad
         string $id,
         ConsultarDocumentoActaHandler $handler,
         AlmacenamientoDepositos $almacenamiento,
-    ): Response
-    {
+    ): Response {
         $user = auth()->user();
 
         $documento = $handler->handle(new ConsultarDocumentoActaInput(
@@ -40,7 +39,7 @@ final class ServirDocumentoIdentidad
             abort(404);
         }
 
-        return response($almacenamiento->obtener($documento->documentoIdentidadRuta), 200, [
+        return response($almacenamiento->obtenerVerificado($documento->documentoIdentidadRuta, $documento->documentoIdentidadSha256), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="documento-identidad.pdf"',
         ]);

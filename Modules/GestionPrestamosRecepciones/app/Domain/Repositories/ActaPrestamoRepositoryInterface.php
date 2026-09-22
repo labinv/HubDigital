@@ -24,6 +24,9 @@ interface ActaPrestamoRepositoryInterface
     /** Recupera el acta asociada a una solicitud, o null si no existe. */
     public function buscarPorSolicitudId(SolicitudPrestamoId $solicitudId): ?ActaPrestamo;
 
+    /** Confirma si PostgreSQL ya hizo oficial una ruta candidata. */
+    public function rutaEstaReferenciada(string $ruta): bool;
+
     /**
      * Lista actas para la bandeja del curador, aplicando filtros y orden.
      *
@@ -31,7 +34,7 @@ interface ActaPrestamoRepositoryInterface
      * El filtro por investigador se recibe ya resuelto a identificadores; si es
      * null no se aplica.
      *
-     * @param array<int, string>|null $investigadorIds
+     * @param  array<int, string>|null  $investigadorIds
      * @return array<int, array{actaId: string, numeroPrestamo: string, numeroSolicitud: string|null, investigadorId: string|null, estado: string, fecha: \DateTimeImmutable}>
      */
     public function listarParaBandeja(

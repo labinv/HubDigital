@@ -16,6 +16,9 @@ interface ImagenTaxonomicaRepositoryInterface
 
     public function buscarPorId(ImagenTaxonomicaId $id): ?ImagenTaxonomica;
 
+    /** Confirma si PostgreSQL ya hizo oficial una ruta candidata. */
+    public function rutaEstaReferenciada(string $ruta): bool;
+
     /**
      * Imágenes existentes en el subárbol de un taxón (para la galería).
      *

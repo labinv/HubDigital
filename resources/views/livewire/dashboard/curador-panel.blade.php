@@ -16,6 +16,24 @@
         </div>
     </header>
 
+    <section class="hub-dashboard-hero order-0" aria-labelledby="dashboard-biodiversidad-title">
+        <img
+            src="{{ asset('images/dashboard-nudibranquio.jpg') }}"
+            alt="Nudibranquio blanco con ceratas anaranjadas sobre un arrecife"
+            width="2243"
+            height="701"
+            fetchpriority="high"
+        />
+        <div class="hub-dashboard-hero__copy">
+            <h2 id="dashboard-biodiversidad-title" class="font-display text-2xl font-bold leading-tight sm:text-3xl">
+                Conocimiento que preserva la biodiversidad
+            </h2>
+            <p class="mt-3 max-w-sm text-sm leading-6 text-white/85">
+                Colecciones, investigación y educación para un futuro sostenible.
+            </p>
+        </div>
+    </section>
+
     {{-- ── La colección ─────────────────────────────────────────────
          Gestión de información taxonómica + Divulgación. Va primero
          porque es la magnitud real del acervo bajo custodia. --}}

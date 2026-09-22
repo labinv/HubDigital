@@ -14,22 +14,22 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarItemsPrest
 final readonly class ConsultarActaDocumentoOutput
 {
     /**
-     * @param string $id Identificador del acta.
-     * @param string $investigadorId ID del investigador dueño (para autorización).
-     * @param string|null $nombreInvestigador Nombre legible del investigador solicitante.
-     * @param string $numeroPrestamo Número de préstamo asignado.
-     * @param string $tipoPrestamo Tipo de préstamo.
-     * @param string $alcancePrestamo Alcance (nacional/internacional).
-     * @param DateTimeImmutable $fechaInicio Fecha de inicio del préstamo.
-     * @param DateTimeImmutable $fechaFin Fecha de fin del préstamo.
-     * @param string|null $condicionesGenerales Condiciones generales del acta.
-     * @param string|null $numeroSolicitud Número de la solicitud asociada.
-     * @param string|null $tituloEstudio Título del estudio.
-     * @param string|null $institucionAdscripcion Institución de adscripción.
-     * @param string|null $lineaInvestigacion Línea de investigación.
-     * @param string|null $propositoPrestamo Propósito del préstamo.
-     * @param string $patente Patente del laboratorio vigente el año del acta.
-     * @param list<ItemPrestamoVista> $items Ítems (especímenes) del préstamo.
+     * @param  string  $id  Identificador del acta.
+     * @param  string  $investigadorId  ID del investigador dueño (para autorización).
+     * @param  string|null  $nombreInvestigador  Nombre legible del investigador solicitante.
+     * @param  string  $numeroPrestamo  Número de préstamo asignado.
+     * @param  string  $tipoPrestamo  Tipo de préstamo.
+     * @param  string  $alcancePrestamo  Alcance (nacional/internacional).
+     * @param  DateTimeImmutable  $fechaInicio  Fecha de inicio del préstamo.
+     * @param  DateTimeImmutable  $fechaFin  Fecha de fin del préstamo.
+     * @param  string|null  $condicionesGenerales  Condiciones generales del acta.
+     * @param  string|null  $numeroSolicitud  Número de la solicitud asociada.
+     * @param  string|null  $tituloEstudio  Título del estudio.
+     * @param  string|null  $institucionAdscripcion  Institución de adscripción.
+     * @param  string|null  $lineaInvestigacion  Línea de investigación.
+     * @param  string|null  $propositoPrestamo  Propósito del préstamo.
+     * @param  string  $patente  Patente del laboratorio vigente el año del acta.
+     * @param  list<ItemPrestamoVista>  $items  Ítems (especímenes) del préstamo.
      */
     public function __construct(
         public string $id,
@@ -48,5 +48,9 @@ final readonly class ConsultarActaDocumentoOutput
         public ?string $propositoPrestamo,
         public string $patente,
         public array $items,
+        public ?string $pdfFirmadoRuta = null,
+        public ?string $pdfFirmadoSha256 = null,
+        public ?string $pdfFirmadoCuradorRuta = null,
+        public ?string $pdfFirmadoCuradorSha256 = null,
     ) {}
 }

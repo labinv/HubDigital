@@ -13,5 +13,6 @@ final readonly class HabilitarEnvioInternacionalInput
         public string $actaId,
         public string $curadorId,
         public string $documentoRuta,
+        public ?string $documentoSha256 = null,
     ) {}
 }

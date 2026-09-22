@@ -30,6 +30,7 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
                 'nombre_original' => $imagen->archivo()->nombreOriginal,
                 'ruta' => $imagen->archivo()->ruta,
                 'disco' => $imagen->archivo()->disco,
+                'sha256' => $imagen->archivo()->sha256,
                 'autor_nombre' => $imagen->autor()->nombre,
                 'autor_apellido' => $imagen->autor()->apellido,
                 'autor_nombre_completo' => $imagen->nombreAutor(),
@@ -43,6 +44,11 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
         $model = ImagenTaxonomicaEloquentModel::query()->find($id->toString());
 
         return $model === null ? null : $this->reconstituir($model);
+    }
+
+    public function rutaEstaReferenciada(string $ruta): bool
+    {
+        return ImagenTaxonomicaEloquentModel::query()->where('ruta', $ruta)->exists();
     }
 
     /** @return list<ImagenTaxonomica> */
@@ -116,7 +122,7 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
         return ImagenTaxonomica::reconstituir(
             id: ImagenTaxonomicaId::fromString($model->id),
             occurrenceID: $model->occurrence_id,
-            archivo: ArchivoImagen::crear($model->nombre_original, $model->ruta, $model->disco),
+            archivo: ArchivoImagen::crear($model->nombre_original, $model->ruta, $model->disco, $model->sha256),
             autor: AutorImagen::crear($model->autor_nombre, $model->autor_apellido),
             marcaAguaAplicada: (bool) $model->marca_agua_aplicada,
             subidaEn: new DateTimeImmutable((string) $model->created_at),

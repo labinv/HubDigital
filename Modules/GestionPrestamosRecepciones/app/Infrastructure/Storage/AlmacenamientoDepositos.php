@@ -34,6 +34,12 @@ final class AlmacenamientoDepositos
 
     public function guardarArchivo(UploadedFile $archivo, string $directorio): string
     {
+        return $this->guardarArchivoConHuella($archivo, $directorio)['ruta'];
+    }
+
+    /** @return array{ruta: string, sha256: string} */
+    public function guardarArchivoConHuella(UploadedFile $archivo, string $directorio): array
+    {
         $extension = strtolower($archivo->getClientOriginalExtension());
         $nombre = Str::uuid().($extension !== '' ? '.'.$extension : '');
         $ruta = trim($directorio, '/').'/'.$nombre;
@@ -42,9 +48,9 @@ final class AlmacenamientoDepositos
             throw new \RuntimeException('No se pudo leer el archivo cargado.');
         }
         $this->asegurarContenidoPdf($contenido);
-        $this->guardarContenido($ruta, $contenido, $archivo->getMimeType() ?: 'application/octet-stream');
+        $sha256 = $this->guardarContenido($ruta, $contenido, $archivo->getMimeType() ?: 'application/octet-stream');
 
-        return $ruta;
+        return ['ruta' => $ruta, 'sha256' => $sha256];
     }
 
     public function guardarSubidoComo(UploadedFile $archivo, string $ruta): string
@@ -59,31 +65,48 @@ final class AlmacenamientoDepositos
         return $ruta;
     }
 
-    public function guardarContenido(string $ruta, string $contenido, string $mime = 'application/octet-stream'): void
+    public function guardarContenido(string $ruta, string $contenido, string $mime = 'application/octet-stream'): string
     {
         $ruta = $this->normalizarRuta($ruta);
         $maximo = (int) config('deposit-storage.max_object_bytes', 25 * 1024 * 1024);
         if (strlen($contenido) > $maximo) {
             throw new \RuntimeException("El objeto excede el limite interno de {$maximo} bytes.");
         }
+        $sha256 = hash('sha256', $contenido);
         if ($this->driver() === 'r2') {
             $rutaR2 = $this->rutaR2($ruta);
             $this->clienteR2()->put($rutaR2, $contenido, $mime);
             if ((bool) config('deposit-storage.verify_after_write', true)) {
-                $cabecera = $this->clienteR2()->head($rutaR2);
-                if ($cabecera['content_length'] !== null && $cabecera['content_length'] !== strlen($contenido)) {
-                    $this->clienteR2()->delete($rutaR2);
-                    throw new \RuntimeException('R2 no confirmo el tamano integro del objeto guardado.');
+                try {
+                    $cabecera = $this->clienteR2()->head($rutaR2);
+                    if ($cabecera['content_length'] !== null && $cabecera['content_length'] !== strlen($contenido)) {
+                        throw new \RuntimeException('R2 no confirmo el tamano integro del objeto guardado.');
+                    }
+
+                    $contenidoPersistido = $this->clienteR2()->get($rutaR2);
+                    if (! hash_equals($sha256, hash('sha256', $contenidoPersistido))) {
+                        throw new \RuntimeException('R2 no confirmo la integridad SHA-256 del objeto guardado.');
+                    }
+                } catch (\Throwable $e) {
+                    try {
+                        $this->clienteR2()->delete($rutaR2);
+                    } catch (\Throwable $cleanupError) {
+                        report($cleanupError);
+                    }
+
+                    throw $e;
                 }
             }
 
-            return;
+            return $sha256;
         }
 
         $guardado = Storage::disk($this->discoLocal())->put($ruta, $contenido);
         if ($guardado !== true) {
             throw new \RuntimeException('No se pudo guardar el documento en el disco privado local.');
         }
+
+        return $sha256;
     }
 
     private function asegurarContenidoPdf(string $contenido): void
@@ -132,6 +155,25 @@ final class AlmacenamientoDepositos
         throw new \RuntimeException('El documento solicitado no existe en el almacenamiento privado.');
     }
 
+    /**
+     * Obtiene un objeto y, cuando PostgreSQL conserva su huella, rechaza cualquier
+     * contenido alterado antes de entregarlo al consumidor.
+     */
+    public function obtenerVerificado(string $ruta, ?string $sha256Esperado): string
+    {
+        $contenido = $this->obtener($ruta);
+        $esperado = strtolower(trim((string) $sha256Esperado));
+
+        if ($esperado === '') {
+            throw new \RuntimeException('PostgreSQL no contiene una huella SHA-256 certificada para este objeto.');
+        }
+        if (! hash_equals($esperado, hash('sha256', $contenido))) {
+            throw new \RuntimeException('La integridad SHA-256 del objeto almacenado no coincide con PostgreSQL.');
+        }
+
+        return $contenido;
+    }
+
     /** @return resource */
     public function readStream(string $ruta)
     {
@@ -171,6 +213,18 @@ final class AlmacenamientoDepositos
         }
         Storage::disk($this->discoLocal())->delete($ruta);
         Storage::disk($this->discoPublicoLegado())->delete($ruta);
+    }
+
+    /** @param list<string> $rutas */
+    public function eliminarCandidatosSinOcultarError(array $rutas): void
+    {
+        foreach (array_reverse(array_values(array_unique($rutas))) as $ruta) {
+            try {
+                $this->eliminar($ruta);
+            } catch (\Throwable $cleanupError) {
+                report($cleanupError);
+            }
+        }
     }
 
     public function mimeType(string $ruta): string

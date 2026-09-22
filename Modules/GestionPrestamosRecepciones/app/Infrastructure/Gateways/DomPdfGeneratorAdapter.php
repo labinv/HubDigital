@@ -52,9 +52,11 @@ final class DomPdfGeneratorAdapter implements PdfGeneratorPort
      */
     public function generarActaYAlmacenar(array $datos, string $rutaDestino): string
     {
-        $this->almacenamiento->guardarContenido($rutaDestino, $this->generarActa($datos), 'application/pdf');
-
-        return $rutaDestino;
+        return $this->almacenamiento->guardarContenido(
+            $rutaDestino,
+            $this->generarActa($datos),
+            'application/pdf',
+        );
     }
 
     /**
@@ -70,13 +72,20 @@ final class DomPdfGeneratorAdapter implements PdfGeneratorPort
     /**
      * Lee una imagen PNG almacenada y la devuelve como data-URI base64.
      */
-    public function leerImagenBase64(string $ruta): ?string
+    public function leerImagenBase64(string $ruta, ?string $sha256Esperado = null): ?string
     {
         if (! $this->almacenamiento->existe($ruta)) {
             return null;
         }
 
-        return 'data:image/png;base64,'.base64_encode($this->almacenamiento->obtener($ruta));
+        return 'data:image/png;base64,'.base64_encode(
+            $this->almacenamiento->obtenerVerificado($ruta, $sha256Esperado),
+        );
+    }
+
+    public function eliminar(string $ruta): void
+    {
+        $this->almacenamiento->eliminar($ruta);
     }
 
     /**

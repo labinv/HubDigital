@@ -278,12 +278,14 @@ $nombre = "$identificadorPaquete.tar.gz"
 $nombreScriptTransferencia = "$identificadorPaquete-cloudshell-vm.sh"
 $nombreKitCloudShell = "$identificadorPaquete-cloudshell-upload.tar.gz"
 $nombreInstruccionesCloudShell = "$identificadorPaquete-INSTRUCCIONES-CLOUD-SHELL.txt"
+$nombreEntornoOci = "$identificadorPaquete-hubdigital.env"
 $paquete = Join-Path $directorioPaquete $nombre
 $suma = "$paquete.sha256"
 $scriptTransferencia = Join-Path $directorioPaquete $nombreScriptTransferencia
 $kitCloudShell = Join-Path $directorioPaquete $nombreKitCloudShell
 $instruccionesCloudShell = Join-Path $directorioPaquete $nombreInstruccionesCloudShell
-foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell, $instruccionesCloudShell)) {
+$entornoOci = Join-Path $directorioPaquete $nombreEntornoOci
+foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell, $instruccionesCloudShell, $entornoOci)) {
     if (Test-Path -LiteralPath $salida) { throw "Ya existe un archivo de salida: $salida" }
 }
 
@@ -334,12 +336,96 @@ try {
         throw "El paquete no contiene archivos runtime obligatorios: $($faltantesPaquete -join ', ')"
     }
 
+    $archivoEntornoLocal = Join-Path $Proyecto '.env'
+    if (-not (Test-Path -LiteralPath $archivoEntornoLocal -PathType Leaf)) {
+        throw 'Falta el .env local requerido para generar el entorno OCI completo.'
+    }
+    $valoresEntorno = @{}
+    foreach ($linea in Get-Content -LiteralPath $archivoEntornoLocal) {
+        if ($linea -match '^([^#=]+)=(.*)$') {
+            $valoresEntorno[$matches[1].Trim()] = $matches[2].Trim()
+        }
+    }
+    $clavesOciRequeridas = @(
+        'APP_KEY', 'DEPOSIT_STORAGE_DRIVER', 'DEPOSIT_STORAGE_REQUIRE_REMOTE',
+        'DEPOSIT_STORAGE_VERIFY_AFTER_WRITE', 'DEPOSIT_STORAGE_MAX_OBJECT_BYTES',
+        'R2_ACCOUNT_ID', 'R2_BUCKET', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY',
+        'R2_ENDPOINT', 'TURNSTILE_ENABLED', 'TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET',
+        'TURNSTILE_EXPECTED_HOSTNAME'
+    )
+    foreach ($clave in $clavesOciRequeridas) {
+        if ([string]::IsNullOrWhiteSpace($valoresEntorno[$clave])) {
+            throw "El .env local no tiene un valor para $clave; no se genero un kit incompleto."
+        }
+    }
+    if ($valoresEntorno['DEPOSIT_STORAGE_DRIVER'] -ne 'r2' -or
+        $valoresEntorno['DEPOSIT_STORAGE_REQUIRE_REMOTE'] -ne 'true' -or
+        $valoresEntorno['DEPOSIT_STORAGE_VERIFY_AFTER_WRITE'] -ne 'true') {
+        throw 'OCI exige R2 remoto y verificacion posterior a escritura.'
+    }
+    $endpointEsperado = "https://$($valoresEntorno['R2_ACCOUNT_ID']).r2.cloudflarestorage.com"
+    if ($valoresEntorno['R2_ENDPOINT'].TrimEnd('/') -ne $endpointEsperado) {
+        throw "R2_ENDPOINT no corresponde a R2_ACCOUNT_ID: se esperaba $endpointEsperado"
+    }
+    if ($valoresEntorno['TURNSTILE_EXPECTED_HOSTNAME'] -ne 'dev.labinvepn.org') {
+        throw 'TURNSTILE_EXPECTED_HOSTNAME debe ser dev.labinvepn.org para OCI.'
+    }
+    $bytesPassword = [byte[]]::new(36)
+    [Security.Cryptography.RandomNumberGenerator]::Fill($bytesPassword)
+    $passwordPostgres = [Convert]::ToBase64String($bytesPassword).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+
+    $vapidPublica = $valoresEntorno['VAPID_PUBLIC_KEY']
+    $vapidPrivada = $valoresEntorno['VAPID_PRIVATE_KEY']
+    if ([string]::IsNullOrWhiteSpace($vapidPublica) -or [string]::IsNullOrWhiteSpace($vapidPrivada)) {
+        $ecdsa = [Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve]::NamedCurves.nistP256)
+        try {
+            $parametros = $ecdsa.ExportParameters($true)
+            $publicaBytes = [byte[]]::new(65)
+            $publicaBytes[0] = 4
+            [Array]::Copy($parametros.Q.X, 0, $publicaBytes, 1, 32)
+            [Array]::Copy($parametros.Q.Y, 0, $publicaBytes, 33, 32)
+            $vapidPublica = [Convert]::ToBase64String($publicaBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+            $vapidPrivada = [Convert]::ToBase64String($parametros.D).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+        }
+        finally {
+            $ecdsa.Dispose()
+        }
+    }
+
+    $plantillaEntorno = Join-Path $Proyecto 'deploy\oracle\env\hubdigital.env.example'
+    $contenidoEntornoOci = [IO.File]::ReadAllText($plantillaEntorno)
+    $reemplazosEntorno = [ordered]@{
+        '<APP_KEY_ORIGINAL>' = $valoresEntorno['APP_KEY']
+        '<POSTGRES_PASSWORD>' = $passwordPostgres
+        '<R2_ACCOUNT_ID>' = $valoresEntorno['R2_ACCOUNT_ID']
+        '<R2_BUCKET>' = $valoresEntorno['R2_BUCKET']
+        '<R2_ACCESS_KEY_ID>' = $valoresEntorno['R2_ACCESS_KEY_ID']
+        '<R2_SECRET_ACCESS_KEY>' = $valoresEntorno['R2_SECRET_ACCESS_KEY']
+        '<NSS_DIR_CON_RAICES_AUTORIZADAS>' = 'sql:/etc/hubdigital/nssdb'
+        '<VAPID_PUBLIC_KEY>' = $vapidPublica
+        '<VAPID_PRIVATE_KEY>' = $vapidPrivada
+        '<turnstile-site-key>' = $valoresEntorno['TURNSTILE_SITE_KEY']
+        '<turnstile-secret>' = $valoresEntorno['TURNSTILE_SECRET']
+    }
+    foreach ($marcador in $reemplazosEntorno.Keys) {
+        $contenidoEntornoOci = $contenidoEntornoOci.Replace($marcador, $reemplazosEntorno[$marcador])
+    }
+    if ($contenidoEntornoOci -match '<[^>]+>') {
+        throw "El entorno OCI conserva un marcador sin resolver: $($matches[0])"
+    }
+    [IO.File]::WriteAllText(
+        $entornoOci,
+        ($contenidoEntornoOci.TrimEnd() + "`n"),
+        [Text.UTF8Encoding]::new($false)
+    )
+
     $contenidoScript = @'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
 package_name='__PACKAGE__'
 checksum_name='__CHECKSUM__'
+environment_name='__ENVIRONMENT__'
 kit_name="${package_name%.tar.gz}-cloudshell-upload.tar.gz"
 vm_host="${VM_HOST:-129.153.23.57}"
 vm_user="${VM_USER:-ubuntu}"
@@ -356,12 +442,33 @@ fail() {
 verify_transfer() {
     [[ -f "${base_dir}/${package_name}" ]] || fail "Falta ${base_dir}/${package_name}"
     [[ -f "${base_dir}/${checksum_name}" ]] || fail "Falta ${base_dir}/${checksum_name}"
+    [[ -f "${base_dir}/${environment_name}" ]] || fail "Falta ${base_dir}/${environment_name}"
     (cd "${base_dir}" && sha256sum -c "${checksum_name}")
+}
+
+install_environment() {
+    local source="${base_dir}/${environment_name}"
+    local target='/etc/hubdigital/hubdigital.env'
+    local required=(
+        APP_KEY APP_ENV APP_URL DB_CONNECTION DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD
+        DEPOSIT_STORAGE_DRIVER R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT
+        TURNSTILE_ENABLED TURNSTILE_SITE_KEY TURNSTILE_SECRET TURNSTILE_EXPECTED_HOSTNAME
+        VAPID_SUBJECT VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY
+    )
+    grep -Eq '<[^>]+>' "${source}" && fail "${environment_name} conserva marcadores sin resolver."
+    for key in "${required[@]}"; do
+        grep -Eq "^${key}=.+$" "${source}" || fail "Falta ${key} en ${environment_name}."
+    done
+    sudo install -o root -g www-data -m 0600 "${source}" "${target}"
+    sudo /srv/hubdigital/current/deploy/oracle/scripts/configure-postgres.sh
+    sudo rm -f -- "${source}"
+    printf 'Entorno OCI completo instalado automaticamente en %s.\n' "${target}"
 }
 
 if [[ -f "${stage_script}" ]]; then
     printf 'Entorno detectado: VM OCI.\n'
     verify_transfer
+    install_environment
     stage_log="/tmp/${package_name%.tar.gz}-stage.log"
     sudo "${stage_script}" "${base_dir}/${package_name}" | tee "${stage_log}"
 
@@ -373,7 +480,7 @@ if [[ -f "${stage_script}" ]]; then
     [[ "${staging}" =~ ^/srv/hubdigital/staging/[0-9a-f]{16}$ ]] || fail 'El staging no devolvio una ruta valida.'
     release_id="${checksum:0:16}"
 
-    rm -f -- "${base_dir}/${package_name}" "${base_dir}/${checksum_name}" "${self_path}"
+    rm -f -- "${base_dir}/${package_name}" "${base_dir}/${checksum_name}" "${base_dir}/${environment_name}" "${self_path}"
     printf '\nCandidato preparado correctamente.\n'
     printf 'Archivos temporales enviados a /tmp eliminados.\n'
     printf 'Registro conservado: %s\n' "${stage_log}"
@@ -403,6 +510,7 @@ chmod 600 "${key_path}"
 scp -i "${key_path}" \
     "${base_dir}/${package_name}" \
     "${base_dir}/${checksum_name}" \
+    "${base_dir}/${environment_name}" \
     "${self_path}" \
     "${vm_user}@${vm_host}:/tmp/"
 
@@ -411,6 +519,7 @@ cleanup_failed=0
 for transferred_file in \
     "${base_dir}/${package_name}" \
     "${base_dir}/${checksum_name}" \
+    "${base_dir}/${environment_name}" \
     "${self_path}" \
     "${HOME}/${kit_name}"; do
     if [[ -e "${transferred_file}" ]] && ! rm -f -- "${transferred_file}"; then
@@ -419,7 +528,7 @@ for transferred_file in \
     fi
 done
 if [[ "${cleanup_failed}" -eq 0 ]]; then
-    printf 'Limpieza Cloud Shell: OK. Paquete, checksum, script y kit eliminados.\n'
+    printf 'Limpieza Cloud Shell: OK. Paquete, entorno, checksum, script y kit eliminados.\n'
     printf 'Clave SSH conservada: %s\n' "${key_path}"
 else
     printf 'Limpieza Cloud Shell: NO OK. Revise las advertencias anteriores.\n' >&2
@@ -428,27 +537,29 @@ printf 'Conectate con:\nssh -i %q %q\n' "${key_path}" "${vm_user}@${vm_host}"
 printf '\nDentro de la VM verifica y ejecuta:\n'
 printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "${self_path}")"
 '@
-    $contenidoScript = $contenidoScript.Replace('__PACKAGE__', $nombre).Replace('__CHECKSUM__', [IO.Path]::GetFileName($suma))
+    $contenidoScript = $contenidoScript.Replace('__PACKAGE__', $nombre).Replace('__CHECKSUM__', [IO.Path]::GetFileName($suma)).Replace('__ENVIRONMENT__', $nombreEntornoOci)
     [IO.File]::WriteAllText($scriptTransferencia, ($contenidoScript.TrimStart() + "`n"), [Text.UTF8Encoding]::new($false))
 
     $hash = (Get-FileHash -LiteralPath $paquete -Algorithm SHA256).Hash.ToLowerInvariant()
     $hashScript = (Get-FileHash -LiteralPath $scriptTransferencia -Algorithm SHA256).Hash.ToLowerInvariant()
-    $contenidoChecksum = "$hash  $nombre`n$hashScript  $nombreScriptTransferencia`n"
+    $hashEntorno = (Get-FileHash -LiteralPath $entornoOci -Algorithm SHA256).Hash.ToLowerInvariant()
+    $contenidoChecksum = "$hash  $nombre`n$hashScript  $nombreScriptTransferencia`n$hashEntorno  $nombreEntornoOci`n"
     [IO.File]::WriteAllText($suma, $contenidoChecksum, [Text.UTF8Encoding]::new($false))
 
     Invoke-Comando -Programa 'tar.exe' -Argumentos @(
         '-czf', $kitCloudShell, '-C', $directorioPaquete,
-        $nombre, [IO.Path]::GetFileName($suma), $nombreScriptTransferencia
+        $nombre, [IO.Path]::GetFileName($suma), $nombreScriptTransferencia, $nombreEntornoOci
     ) -Descripcion 'Agrupando el kit de subida unica para Cloud Shell'
     $contenidoKit = @(& tar.exe -tzf $kitCloudShell)
     if ($LASTEXITCODE -ne 0) { throw 'No se pudo volver a leer el kit de Cloud Shell.' }
-    $esperadoKit = @($nombre, [IO.Path]::GetFileName($suma), $nombreScriptTransferencia) | Sort-Object
+    $esperadoKit = @($nombre, [IO.Path]::GetFileName($suma), $nombreScriptTransferencia, $nombreEntornoOci) | Sort-Object
     $contenidoKitOrdenado = @($contenidoKit | Sort-Object)
     if (($contenidoKitOrdenado -join "`n") -ne ($esperadoKit -join "`n")) {
         Remove-Item -LiteralPath $kitCloudShell -Force
-        throw "El kit de Cloud Shell no contiene exactamente los tres archivos esperados: $($contenidoKit -join ', ')"
+        throw "El kit de Cloud Shell no contiene exactamente los cuatro archivos esperados: $($contenidoKit -join ', ')"
     }
     $hashKit = (Get-FileHash -LiteralPath $kitCloudShell -Algorithm SHA256).Hash.ToLowerInvariant()
+    Remove-Item -LiteralPath $entornoOci -Force
 
     $contenidoInstruccionesCloudShell = @"
 MANUAL COMPLETO DE DESPLIEGUE OCI - HUBDIGITAL
@@ -472,7 +583,9 @@ ARCHIVOS GENERADOS EN WINDOWS
 La carpeta de este paquete contiene cinco archivos:
 
 1. $nombreKitCloudShell
-   Es el unico archivo que debe subir manualmente a Cloud Shell.
+   Es el unico archivo que debe subir manualmente a Cloud Shell. Contiene el
+   entorno OCI completo cifrado durante el transporte SSH, pero no debe
+   compartirse ni conservarse despues del despliegue.
 2. $nombre
    Es el paquete fuente de produccion.
 3. $([IO.Path]::GetFileName($suma))
@@ -502,7 +615,8 @@ En OCI Cloud Shell use Menu > Upload y seleccione solamente:
 
 $nombreKitCloudShell
 
-No suba por separado el paquete, checksum ni script: ya estan dentro del kit.
+No suba por separado el paquete, checksum, entorno ni script: ya estan dentro
+del kit.
 
 PASO 2 - EXTRAER Y EJECUTAR EN CLOUD SHELL
 -------------------------------------------
@@ -516,10 +630,10 @@ cd ~/hubdigital-upload
 bash ./$nombreScriptTransferencia
 
 El script realiza estas acciones:
-- Comprueba los checksums del paquete y del propio script.
+- Comprueba los checksums del paquete, entorno y del propio script.
 - Aplica permisos 600 a la clave SSH.
-- Copia paquete, checksum y script a /tmp de la VM mediante scp.
-- Si scp termina correctamente, elimina de Cloud Shell el kit y los tres
+- Copia paquete, checksum, entorno y script a /tmp de la VM mediante scp.
+- Si scp termina correctamente, elimina de Cloud Shell el kit y los cuatro
   archivos extraidos. No elimina la clave SSH.
 - Muestra "Limpieza Cloud Shell: OK" o explica que archivo no pudo eliminar.
 
@@ -546,11 +660,14 @@ bash ./$nombreScriptTransferencia
 
 Que hace este paso:
 - Vuelve a verificar SHA-256 dentro de la VM.
+- Instala automaticamente el entorno completo como
+  /etc/hubdigital/hubdigital.env con permisos 0600.
+- Configura el rol y la base PostgreSQL con los valores de ese entorno.
 - Extrae y construye un candidato Linux en /srv/hubdigital/staging.
 - Comprueba PHP, extensiones, Composer y archivos runtime obligatorios.
 - Verifica especificamente los recursos de Livewire Flux.
 - No cambia current, no activa servicios y no aplica migraciones.
-- Elimina de /tmp los tres archivos transferidos solo si el staging termina
+- Elimina de /tmp los cuatro archivos transferidos solo si el staging termina
   correctamente.
 
 Los mensajes "Deprecated" de Composer son advertencias. El exito real se
@@ -622,7 +739,7 @@ LIMPIEZA Y CONSERVACION
 -----------------------
 - Cloud Shell elimina automaticamente los archivos del despliegue despues de
   transferirlos; conserva la clave SSH.
-- La VM elimina paquete, checksum y script de /tmp despues de un staging
+- La VM elimina paquete, entorno, checksum y script de /tmp despues de un staging
   correcto.
 - Despues de una activacion exitosa, la VM conserva automaticamente current y
   la release activada valida inmediatamente anterior. Elimina otras releases,

@@ -20,6 +20,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalme
 use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalmente\FirmarActaDigitalmenteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaInput;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /**
@@ -90,8 +91,8 @@ final class DetalleActa extends Component
         SubirActaFirmadaHandler $handler,
         ConsultarDetalleActaHandler $detalleHandler,
         AlmacenamientoDepositos $almacenamiento,
-    ): void
-    {
+        ActaPrestamoRepositoryInterface $actas,
+    ): void {
         $acta = $detalleHandler->handle(new ConsultarDetalleActaInput(actaId: $this->actaId));
 
         // Si el curador devolvió solo el acta, la identidad sigue válida y no se recarga.
@@ -103,17 +104,35 @@ final class DetalleActa extends Component
         }
         $this->validate($reglas);
 
-        $rutaActa = $almacenamiento->guardarArchivo($this->pdfFirmado, 'actas-firmadas');
-        $rutaIdentidad = $necesitaIdentidad
-            ? $almacenamiento->guardarArchivo($this->documentoIdentidad, 'documentos-identidad')
-            : null;
+        $candidatos = [];
+        try {
+            $archivoActa = $almacenamiento->guardarArchivoConHuella($this->pdfFirmado, 'actas-firmadas');
+            $rutaActa = $archivoActa['ruta'];
+            $candidatos[] = $rutaActa;
+            $archivoIdentidad = $necesitaIdentidad
+                ? $almacenamiento->guardarArchivoConHuella($this->documentoIdentidad, 'documentos-identidad')
+                : null;
+            $rutaIdentidad = $archivoIdentidad['ruta'] ?? null;
+            if ($rutaIdentidad !== null) {
+                $candidatos[] = $rutaIdentidad;
+            }
 
-        $handler->handle(new SubirActaFirmadaInput(
-            solicitudId: $this->solicitudPrestamoId,
-            investigadorId: (string) auth()->id(),
-            pdfFirmadoRuta: $rutaActa,
-            documentoIdentidadRuta: $rutaIdentidad,
-        ));
+            $handler->handle(new SubirActaFirmadaInput(
+                solicitudId: $this->solicitudPrestamoId,
+                investigadorId: (string) auth()->id(),
+                pdfFirmadoRuta: $rutaActa,
+                documentoIdentidadRuta: $rutaIdentidad,
+                pdfFirmadoSha256: $archivoActa['sha256'],
+                documentoIdentidadSha256: $archivoIdentidad['sha256'] ?? null,
+            ));
+        } catch (\Throwable $e) {
+            $almacenamiento->eliminarCandidatosSinOcultarError(array_values(array_filter(
+                $candidatos,
+                static fn (string $ruta): bool => ! $actas->rutaEstaReferenciada($ruta),
+            )));
+
+            throw $e;
+        }
 
         $this->showUploadModal = false;
         $this->pdfFirmado = null;
@@ -180,19 +199,28 @@ final class DetalleActa extends Component
     public function subirDocumentoIdentidad(
         CompletarFirmaDigitalConIdentidadHandler $handler,
         AlmacenamientoDepositos $almacenamiento,
-    ): void
-    {
+        ActaPrestamoRepositoryInterface $actas,
+    ): void {
         $this->validate([
             'documentoIdentidadSolo' => 'required|file|mimes:pdf|max:10240',
         ]);
 
-        $rutaIdentidad = $almacenamiento->guardarArchivo($this->documentoIdentidadSolo, 'documentos-identidad');
+        $archivoIdentidad = $almacenamiento->guardarArchivoConHuella($this->documentoIdentidadSolo, 'documentos-identidad');
+        $rutaIdentidad = $archivoIdentidad['ruta'];
+        try {
+            $handler->handle(new CompletarFirmaDigitalConIdentidadInput(
+                actaId: $this->actaId,
+                investigadorId: (string) auth()->id(),
+                documentoIdentidadRuta: $rutaIdentidad,
+                documentoIdentidadSha256: $archivoIdentidad['sha256'],
+            ));
+        } catch (\Throwable $e) {
+            if (! $actas->rutaEstaReferenciada($rutaIdentidad)) {
+                $almacenamiento->eliminarCandidatosSinOcultarError([$rutaIdentidad]);
+            }
 
-        $handler->handle(new CompletarFirmaDigitalConIdentidadInput(
-            actaId: $this->actaId,
-            investigadorId: (string) auth()->id(),
-            documentoIdentidadRuta: $rutaIdentidad,
-        ));
+            throw $e;
+        }
 
         $this->showIdentidadModal = false;
         $this->documentoIdentidadSolo = null;

@@ -42,7 +42,9 @@ interface PdfGeneratorPort
      * (p. ej. para re-incrustar la firma canvas del investigador en la plantilla).
      *
      * @param  string  $ruta  Ruta relativa de la imagen.
-     * @return string|null  data-URI `data:image/png;base64,...` o null si no existe.
+     * @return string|null data-URI `data:image/png;base64,...` o null si no existe.
      */
-    public function leerImagenBase64(string $ruta): ?string;
+    public function leerImagenBase64(string $ruta, ?string $sha256Esperado = null): ?string;
+
+    public function eliminar(string $ruta): void;
 }

@@ -40,6 +40,17 @@ final class InMemoryImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
         return $almacenada === null ? null : $this->copiar($almacenada);
     }
 
+    public function rutaEstaReferenciada(string $ruta): bool
+    {
+        foreach ($this->imagenes as $imagen) {
+            if ($imagen->archivo()->ruta === $ruta) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** @return list<ImagenTaxonomica> */
     public function listarPorSubarbol(RangoTaxonomico $nivel, string $valorTaxon): array
     {

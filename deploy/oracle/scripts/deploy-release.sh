@@ -38,7 +38,7 @@ validation_queue="$(read_env HUBDIGITAL_VALIDATION_QUEUE)"
     echo 'HUBDIGITAL_VALIDATION_QUEUE debe ser una cola dedicada valida distinta de default.' >&2
     exit 65
 }
-for key in APP_KEY DB_DATABASE DB_USERNAME DB_PASSWORD R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do require_value "${key}"; done
+for key in APP_KEY DB_DATABASE DB_USERNAME DB_PASSWORD R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY TURNSTILE_SITE_KEY TURNSTILE_SECRET; do require_value "${key}"; done
 
 release_id="${actual_sha:0:16}"
 release_dir="/srv/hubdigital/releases/${release_id}"

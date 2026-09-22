@@ -19,11 +19,14 @@ new #[Title('Configuración de perfil')] class extends Component {
     public string $cargo = '';
     public string $institucion = '';
 
+    public bool $modalMode = false;
+
     /**
      * Mount the component.
      */
-    public function mount(): void
+    public function mount(bool $modalMode = false): void
     {
+        $this->modalMode = $modalMode;
         $this->first_name = Auth::user()->first_name;
         $this->last_name = Auth::user()->last_name;
         $this->email = Auth::user()->email;
@@ -117,6 +120,11 @@ new #[Title('Configuración de perfil')] class extends Component {
     }
 }; ?>
 
+@if ($modalMode)
+    <section class="w-full">
+        @include('pages.settings.partials.profile-form')
+    </section>
+@else
 <section class="w-full">
     @include('partials.settings-heading')
 
@@ -176,3 +184,4 @@ new #[Title('Configuración de perfil')] class extends Component {
         @endif
     </x-pages::settings.layout>
 </section>
+@endif

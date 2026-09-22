@@ -21,8 +21,8 @@ final class StorageImagenesAdapter implements AlmacenamientoImagenesPort
 
     public function guardar(string $contenido, string $nombreDeseado): ArchivoImagen
     {
-        $nombreFinal = $this->resolverColision($this->sanitizar($nombreDeseado));
-        $ruta = self::CARPETA.'/'.$nombreFinal;
+        $nombreOriginal = $this->sanitizar($nombreDeseado);
+        $ruta = self::CARPETA.'/'.Str::uuid().'-'.$nombreOriginal;
 
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($contenido) ?: 'application/octet-stream';
         if (! str_starts_with($mime, 'image/')) {
@@ -31,31 +31,11 @@ final class StorageImagenesAdapter implements AlmacenamientoImagenesPort
         $this->almacenamiento->guardarContenido($ruta, $contenido, $mime);
 
         return ArchivoImagen::crear(
-            nombreOriginal: $nombreFinal,
+            nombreOriginal: $nombreOriginal,
             ruta: $ruta,
             disco: self::DISCO,
+            sha256: hash('sha256', $contenido),
         );
-    }
-
-    private function resolverColision(string $nombre): string
-    {
-        $ruta = self::CARPETA.'/'.$nombre;
-
-        if (! $this->almacenamiento->existe($ruta)) {
-            return $nombre;
-        }
-
-        $info = pathinfo($nombre);
-        $base = $info['filename'];
-        $ext = isset($info['extension']) ? '.'.$info['extension'] : '';
-        $n = 2;
-
-        do {
-            $candidato = $base.'_'.$n.$ext;
-            $n++;
-        } while ($this->almacenamiento->existe(self::CARPETA.'/'.$candidato));
-
-        return $candidato;
     }
 
     public function eliminar(ArchivoImagen $archivo): void

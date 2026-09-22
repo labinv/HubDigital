@@ -107,6 +107,10 @@ final class ConsultarActaDocumentoHandler
             propositoPrestamo: $solicitud?->propositoPrestamo(),
             patente: $patente,
             items: $items,
+            pdfFirmadoRuta: $acta->pdfFirmadoRuta(),
+            pdfFirmadoSha256: $acta->pdfFirmadoSha256(),
+            pdfFirmadoCuradorRuta: $acta->pdfFirmadoCuradorRuta(),
+            pdfFirmadoCuradorSha256: $acta->pdfFirmadoCuradorSha256(),
         );
     }
 }

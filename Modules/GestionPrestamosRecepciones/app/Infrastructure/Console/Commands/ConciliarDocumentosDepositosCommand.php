@@ -11,10 +11,23 @@ use Throwable;
 
 final class ConciliarDocumentosDepositosCommand extends Command
 {
+    /** @var list<string> */
+    private const PREFIJOS_DOCUMENTALES = [
+        'depositos/',
+        'actas/',
+        'actas-firmadas/',
+        'actas-firmadas-curador/',
+        'documentos-identidad/',
+        'prestamos/exportaciones/',
+        'divulgacion/imagenes/',
+        'firmas-investigador/',
+        'firmas-curador/',
+    ];
+
     protected $signature = 'depositos:conciliar-documentos
         {--expediente= : Numero exacto de expediente}
         {--lote= : Codigo QR exacto de lote}
-        {--prefijo= : Prefijo acotado bajo depositos/ para detectar huerfanos}
+        {--prefijo=* : Prefijo documental permitido; repetible. Sin filtros recorre todos}
         {--tamano-lote=100 : Filas procesadas por lote}
         {--tamano-pagina-objetos=1000 : Objetos por pagina de inventario (1-1000)}
         {--salida= : Archivo JSON de salida}';
@@ -41,7 +54,9 @@ final class ConciliarDocumentosDepositosCommand extends Command
                     $cabecera = $almacenamiento->inspeccionar($ruta);
                     $tamano = $cabecera['content_length'];
                     $sha = $almacenamiento->sha256($ruta);
-                    if ($referencia['sha256_esperado'] !== null && ! hash_equals($referencia['sha256_esperado'], $sha)) {
+                    if ($referencia['sha256_esperado'] === null) {
+                        $estado = 'SIN_HUELLA_PERSISTIDA';
+                    } elseif (! hash_equals($referencia['sha256_esperado'], $sha)) {
                         $estado = 'ALTERADO';
                     } elseif ($referencia['version_esperada'] !== null && preg_match('/-v(\d+)(?:\.[^.]+)?$/', $ruta, $coincidencia) === 1 && (int) $coincidencia[1] !== $referencia['version_esperada']) {
                         $estado = 'VERSION_INCONSISTENTE';
@@ -56,12 +71,9 @@ final class ConciliarDocumentosDepositosCommand extends Command
         }
 
         $huerfanos = [];
-        $prefijo = $this->cadena('prefijo');
-        if ($prefijo !== null) {
+        $prefijos = $this->prefijos();
+        foreach ($prefijos as $prefijo) {
             try {
-                if (! str_starts_with(trim($prefijo, '/').'/', 'depositos/')) {
-                    throw new \InvalidArgumentException('La deteccion de huerfanos solo admite un prefijo acotado bajo depositos/.');
-                }
                 $cursor = null;
                 do {
                     $pagina = $almacenamiento->listar($prefijo, $cursor, max(1, min(1000, (int) $this->option('tamano-pagina-objetos'))));
@@ -74,17 +86,17 @@ final class ConciliarDocumentosDepositosCommand extends Command
                 } while ($pagina['truncado']);
             } catch (Throwable $e) {
                 $errorOperativo = true;
-                $huerfanos[] = ['estado' => 'NO_SE_PUDO_CONSULTAR', 'detalle' => $e->getMessage()];
+                $huerfanos[] = ['prefijo' => $prefijo, 'estado' => 'NO_SE_PUDO_CONSULTAR', 'detalle' => $e->getMessage()];
             }
         }
 
         $inconsistentes = count(array_filter($resultados, static fn (array $r): bool => $r['estado'] !== 'OK'));
         $salida = [
-            'version_formato' => 1,
+            'version_formato' => 2,
             'modo' => 'SOLO_LECTURA',
             'capturado_en' => now()->toIso8601String(),
             'driver' => $almacenamiento->driver(),
-            'filtros' => ['expediente' => $this->cadena('expediente'), 'lote' => $this->cadena('lote'), 'prefijo' => $prefijo],
+            'filtros' => ['expediente' => $this->cadena('expediente'), 'lote' => $this->cadena('lote'), 'prefijos' => $prefijos],
             'resumen' => ['referencias' => count($resultados), 'correctas' => count($resultados) - $inconsistentes, 'inconsistentes' => $inconsistentes, 'huerfanos' => count($huerfanos)],
             'resultados' => $resultados,
             'huerfanos' => $huerfanos,
@@ -104,6 +116,33 @@ final class ConciliarDocumentosDepositosCommand extends Command
         $valor = trim((string) $this->option($opcion));
 
         return $valor === '' ? null : $valor;
+    }
+
+    /** @return list<string> */
+    private function prefijos(): array
+    {
+        $solicitados = array_values(array_filter(array_map(
+            static fn (mixed $prefijo): string => trim((string) $prefijo, '/').'/',
+            (array) $this->option('prefijo'),
+        ), static fn (string $prefijo): bool => $prefijo !== '/'));
+
+        if ($solicitados === []) {
+            return ($this->cadena('expediente') !== null || $this->cadena('lote') !== null)
+                ? []
+                : self::PREFIJOS_DOCUMENTALES;
+        }
+
+        foreach ($solicitados as $prefijo) {
+            $permitido = array_any(
+                self::PREFIJOS_DOCUMENTALES,
+                static fn (string $raiz): bool => str_starts_with($prefijo, $raiz),
+            );
+            if (! $permitido || str_contains($prefijo, '..') || str_contains($prefijo, '\\')) {
+                throw new \InvalidArgumentException("El prefijo {$prefijo} no pertenece al catalogo documental permitido.");
+            }
+        }
+
+        return array_values(array_unique($solicitados));
     }
 
     private function escribir(?string $ruta, string $contenido): void

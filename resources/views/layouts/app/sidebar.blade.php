@@ -8,33 +8,8 @@
         <x-estado-conectividad />
         <flux:sidebar sticky collapsible="mobile" class="hub-app-sidebar border-e border-border bg-blue-navy">
 
-            {{-- Brand header --}}
-            <flux:sidebar.header class="px-4 pb-3 pt-4">
-                <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/20 bg-white/10 shadow-sm">
-                        <x-app-logo-icon class="size-6 fill-current text-white" />
-                    </span>
-                    <div class="flex flex-col leading-tight">
-                        <span class="font-display text-sm font-bold text-white">Hub Digital</span>
-                        <span class="text-[10px] font-medium uppercase tracking-[0.11em] text-white/60">Laboratorio de Invertebrados</span>
-                    </div>
-                </a>
-                <div class="ml-auto flex items-center text-white/80">
-                    <div class="hidden lg:block">
-                        <livewire:campana-notificaciones />
-                    </div>
-                    <flux:sidebar.collapse class="text-white/75 hover:text-white lg:hidden" />
-                </div>
-            </flux:sidebar.header>
-
-            @auth
-                <div class="hub-sidebar-identity border-y border-white/15 px-3 py-2.5">
-                    <x-desktop-user-menu context="sidebar" />
-                </div>
-            @endauth
-
             {{-- Navigation --}}
-            <flux:sidebar.nav class="hub-sidebar-navigation mt-0 min-h-0 flex-1 overflow-y-auto py-3">
+            <flux:sidebar.nav class="hub-sidebar-navigation mt-0 min-h-0 flex-1 overflow-y-auto pb-3 pt-4">
                 <flux:sidebar.group heading="Principal" class="grid">
                     <flux:sidebar.item
                         icon="home"
@@ -419,14 +394,16 @@
             </flux:sidebar.nav>
 
             <div class="hub-sidebar-utilities z-10 -mx-4 -mb-4 shrink-0 border-t border-white/15 bg-blue-navy pt-2" style="box-shadow: 0 16px 0 0 var(--color-blue-navy);">
+                <flux:modal.trigger name="account-settings">
                 <a
-                    href="{{ route('profile.edit') }}"
-                    wire:navigate
+                    href="#"
+                    x-on:click.prevent
                     class="hub-sidebar-utility mx-3 flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                     <flux:icon name="cog-6-tooth" class="size-5 shrink-0" />
                     <span>Configuración</span>
                 </a>
+                </flux:modal.trigger>
 
                 <form method="POST" action="{{ route('logout') }}" class="mt-2 border-t border-white/15">
                     @csrf
@@ -442,9 +419,9 @@
             </div>
         </flux:sidebar>
 
-        {{-- Mobile top bar --}}
-        <flux:header class="hub-mobile-header lg:hidden border-b border-blue-navy bg-blue-navy">
-            <flux:sidebar.toggle class="text-white/80 hover:text-white" icon="bars-2" inset="left" />
+        {{-- Barra superior: marca centrada; alertas y cuenta a la derecha. --}}
+        <flux:header class="hub-mobile-header border-b border-blue-navy bg-blue-navy">
+            <flux:sidebar.toggle class="text-white/80 hover:text-white lg:invisible" icon="bars-2" inset="left" />
 
             <div class="hub-mobile-brand flex items-center gap-2">
                 <span class="flex h-6 w-6 items-center justify-center rounded bg-white/20">
@@ -465,7 +442,7 @@
                         class="text-white hover:bg-white/10"
                     />
 
-                <flux:menu>
+                <flux:menu class="hub-account-menu min-w-[20rem] p-0!">
                     <flux:menu.radio.group>
                         <div class="p-0 text-sm font-normal">
                             <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
@@ -480,7 +457,7 @@
                                         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
                                         RolUsuario::CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
                                         RolUsuario::RECEPTOR => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
-                                        RolUsuario::ADMIN => ['bg-violet-100 text-violet-800', 'users'],
+                                        RolUsuario::ADMIN => ['bg-bio-green/10 text-bio-green', 'users'],
                                     };
                                 @endphp
                                 <div class="grid flex-1 text-start text-sm leading-tight">
@@ -497,12 +474,26 @@
 
                     <livewire:selector-rol-activo />
 
+                    <div class="border-y border-border px-3 py-3" x-data>
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary">Apariencia</p>
+                        <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Apariencia">
+                            @foreach ([['light', 'sun', 'Claro'], ['dark', 'moon', 'Oscuro'], ['system', 'computer-desktop', 'Sistema']] as [$value, $icon, $label])
+                                <button type="button" role="radio" x-on:click="$flux.appearance = '{{ $value }}'" x-bind:aria-checked="$flux.appearance === '{{ $value }}'" x-bind:data-selected="$flux.appearance === '{{ $value }}'" class="hub-appearance-choice">
+                                    <flux:icon :name="$icon" class="size-4" />
+                                    <span>{{ $label }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+
                     <flux:menu.separator />
 
                     <flux:menu.radio.group>
-                        <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
+                        <flux:modal.trigger name="account-settings">
+                        <flux:menu.item as="button" type="button" icon="cog" class="w-full cursor-pointer">
                             Configuración
                         </flux:menu.item>
+                        </flux:modal.trigger>
                     </flux:menu.radio.group>
 
                     <flux:menu.separator />
@@ -524,6 +515,10 @@
         </flux:header>
 
         {{ $slot }}
+
+        @auth
+            <x-account-settings-modal />
+        @endauth
 
         {{-- Domain exception toast --}}
         <div

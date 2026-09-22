@@ -10,5 +10,6 @@ final readonly class CompletarFirmaDigitalConIdentidadInput
         public string $actaId,
         public string $investigadorId,
         public string $documentoIdentidadRuta,
+        public ?string $documentoIdentidadSha256 = null,
     ) {}
 }

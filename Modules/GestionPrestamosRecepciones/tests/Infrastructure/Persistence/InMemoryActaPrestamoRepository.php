@@ -35,13 +35,29 @@ final class InMemoryActaPrestamoRepository implements ActaPrestamoRepositoryInte
         return null;
     }
 
+    public function rutaEstaReferenciada(string $ruta): bool
+    {
+        foreach ($this->store as $acta) {
+            if (in_array($ruta, [
+                $acta->pdfFirmadoRuta(),
+                $acta->documentoIdentidadRuta(),
+                $acta->documentoExportacionRuta(),
+                $acta->pdfFirmadoCuradorRuta(),
+            ], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function nextIdentity(): ActaPrestamoId
     {
         return ActaPrestamoId::generate();
     }
 
     /**
-     * @param array<int, string>|null $investigadorIds
+     * @param  array<int, string>|null  $investigadorIds
      * @return array<int, array{actaId: string, numeroPrestamo: string, numeroSolicitud: string|null, investigadorId: string|null, estado: string, fecha: \DateTimeImmutable}>
      */
     public function listarParaBandeja(

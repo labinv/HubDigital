@@ -59,6 +59,57 @@ final class CatalogoDocumentalDepositos
                 yield $this->referencia($recepcion, 'acta_firmada', $recepcion->acta_firmada_ruta, $metadata['sha256'] ?? $metadata['pdf_sha256'] ?? null, (int) $recepcion->acta_original_version, $recepcion->codigo_qr);
             }
         }
+
+        $actasPrestamo = DB::table('prestamos.actas_prestamo')
+            ->when($expediente, fn ($q) => $q->where('codigo', $expediente))
+            ->when($lote, fn ($q) => $q->whereRaw('1 = 0'))
+            ->orderBy('id');
+        foreach ($actasPrestamo->lazyById(max(1, $tamanoLote), 'id') as $acta) {
+            $expedientePrestamo = (string) ($acta->codigo ?? $acta->numero_prestamo ?? $acta->id);
+            foreach ([
+                ['pdf_firmado_ruta', 'pdf_firmado_sha256', 'acta_prestamo_firmada'],
+                ['documento_identidad_ruta', 'documento_identidad_sha256', 'identidad_investigador'],
+                ['documento_exportacion_ruta', 'documento_exportacion_sha256', 'documento_exportacion'],
+                ['pdf_firmado_curador_ruta', 'pdf_firmado_curador_sha256', 'acta_prestamo_firmada_curador'],
+            ] as [$campoRuta, $campoSha, $tipo]) {
+                $ruta = $acta->{$campoRuta} ?? null;
+                if (is_string($ruta) && $ruta !== '') {
+                    yield $this->referenciaSimple(
+                        $expedientePrestamo,
+                        $tipo,
+                        $ruta,
+                        $campoSha === null ? null : ($acta->{$campoSha} ?? null),
+                    );
+                }
+            }
+        }
+
+        $imagenes = DB::table('divulgacion.imagenes_taxonomicas')
+            ->when($expediente || $lote, fn ($q) => $q->whereRaw('1 = 0'))
+            ->orderBy('id');
+        foreach ($imagenes->lazyById(max(1, $tamanoLote), 'id') as $imagen) {
+            if (is_string($imagen->ruta ?? null) && $imagen->ruta !== '') {
+                yield $this->referenciaSimple(
+                    (string) $imagen->occurrence_id,
+                    'imagen_catalogo',
+                    $imagen->ruta,
+                    $imagen->sha256 ?? null,
+                );
+            }
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function referenciaSimple(string $expediente, string $tipo, string $ruta, mixed $sha): array
+    {
+        return [
+            'expediente' => $expediente,
+            'lote' => null,
+            'tipo' => $tipo,
+            'ruta' => $ruta,
+            'sha256_esperado' => is_string($sha) && $sha !== '' ? $sha : null,
+            'version_esperada' => null,
+        ];
     }
 
     /** @return array<string, mixed> */

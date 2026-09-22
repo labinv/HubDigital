@@ -14,12 +14,12 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocu
 final readonly class ConsultarDocumentoActaOutput
 {
     /**
-     * @param bool $existe Indica si el acta existe.
-     * @param bool $autorizado Indica si el usuario puede acceder a los documentos.
-     * @param string|null $pdfRuta Ruta del PDF original del acta.
-     * @param string|null $pdfFirmadoRuta Ruta del PDF/imagen firmada.
-     * @param string|null $documentoIdentidadRuta Ruta del documento de identidad.
-     * @param string|null $documentoExportacionRuta Ruta del documento de exportación.
+     * @param  bool  $existe  Indica si el acta existe.
+     * @param  bool  $autorizado  Indica si el usuario puede acceder a los documentos.
+     * @param  string|null  $pdfRuta  Ruta del PDF original del acta.
+     * @param  string|null  $pdfFirmadoRuta  Ruta del PDF/imagen firmada.
+     * @param  string|null  $documentoIdentidadRuta  Ruta del documento de identidad.
+     * @param  string|null  $documentoExportacionRuta  Ruta del documento de exportación.
      */
     public function __construct(
         public bool $existe,
@@ -28,5 +28,10 @@ final readonly class ConsultarDocumentoActaOutput
         public ?string $pdfFirmadoRuta,
         public ?string $documentoIdentidadRuta,
         public ?string $documentoExportacionRuta,
+        public ?string $pdfFirmadoSha256 = null,
+        public ?string $documentoIdentidadSha256 = null,
+        public ?string $documentoExportacionSha256 = null,
+        public ?string $pdfFirmadoCuradorRuta = null,
+        public ?string $pdfFirmadoCuradorSha256 = null,
     ) {}
 }

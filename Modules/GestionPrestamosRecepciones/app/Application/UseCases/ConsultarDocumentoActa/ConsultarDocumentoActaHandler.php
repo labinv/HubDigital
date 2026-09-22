@@ -18,8 +18,8 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 final class ConsultarDocumentoActaHandler
 {
     /**
-     * @param ActaPrestamoRepositoryInterface $actaRepo Repositorio de actas de préstamo.
-     * @param SolicitudPrestamoRepositoryInterface $solicitudRepo Repositorio de solicitudes (dueño).
+     * @param  ActaPrestamoRepositoryInterface  $actaRepo  Repositorio de actas de préstamo.
+     * @param  SolicitudPrestamoRepositoryInterface  $solicitudRepo  Repositorio de solicitudes (dueño).
      */
     public function __construct(
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
@@ -29,7 +29,7 @@ final class ConsultarDocumentoActaHandler
     /**
      * Ejecuta el caso de uso.
      *
-     * @param ConsultarDocumentoActaInput $input Datos de entrada.
+     * @param  ConsultarDocumentoActaInput  $input  Datos de entrada.
      * @return ConsultarDocumentoActaOutput Rutas de documentos y decisión de acceso.
      */
     public function handle(ConsultarDocumentoActaInput $input): ConsultarDocumentoActaOutput
@@ -58,6 +58,11 @@ final class ConsultarDocumentoActaHandler
             pdfFirmadoRuta: $acta->pdfFirmadoRuta(),
             documentoIdentidadRuta: $acta->documentoIdentidadRuta(),
             documentoExportacionRuta: $acta->documentoExportacionRuta(),
+            pdfFirmadoSha256: $acta->pdfFirmadoSha256(),
+            documentoIdentidadSha256: $acta->documentoIdentidadSha256(),
+            documentoExportacionSha256: $acta->documentoExportacionSha256(),
+            pdfFirmadoCuradorRuta: $acta->pdfFirmadoCuradorRuta(),
+            pdfFirmadoCuradorSha256: $acta->pdfFirmadoCuradorSha256(),
         );
     }
 }

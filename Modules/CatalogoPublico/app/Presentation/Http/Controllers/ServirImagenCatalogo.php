@@ -15,25 +15,23 @@ final class ServirImagenCatalogo
     {
         try {
             $ruta = StorageImagenesAdapter::rutaDesdeObjetoPublico($objeto);
-            if (! $this->esImagenPublicadaEnR2($ruta)) {
+            $imagen = $this->imagenPublicadaEnR2($ruta);
+            if ($imagen === null) {
                 abort(404);
             }
 
+            $sha256 = strtolower(trim((string) $imagen->sha256));
             $mime = $almacenamiento->mimeType($ruta);
             if (! str_starts_with($mime, 'image/')) {
                 abort(404);
             }
-            $stream = $almacenamiento->readStream($ruta);
+            $contenido = $almacenamiento->obtenerVerificado($ruta, $sha256 === '' ? null : $sha256);
         } catch (\Throwable) {
             abort(404);
         }
 
-        return response()->stream(function () use ($stream): void {
-            try {
-                stream_copy_to_stream($stream, fopen('php://output', 'wb'));
-            } finally {
-                fclose($stream);
-            }
+        return response()->stream(function () use ($contenido): void {
+            echo $contenido;
         }, 200, [
             'Content-Type' => $mime,
             'Cache-Control' => 'public, max-age=300',
@@ -46,13 +44,13 @@ final class ServirImagenCatalogo
      * aquí contra la relación vigente de divulgación. Así un objeto R2 no queda
      * expuesto al adivinar o conservar una URL de una imagen despublicada.
      */
-    private function esImagenPublicadaEnR2(string $ruta): bool
+    private function imagenPublicadaEnR2(string $ruta): ?object
     {
         return DB::table('divulgacion.imagenes_taxonomicas as imagen')
             ->join('taxonomia.especimenes as especimen', 'especimen.occurrence_id', '=', 'imagen.occurrence_id')
             ->join('divulgacion.especimenes_divulgables as divulgable', 'divulgable.especimen_id', '=', 'especimen.id')
             ->where('imagen.ruta', $ruta)
             ->where('imagen.disco', 'r2')
-            ->exists();
+            ->first(['imagen.sha256']);
     }
 }

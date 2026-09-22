@@ -30,6 +30,7 @@ beforeEach(function (): void {
 function imagenPublicadaR2DePrueba(): array
 {
     $ahora = now();
+    $contenido = 'imagen-r2-qa';
     $taxonId = (string) Str::uuid();
     $especimenId = (string) Str::uuid();
     $occurrenceId = 'QA-R2-'.Str::lower(Str::random(12));
@@ -69,6 +70,7 @@ function imagenPublicadaR2DePrueba(): array
         'nombre_original' => basename($ruta),
         'ruta' => $ruta,
         'disco' => 'r2',
+        'sha256' => hash('sha256', $contenido),
         'autor_nombre' => 'QA',
         'autor_apellido' => 'Pruebas',
         'autor_nombre_completo' => 'QA Pruebas',
@@ -78,7 +80,7 @@ function imagenPublicadaR2DePrueba(): array
 
     return [
         'ruta' => $ruta,
-        'contenido' => 'imagen-r2-qa',
+        'contenido' => $contenido,
         'objeto' => rtrim(strtr(base64_encode($ruta), '+/', '-_'), '='),
         'especimen_id' => $especimenId,
     ];

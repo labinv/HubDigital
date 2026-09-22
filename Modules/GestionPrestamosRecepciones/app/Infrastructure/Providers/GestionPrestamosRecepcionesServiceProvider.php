@@ -181,6 +181,9 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
     {
         $schedule->command(LimpiarBorradoresAbandonadosCommand::class)->daily();
         $schedule->command(EvaluarPlazosDevolucionTodosLosPrestamosCommand::class)->daily();
+        $schedule->command(ConciliarDocumentosDepositosCommand::class)
+            ->dailyAt('02:30')
+            ->withoutOverlapping();
     }
 
     /**

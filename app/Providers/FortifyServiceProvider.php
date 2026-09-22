@@ -7,6 +7,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\GenericPasswordResetLinkResponse;
 use App\Models\User;
 use App\Services\Security\DummyPasswordHash;
+use App\Services\Security\TurnstileVerifier;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -124,6 +125,8 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureAuthentication(): void
     {
         Fortify::authenticateUsing(function (Request $request): ?User {
+            app(TurnstileVerifier::class)->validateLogin($request);
+
             $email = User::normalizarEmail((string) $request->input(Fortify::username()));
             $request->merge([Fortify::username() => $email]);
 

@@ -13,5 +13,6 @@ final readonly class ValidarActaFirmadaInput
         public string $actaId,
         public string $curadorId,
         public string $pdfFirmadoCuradorRuta,
+        public ?string $pdfFirmadoCuradorSha256 = null,
     ) {}
 }
