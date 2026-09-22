@@ -371,7 +371,13 @@ try {
         throw 'TURNSTILE_EXPECTED_HOSTNAME debe ser dev.labinvepn.org para OCI.'
     }
     $bytesPassword = [byte[]]::new(36)
-    [Security.Cryptography.RandomNumberGenerator]::Fill($bytesPassword)
+    $generadorAleatorio = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $generadorAleatorio.GetBytes($bytesPassword)
+    }
+    finally {
+        $generadorAleatorio.Dispose()
+    }
     $passwordPostgres = [Convert]::ToBase64String($bytesPassword).TrimEnd('=').Replace('+', '-').Replace('/', '_')
 
     $vapidPublica = $valoresEntorno['VAPID_PUBLIC_KEY']
