@@ -17,7 +17,7 @@
             'Registrada'                          => 'Solicitud registrada exitosamente',
             'Pausada para Asesoría'   => 'Solicitud pausada — en espera de asesoría',
             'Requiere Corrección'                 => 'La solicitud requiere corrección',
-            'Rechazada'                           => 'Solicitud rechazada por límite anual',
+            'Rechazada'                           => 'Solicitud rechazada',
             default                               => 'Solicitud procesada',
         };
 
@@ -27,7 +27,7 @@
             'Registrada'                          => 'El registro fue aceptado y archivado en la colección.',
             'Pausada para Asesoría'   => 'El funcionario responsable se pondrá en contacto contigo para guiar el caso documental.',
             'Requiere Corrección'                 => 'Algunos documentos no cumplen los requisitos. Revisa las observaciones y reenvía.',
-            'Rechazada'                           => 'No es posible continuar. El cupo anual de depósitos ha sido alcanzado.',
+            'Rechazada'                           => 'La solicitud fue rechazada. Revisa las observaciones del expediente.',
             default                               => '',
         };
     @endphp
@@ -159,10 +159,8 @@
     <div class="space-y-6">
 
         <div class="border-b border-blue-navy/10 pb-5">
-            <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Revisar, firmar y enviar</flux:heading>
-            <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-                Comprueba la información, genera el documento institucional y fírmalo antes de remitir el expediente al equipo curatorial.
-            </flux:text>
+            <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('envio.titulo') }}</flux:heading>
+            <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{{ \App\Support\WizardCopy::text('envio.intro') }}</flux:text>
         </div>
 
         <flux:callout variant="info" icon="information-circle">
@@ -289,12 +287,12 @@
                         <flux:field>
                             <flux:label>Certificado electrónico (.p12 o .pfx)</flux:label>
                             <input x-ref="certificado" type="file" accept=".p12,.pfx,application/x-pkcs12" class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm" />
-                            <flux:description>El certificado se abre localmente en un proceso aislado de tu navegador.</flux:description>
+                            <flux:description>{{ \App\Support\WizardCopy::text('envio.certificado_explicacion') }}</flux:description>
                         </flux:field>
                         <flux:field>
                             <flux:label>Contraseña del certificado</flux:label>
                             <flux:input x-ref="clave" type="password" autocomplete="off" />
-                            <flux:description>La contraseña nunca se transmite ni se almacena.</flux:description>
+                            <flux:description>{{ \App\Support\WizardCopy::text('envio.clave_explicacion') }}</flux:description>
                         </flux:field>
                     </div>
 
@@ -316,7 +314,7 @@
                     <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-blue-navy hover:border-science-blue/40">
                         <flux:icon name="arrow-down-tray" class="size-4" /> Ver documento firmado
                     </a>
-                    <p class="text-xs text-text-secondary">La copia firmada quedó sellada con huella SHA-256 en el expediente.</p>
+                    <p class="text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('envio.copia_firmada') }}</p>
                 </div>
             @endif
             <flux:error name="solicitudFirmada" />

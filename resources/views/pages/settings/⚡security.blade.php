@@ -60,6 +60,7 @@ new #[Title('Configuración de seguridad')] class extends Component {
         $user = Auth::user();
         $user->forceFill([
             'password' => $validated['password'],
+            'must_change_password' => false,
         ])->save();
 
         $invalidateUserAccess->keepingCurrentRequest($user);
@@ -95,6 +96,10 @@ new #[Title('Configuración de seguridad')] class extends Component {
 
 <section class="w-full">
     @include('partials.settings-heading')
+
+    @if(auth()->user()->must_change_password)
+        <flux:callout variant="warning" icon="key">Debes cambiar la contraseña inicial asignada por el administrador para continuar.</flux:callout>
+    @endif
 
     <flux:heading class="sr-only">{{ __('Configuración de seguridad') }}</flux:heading>
 

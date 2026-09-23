@@ -30,7 +30,12 @@ final class SystemMailConfigurationService
     /** Importación inicial: después la base es la única fuente administrable. */
     public function importEnvironmentIfMissing(): void
     {
-        if (app()->environment('testing') || $this->stored() !== null) {
+        // El candidato OCI puede arrancar antes de aplicar esta migracion.
+        // En ese intervalo SMTP debe seguir usando el entorno sin intentar
+        // insertar en una tabla que aun no existe.
+        if (app()->environment('testing')
+            || ! Schema::hasTable('usuarios.configuracion_correo')
+            || $this->stored() !== null) {
             return;
         }
 

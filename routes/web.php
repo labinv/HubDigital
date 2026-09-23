@@ -5,9 +5,12 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Livewire\ActivarRol;
 use App\Livewire\Administracion\CentroAdministracion;
 use App\Livewire\Administracion\ConfiguracionSistema;
+use App\Livewire\Administracion\ConfiguracionTextosWizard;
 use App\Livewire\Administracion\GestionUsuarios;
 use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/archivo/imagen/{id}', \App\Http\Controllers\ServirImagenArchivo::class)->middleware(['auth', 'verified'])->name('archivo.imagen');
 
 Route::view('/', 'portal-inicio')->name('home');
 
@@ -30,6 +33,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/administracion/configuracion', ConfiguracionSistema::class)
         ->middleware('role:admin')
         ->name('admin.configuracion');
+    Route::get('/administracion/textos-depositos', ConfiguracionTextosWizard::class)
+        ->middleware('role:admin')
+        ->name('admin.textos-depositos');
     Route::prefix('pwa')->name('pwa.')->group(function (): void {
         Route::get('/configuracion', [PushSubscriptionController::class, 'configuration'])
             ->name('configuration');

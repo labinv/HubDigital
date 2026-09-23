@@ -16,8 +16,8 @@ use Modules\CatalogoPublico\Application\Ports\TransactionManagerPort;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\Repositories\ImagenPorDefectoRepositoryInterface;
 use Modules\CatalogoPublico\Domain\Repositories\ImagenTaxonomicaRepositoryInterface;
-use Modules\CatalogoPublico\Infrastructure\Adapters\GroqClasificadorIntencionAdapter;
-use Modules\CatalogoPublico\Infrastructure\Adapters\GroqGeneradorRespuestaChatBotAdapter;
+use Modules\CatalogoPublico\Infrastructure\Adapters\ClasificadorCatalogoLocal;
+use Modules\CatalogoPublico\Infrastructure\Adapters\GeneradorCatalogoExacto;
 use Modules\CatalogoPublico\Infrastructure\Adapters\InventarioGestionColeccionEspecimenAdapter;
 use Modules\CatalogoPublico\Infrastructure\Adapters\InventarioOpcionesFiltroAdapter;
 use Modules\CatalogoPublico\Infrastructure\Adapters\JerarquiaDeEspecimenAdapter;
@@ -67,13 +67,8 @@ class CatalogoPublicoServiceProvider extends ModuleServiceProvider
             $this->commands([MigrarImagenesCatalogoAR2Command::class]);
         }
 
-        $this->app->bind(ClasificadorIntencionPort::class, fn () => new GroqClasificadorIntencionAdapter(
-            modelo: (string) config('ai.providers.groq.model'),
-        ));
-
-        $this->app->bind(GeneradorRespuestaChatBotPort::class, fn () => new GroqGeneradorRespuestaChatBotAdapter(
-            modelo: (string) config('ai.providers.groq.model'),
-        ));
+        $this->app->bind(ClasificadorIntencionPort::class, ClasificadorCatalogoLocal::class);
+        $this->app->bind(GeneradorRespuestaChatBotPort::class, GeneradorCatalogoExacto::class);
     }
 
     public function boot(): void

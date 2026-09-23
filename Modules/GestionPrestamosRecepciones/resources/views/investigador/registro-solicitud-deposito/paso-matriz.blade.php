@@ -19,11 +19,8 @@
     {{-- Header --}}
     <div class="flex flex-col gap-3 border-b border-blue-navy/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Detalle biológico asistido</flux:heading>
-            <flux:text class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">
-                A partir de los datos MEPN y los códigos leídos en la guía, registra cada espécimen o lote.
-                HubDigital normaliza el resultado internamente a Darwin Core y lo contrasta con GBIF.
-            </flux:text>
+            <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('detalle.titulo') }}</flux:heading>
+            <flux:text class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">{{ \App\Support\WizardCopy::text('detalle.intro') }}</flux:text>
         </div>
         <span class="inline-flex items-center gap-1.5 border-l-2 border-science-blue px-3 py-1 text-xs font-semibold text-science-blue whitespace-nowrap self-start">
             <flux:icon name="sparkles" class="size-3" />
@@ -74,7 +71,7 @@
         @if(!empty($muestrasDetectadas))
             <div class="rounded-lg border border-science-blue/25 bg-white p-4">
                 <p class="text-sm font-semibold text-blue-navy">Códigos leídos de la guía de movilización</p>
-                <p class="mt-1 text-xs text-text-secondary">Selecciona un código para trasladarlo sin volver a digitarlo. HubDigital no inventa la identificación taxonómica: debes elegirla del catálogo.</p>
+                <p class="mt-1 text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('detalle.codigos_explicacion') }}</p>
                 <div class="mt-3 flex flex-wrap gap-2">
                     @foreach($muestrasDetectadas as $muestra)
                         <button type="button" wire:click="usarMuestraDetectada(@js($muestra['recordNumber']))" class="rounded-full border border-science-blue/30 bg-science-blue/5 px-3 py-1 font-mono text-xs font-semibold text-science-blue hover:bg-science-blue/10">
@@ -89,7 +86,7 @@
             <flux:field>
                 <flux:label>Taxón científico</flux:label>
                 <flux:input wire:model.live.debounce.400ms="busquedaTaxon" placeholder="Escribe al menos 3 caracteres, por ejemplo Atta…" autocomplete="off" />
-                <flux:description>Solo se acepta una opción seleccionada del catálogo EPN o de GBIF Backbone.</flux:description>
+                <flux:description>{{ \App\Support\WizardCopy::text('detalle.taxon_explicacion') }}</flux:description>
                 <flux:error name="registroNativo.scientificName" />
             </flux:field>
             @if(!empty($opcionesTaxones))
@@ -115,8 +112,8 @@
             <flux:field><flux:label>Origen</flux:label><select wire:model="registroNativo.origin" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"><option value="research">Investigación</option><option value="consulting">Consultoría</option></select><flux:error name="registroNativo.origin" /></flux:field>
             <flux:field><flux:label>Identificado por</flux:label><flux:input wire:model="registroNativo.identifiedBy" /><flux:error name="registroNativo.identifiedBy" /></flux:field>
             <flux:field><flux:label>Fecha de identificación</flux:label><flux:input type="date" wire:model="registroNativo.dateIdentified" /><flux:error name="registroNativo.dateIdentified" /></flux:field>
-            <flux:field><flux:label>Permiso de investigación</flux:label><flux:input wire:model="registroNativo.researchPermit" readonly /><flux:description>Leído y confirmado desde la autorización.</flux:description><flux:error name="registroNativo.researchPermit" /></flux:field>
-            <flux:field><flux:label>Permiso de transporte</flux:label><flux:input wire:model="registroNativo.transportPermit" readonly /><flux:description>Leído y confirmado desde la guía.</flux:description><flux:error name="registroNativo.transportPermit" /></flux:field>
+            <flux:field><flux:label>Permiso de investigación</flux:label><flux:input wire:model="registroNativo.researchPermit" readonly /><flux:description>{{ \App\Support\WizardCopy::text('detalle.permiso_investigacion') }}</flux:description><flux:error name="registroNativo.researchPermit" /></flux:field>
+            <flux:field><flux:label>Permiso de transporte</flux:label><flux:input wire:model="registroNativo.transportPermit" readonly /><flux:description>{{ \App\Support\WizardCopy::text('detalle.permiso_transporte') }}</flux:description><flux:error name="registroNativo.transportPermit" /></flux:field>
             <flux:field class="lg:col-span-2"><flux:label>Localidad verbatim</flux:label><flux:input wire:model="registroNativo.verbatimLocality" /><flux:error name="registroNativo.verbatimLocality" /></flux:field>
             <flux:field><flux:label>País</flux:label><select wire:model.live="registroNativo.country" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm">@foreach($catalogoPaises as $pais)<option value="{{ $pais['nombre'] }}">{{ $pais['nombre'] }} ({{ $pais['codigo'] }})</option>@endforeach</select><flux:error name="registroNativo.country" /></flux:field>
             <flux:field><flux:label>Provincia/estado</flux:label><flux:input wire:model="registroNativo.stateProvince" /><flux:error name="registroNativo.stateProvince" /></flux:field>
@@ -160,7 +157,7 @@
             <flux:icon name="arrow-path" class="size-8 text-science-blue animate-spin" />
             <div class="text-center space-y-1">
                 <p class="text-sm font-semibold text-text-primary">Procesando matriz de especies</p>
-                <p class="text-xs text-text-secondary">Validando campos Darwin Core y consistencia taxonómica contra GBIF...</p>
+                <p class="text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('detalle.validando') }}</p>
             </div>
         </div>
     </div>

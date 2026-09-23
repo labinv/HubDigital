@@ -91,6 +91,7 @@ final readonly class ConsultarChatBotHandler
             rango: $rango,
             estadisticas: $estadisticas,
             totalUnicosEnRango: $total,
+            totalRegistrosEnRango: $this->calculador->conteoTotalRegistros($rango),
         );
     }
 }

@@ -18,6 +18,12 @@
                     <flux:icon name="user" class="size-5" />
                     <span><strong>Perfil</strong><small>Tu información personal</small></span>
                 </button>
+                @unless(auth()->user()->esUsuarioInterno())
+                    <button type="button" x-on:click="section = 'roles'" x-bind:aria-current="section === 'roles' ? 'page' : null" class="hub-settings-rail__item">
+                        <flux:icon name="arrows-right-left" class="size-5" />
+                        <span><strong>Roles</strong><small>Depositos y prestamos</small></span>
+                    </button>
+                @endunless
                 <button type="button" x-on:click="section = 'security'" x-bind:aria-current="section === 'security' ? 'page' : null" class="hub-settings-rail__item">
                     <flux:icon name="lock-closed" class="size-5" />
                     <span><strong>Seguridad</strong><small>Contraseña y verificación</small></span>
@@ -36,6 +42,14 @@
                     </div>
                     <livewire:pages::settings.profile :modal-mode="true" :key="'account-settings-profile-'.auth()->id()" />
                 </section>
+
+                @unless(auth()->user()->esUsuarioInterno())
+                    <section x-show="section === 'roles'" x-cloak aria-labelledby="settings-roles-title">
+                        <h3 id="settings-roles-title" class="font-display text-xl font-semibold text-blue-navy">Cambiar de rol</h3>
+                        <p class="mt-1 mb-5 text-sm text-text-secondary">Utiliza la misma cuenta para depositos y prestamos.</p>
+                        <livewire:selector-rol-activo />
+                    </section>
+                @endunless
 
                 <section x-show="section === 'security'" x-cloak aria-labelledby="settings-security-title">
                     <div class="mb-5">

@@ -35,6 +35,10 @@ pest()->extend(DatabaseFeatureTestCase::class)
         'Feature/SolicitudFirmadaIntegridadTest.php',
     );
 
+// El bootstrap inicial solo aplica a una instalacion sin usuarios. Se conserva
+// para validarlo expresamente, pero se omite al empaquetar con la base existente.
+pest()->group('bootstrap-inicial')->in('Feature/Auth/AdminBootstrapTest.php');
+
 // Estas pruebas sólo cubren adaptadores y el directorio temporal. Arrancan el
 // contenedor Laravel, pero no necesitan ni deben tocar una base de datos.
 pest()->extend(InfrastructureTestCase::class)

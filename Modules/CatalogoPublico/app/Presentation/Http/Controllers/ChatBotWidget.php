@@ -7,7 +7,7 @@ namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 use Illuminate\View\View;
 use Livewire\Component;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultarChatBotHandler;
-use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultarChatBotInput;
+use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\AsistentePortal;
 
 final class ChatBotWidget extends Component
 {
@@ -29,7 +29,7 @@ final class ChatBotWidget extends Component
         }
     }
 
-    public function enviar(ConsultarChatBotHandler $handler): void
+    public function enviar(AsistentePortal $asistente, ConsultarChatBotHandler $handler): void
     {
         $pregunta = trim($this->pregunta);
 
@@ -41,15 +41,21 @@ final class ChatBotWidget extends Component
         $this->pregunta = '';
         $this->procesando = true;
 
-        $output = $handler->handle(new ConsultarChatBotInput($pregunta));
+        $output = $asistente->responder($pregunta, $handler);
 
         $this->mensajes[] = [
             'rol' => 'chatbot',
-            'texto' => $output->respuesta,
-            'referencias' => $output->especimenesReferenciados,
+            'texto' => $output['texto'],
+            'opciones' => $output['opciones'],
         ];
 
         $this->procesando = false;
+    }
+
+    public function sugerir(string $pregunta, AsistentePortal $asistente, ConsultarChatBotHandler $handler): void
+    {
+        $this->pregunta = $pregunta;
+        $this->enviar($asistente, $handler);
     }
 
     public function render(): View

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\EnsureInitialPasswordChanged;
 use App\Http\Middleware\NormalizeAuthenticationEmail;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             NormalizeAuthenticationEmail::class,
+            EnsureInitialPasswordChanged::class,
         ]);
 
         $middleware->alias([

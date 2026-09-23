@@ -15,8 +15,8 @@
                     <div class="flex items-center gap-2">
                         <flux:icon name="chat-bubble-left-right" class="h-5 w-5" />
                         <div class="flex flex-col">
-                            <span class="text-sm font-semibold leading-tight">Consulta la colección</span>
-                            <span class="text-xs text-white/70">Pregunta al chatbot</span>
+                            <span class="text-sm font-semibold leading-tight">Asistente HubDigital</span>
+                            <span class="text-xs text-white/70">Coleccion, tramites y biodiversidad</span>
                         </div>
                     </div>
                     <button
@@ -43,6 +43,17 @@
                             <div class="flex justify-start">
                                 <div class="max-w-[85%] rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary shadow-sm">
                                     <p class="whitespace-pre-line">{{ $mensaje['texto'] }}</p>
+                                    @if(! empty($mensaje['opciones']))
+                                        <div class="mt-3 flex flex-wrap gap-2">
+                                            @foreach($mensaje['opciones'] as $opcion)
+                                                @if(isset($opcion['pregunta']))
+                                                    <button type="button" wire:click="sugerir(@js($opcion['pregunta']))" class="rounded-full border border-bio-green/30 px-2.5 py-1 text-xs font-medium text-bio-green hover:bg-bio-green/10">{{ $opcion['label'] }}</button>
+                                                @else
+                                                    <a href="{{ $opcion['url'] }}" class="rounded-full border border-bio-green/30 px-2.5 py-1 text-xs font-medium text-bio-green hover:bg-bio-green/10">{{ $opcion['label'] }}</a>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
                                     @if(! empty($mensaje['referencias']))
                                         <p class="mt-1.5 text-xs text-text-secondary">
                                             N.º de catálogo:
@@ -53,11 +64,13 @@
                             </div>
                         @endif
                     @empty
-                        <div class="flex flex-1 items-center justify-center text-center text-xs text-text-secondary">
-                            <p class="max-w-xs">
-                                Pregunta por un género, especie, localidad o un
-                                <span class="font-mono">EPN-XXXX</span>.
-                            </p>
+                        <div class="flex flex-1 flex-col items-start justify-center gap-3 text-sm text-text-secondary">
+                            <p>Pregunta por especimenes, invertebrados o como realizar un tramite.</p>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach(['Como hago un deposito?', 'Que son los artrópodos?', 'Como solicito un prestamo?'] as $sugerencia)
+                                    <button type="button" wire:click="sugerir(@js($sugerencia))" class="rounded-full border border-border bg-surface px-3 py-2 text-left text-xs hover:border-bio-green hover:text-bio-green">{{ $sugerencia }}</button>
+                                @endforeach
+                            </div>
                         </div>
                     @endforelse
 

@@ -1,12 +1,62 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Laravel\Fortify\Features;
 
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
 
     $response->assertOk();
+});
+
+test('login requires the turnstile token in the browser and on the server', function () {
+    config()->set('services.turnstile.enabled', true);
+    config()->set('services.turnstile.site_key', 'site-key-for-test');
+    config()->set('services.turnstile.secret', 'secret-for-test');
+
+    $this->get(route('login'))
+        ->assertOk()
+        ->assertSee('class="cf-turnstile', false)
+        ->assertSee('data-action="turnstile-spin-v2"', false)
+        ->assertSee('x-bind:disabled="!turnstileVerified"', false);
+
+    $user = User::factory()->create();
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertSessionHasErrors('cf-turnstile-response');
+
+    $this->assertGuest();
+});
+
+test('login validates turnstile before authenticating', function () {
+    config()->set('services.turnstile.enabled', true);
+    config()->set('services.turnstile.secret', 'secret-for-test');
+    config()->set('services.turnstile.expected_hostname', 'dev.labinvepn.org');
+
+    Http::fake([
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::response([
+            'success' => true,
+            'hostname' => 'dev.labinvepn.org',
+            'action' => 'turnstile-spin-v2',
+        ]),
+    ]);
+
+    $user = User::factory()->create();
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+        'cf-turnstile-response' => 'valid-token',
+    ])->assertRedirect(route('dashboard', absolute: false));
+
+    Http::assertSent(fn (\Illuminate\Http\Client\Request $request): bool =>
+        $request->url() === 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
+        && $request['response'] === 'valid-token'
+    );
+    $this->assertAuthenticatedAs($user);
 });
 
 test('users can authenticate using the login screen', function () {

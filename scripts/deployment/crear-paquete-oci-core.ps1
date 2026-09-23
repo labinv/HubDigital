@@ -44,7 +44,12 @@ function Invoke-Comando {
     Write-Host "`n==> $Descripcion" -ForegroundColor Cyan
     if ($DirectorioTrabajo) { Push-Location $DirectorioTrabajo }
     try {
-        & $Programa @Argumentos
+        # .gitattributes ya fija LF. En Windows, Git avisa por cada archivo CRLF
+        # aunque la conversion sea correcta; ese ruido puede saturar la consola.
+        $argumentosEjecucion = if ([IO.Path]::GetFileNameWithoutExtension($Programa) -eq 'git') {
+            @('-c', 'core.safecrlf=false') + $Argumentos
+        } else { $Argumentos }
+        & $Programa @argumentosEjecucion
         if ($LASTEXITCODE -ne 0) { throw "Fallo: $Descripcion (codigo $LASTEXITCODE)." }
     }
     finally {
@@ -104,7 +109,7 @@ function Invoke-TarConProgreso {
 function Get-SalidaGit {
     param([Parameter(Mandatory)] [string[]]$Argumentos)
 
-    $salida = @(& git.exe -C $Proyecto @Argumentos)
+    $salida = @(& git.exe -c core.safecrlf=false -C $Proyecto @Argumentos)
     if ($LASTEXITCODE -ne 0) { throw "Fallo git $($Argumentos -join ' ')." }
     return $salida
 }
@@ -506,9 +511,9 @@ if [[ -f "${stage_script}" ]]; then
     printf 'Staging: %s\n' "${staging}"
     printf 'Release ID previsto: %s\n\n' "${release_id}"
     printf '\n============================================================\n'
-    printf 'COPIE Y PEGUE ESTE COMANDO EN LA VM (SIN MIGRACIONES):\n'
+    printf 'COPIE Y PEGUE ESTE COMANDO EN LA VM (CON MIGRACIONES):\n'
     printf '============================================================\n'
-    printf 'sudo env APPLY_MIGRATIONS=0 %q %q %q\n' \
+    printf 'sudo env APPLY_MIGRATIONS=1 %q %q %q\n' \
         "${staging}/deploy/oracle/scripts/deploy-release.sh" \
         "/srv/hubdigital/staging/${candidate}" \
         "/srv/hubdigital/staging/${candidate}.sha256"
@@ -691,19 +696,21 @@ Que hace este paso:
 Los mensajes "Deprecated" de Composer son advertencias. El exito real se
 confirma con "platform=ok" y "Candidato preparado correctamente".
 
-PASO 5 - PREPARAR LA RELEASE SIN MIGRACIONES
+PASO 5 - PREPARAR LA RELEASE Y APLICAR MIGRACIONES
 --------------------------------------------
 Al terminar el staging aparecera un bloque titulado:
 
-COPIE Y PEGUE ESTE COMANDO EN LA VM (SIN MIGRACIONES)
+COPIE Y PEGUE ESTE COMANDO EN LA VM (CON MIGRACIONES)
 
-Copie y ejecute exactamente el comando sudo env APPLY_MIGRATIONS=0 mostrado.
+Cree y verifique un respaldo PostgreSQL antes de este paso. Copie y ejecute
+exactamente el comando sudo env APPLY_MIGRATIONS=1 mostrado.
 El ID, candidato y checksum se calculan dentro de la VM y por eso no pueden
 escribirse anticipadamente en este manual.
 
-APPLY_MIGRATIONS=0 significa que NO se ejecutan migraciones nuevas. Las filas
-de migrate:status que terminan en "Ran" solo informan migraciones aplicadas con
-anterioridad; no indican que este despliegue las este ejecutando.
+APPLY_MIGRATIONS=1 aplica las migraciones pendientes despues del preflight
+de PostgreSQL, R2 y temporales y antes de sembrar usuarios u optimizar la
+release. El proceso verifica que no quede ninguna migracion pendiente antes
+de declarar el candidato listo para activar.
 
 Este paso valida PostgreSQL, R2, correo, temporales, colas y caches. Detiene
 worker y scheduler y deja la release preparada en mantenimiento. Continue solo
@@ -787,7 +794,7 @@ sudo journalctl -u php8.4-fpm.service --since "15 minutes ago" --no-pager -n 150
 REGLAS IMPORTANTES
 -------------------
 - Copie solamente comandos, nunca los textos del prompt.
-- No ejecute APPLY_MIGRATIONS=1 sin revision y respaldo PostgreSQL.
+- Revise las migraciones y verifique un respaldo PostgreSQL antes del paso 5.
 - No active Scheduler ni Tunnel durante este procedimiento.
 - No borre la clave SSH ni la release activa.
 - Ante cualquier NO OK, detengase y revise la causa antes de reintentar.

@@ -24,7 +24,7 @@
     {{-- Encabezado --}}
     <header class="hub-page-header">
         <div>
-            <p class="hub-page-kicker">Portal del consultor</p>
+            <p class="hub-page-kicker">Portal del depositante</p>
             <h1 class="mt-1 hub-page-title">Mis depósitos</h1>
             <flux:text class="text-text-secondary text-sm mt-1">
                 Historial de tus solicitudes de depósito de especímenes.

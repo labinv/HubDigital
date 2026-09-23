@@ -1,23 +1,5 @@
-<div class="hub-transactional-ui hub-depositos-dashboard hub-workspace space-y-5 p-4 sm:p-6">
-    <header class="hub-page-header">
-        <div>
-            <p class="hub-page-kicker">Ventanilla institucional · EPN</p>
-            <h1 class="mt-1 hub-page-title">Recepción de colecciones</h1>
-            <p class="mt-2 text-sm text-text-secondary">Constata la entrega física antes de remitir el expediente a curaduría.</p>
-        </div>
-        <flux:button href="{{ route('prestamos.receptor.depositos') }}" wire:navigate variant="primary" icon="clipboard-document-check">
-            Abrir lotes por recibir
-        </flux:button>
-    </header>
-
-    <div class="grid gap-4 sm:grid-cols-2">
-        <a href="{{ route('prestamos.receptor.depositos') }}" wire:navigate class="hub-panel p-5 transition hover:border-science-blue/40">
-            <p class="text-sm text-text-secondary">Pendientes de recepción</p>
-            <p class="mt-2 text-3xl font-semibold text-blue-navy">{{ $pendientesRecepcion }}</p>
-        </a>
-        <div class="hub-panel p-5">
-            <p class="text-sm text-text-secondary">Lotes constatados</p>
-            <p class="mt-2 text-3xl font-semibold text-bio-green">{{ $lotesRecibidos }}</p>
-        </div>
-    </div>
+<div class="hub-transactional-ui hub-curator-home hub-workspace w-full p-4 sm:p-5">
+    <header class="hub-curator-heading"><div><h1>Recepción de colecciones</h1><p>Ventanilla institucional · EPN. Constata la entrega física y remite el expediente a curaduría.</p></div><div class="hub-curator-heading__actions"><a href="{{ route('prestamos.receptor.depositos') }}" wire:navigate class="hub-curator-button hub-curator-button--primary"><flux:icon name="clipboard-document-check" class="size-4" /> Abrir lotes por recibir</a></div></header>
+    <nav class="hub-curator-shortcuts hub-receptor-shortcuts" aria-label="Accesos principales"><a href="{{ route('prestamos.receptor.depositos') }}" wire:navigate><flux:icon name="inbox-arrow-down" class="size-6" /><span><strong>Lotes por recibir</strong><small>Constatación física</small></span></a><a href="{{ route('dashboard') }}" wire:navigate><flux:icon name="chart-bar" class="size-6" /><span><strong>Resumen</strong><small>Recepciones y estados</small></span></a></nav>
+    <div class="hub-curator-grid"><section class="hub-curator-card hub-curator-card--summary" aria-labelledby="pendientes-title"><div class="hub-curator-card__heading"><flux:icon name="inbox-arrow-down" class="size-6" /><div><h2 id="pendientes-title">Pendientes de recepción</h2><p>Expedientes que esperan constatación.</p></div><a href="{{ route('prestamos.receptor.depositos') }}" wire:navigate>Abrir bandeja <flux:icon name="arrow-right" class="size-4" /></a></div><div class="hub-curator-metrics hub-curator-metrics--three"><a href="{{ route('prestamos.receptor.depositos') }}" wire:navigate><strong>{{ $pendientesRecepcion }}</strong><span>Pendientes</span></a></div></section><section class="hub-curator-card hub-curator-card--summary" aria-labelledby="recibidos-title"><div class="hub-curator-card__heading"><flux:icon name="archive-box" class="size-6" /><div><h2 id="recibidos-title">Lotes constatados</h2><p>Material verificado físicamente.</p></div></div><div class="hub-curator-metrics hub-curator-metrics--three"><a href="{{ route('prestamos.receptor.depositos') }}" wire:navigate><strong>{{ $lotesRecibidos }}</strong><span>Recibidos</span></a></div></section></div>
 </div>

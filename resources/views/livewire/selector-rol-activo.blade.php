@@ -1,29 +1,17 @@
-<div>
-    @if ($roles->count() > 1)
-        <flux:menu.separator />
-
-        <div class="px-2 py-1.5 text-xs font-medium uppercase tracking-wide text-text-secondary">
-            Operar como
-        </div>
-
-        @foreach ($roles as $rol)
-            <flux:menu.item
-                as="button"
-                wire:click="cambiar('{{ $rol->value }}')"
-                :icon="$rol === $rolActivo ? 'check-circle' : 'user-circle'"
-                class="{{ $rol === $rolActivo ? 'font-semibold text-blue-navy' : '' }}"
-            >
-                {{ $rol->etiqueta() }}
-            </flux:menu.item>
-        @endforeach
-    @elseif ($rolActivable)
-        <flux:menu.separator />
-
-        <flux:menu.item
-            :href="route('roles.activar', strtolower($rolActivable->value))"
-            icon="plus-circle"
-        >
+<div class="grid gap-3">
+    @foreach ($roles as $rol)
+        <button type="button" wire:click="cambiar('{{ $rol->value }}')"
+            class="flex min-h-14 items-center justify-between rounded-lg border border-border bg-surface px-4 text-left text-sm text-text-primary transition hover:border-bio-green hover:bg-bg-main"
+            @if($rol === $rolActivo) aria-current="true" @endif>
+            <span>{{ $rol->etiqueta() }}</span>
+            @if($rol === $rolActivo)<span class="text-xs font-semibold text-bio-green">Rol activo</span>@endif
+        </button>
+    @endforeach
+    @if($rolActivable)
+        <a href="{{ route('roles.activar', strtolower($rolActivable->value)) }}"
+            class="flex min-h-14 items-center justify-between rounded-lg border border-dashed border-bio-green/50 px-4 text-sm font-medium text-bio-green transition hover:bg-bio-green/5">
             Activar rol de {{ $rolActivable->etiqueta() }}
-        </flux:menu.item>
+            <span aria-hidden="true">+</span>
+        </a>
     @endif
 </div>

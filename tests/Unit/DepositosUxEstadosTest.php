@@ -35,8 +35,11 @@ test('las vistas comunican estados documentales y el formato real del QR', funct
     $recepcion = file_get_contents($raiz.'/Modules/GestionPrestamosRecepciones/resources/views/curador/recepcion-fisica-lote.blade.php');
 
     expect($documentos)
-        ->toContain('Esta modalidad genera internamente la solicitud y sus declaraciones; no necesitas adjuntar archivos en este paso.')
+        ->toContain("WizardCopy::text('documentos.intro_sin_archivos')")
         ->not->toContain('Cargando documentos requeridos');
+
+    expect((require $raiz.'/config/wizard-copy.php')['documentos']['intro_sin_archivos'])
+        ->toContain('no necesitas adjuntar archivos');
 
     expect($detalle)
         ->toContain('Imprimir QR', 'Guardar como PDF')

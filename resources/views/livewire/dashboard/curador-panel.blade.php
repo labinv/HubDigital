@@ -1,221 +1,108 @@
-<div class="hub-transactional-ui hub-depositos-dashboard hub-workspace flex h-full w-full flex-1 flex-col gap-4 p-4 sm:p-6">
-
-    <header class="order-0 hub-page-header">
+<div class="hub-transactional-ui hub-curator-home hub-workspace w-full p-4 sm:p-5">
+    <header class="hub-curator-heading">
         <div>
-            <p class="hub-page-kicker">Gestión de colección · EPN</p>
-            <h1 class="mt-1 hub-page-title">Panel del curador</h1>
-            <p class="mt-2 text-sm text-text-secondary">Prioriza la recepción, la trazabilidad y el cierre documental de la colección.</p>
+            <h1>Panel del curador</h1>
+            <p>Colecciones, investigación y patrimonio natural en un mismo lugar.</p>
         </div>
-        <div class="flex flex-wrap gap-2">
-            <a href="{{ route('prestamos.curador.depositos', ['vista' => 'actas']) }}" wire:navigate class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-science-blue px-4 py-2 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#005a91] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2">
-                <flux:icon name="pencil-square" class="size-4" /> Actas pendientes
-            </a>
-            <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-blue-navy transition hover:border-science-blue/45 hover:bg-bg-main">
-                <flux:icon name="inbox-arrow-down" class="size-4" /> Revisar ingresos
-            </a>
+        <div class="hub-curator-heading__actions">
+            <a href="{{ route('prestamos.curador.depositos', ['vista' => 'actas']) }}" wire:navigate class="hub-curator-button hub-curator-button--outline"><flux:icon name="document-text" class="size-4" /> Actas pendientes</a>
+            <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate class="hub-curator-button hub-curator-button--primary"><flux:icon name="plus" class="size-4" /> Revisar ingresos</a>
         </div>
     </header>
 
-    <section class="hub-dashboard-hero order-0" aria-labelledby="dashboard-biodiversidad-title">
-        <img
-            src="{{ asset('images/dashboard-nudibranquio.jpg') }}"
-            alt="Nudibranquio blanco con ceratas anaranjadas sobre un arrecife"
-            width="2243"
-            height="701"
-            fetchpriority="high"
-        />
-        <div class="hub-dashboard-hero__copy">
-            <h2 id="dashboard-biodiversidad-title" class="font-display text-2xl font-bold leading-tight sm:text-3xl">
-                Conocimiento que preserva la biodiversidad
-            </h2>
-            <p class="mt-3 max-w-sm text-sm leading-6 text-white/85">
-                Colecciones, investigación y educación para un futuro sostenible.
-            </p>
-        </div>
-    </section>
+    <nav class="hub-curator-shortcuts" aria-label="Accesos principales">
+        <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><flux:icon name="rectangle-stack" class="size-6" /><span><strong>Colecciones</strong><small>Gestionar y consultar</small></span></a>
+        <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><flux:icon name="magnifying-glass" class="size-6" /><span><strong>Buscar</strong><small>Objetos, lotes y registros</small></span></a>
+        <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><flux:icon name="tag" class="size-6" /><span><strong>Ingresos</strong><small>Revisar nuevos materiales</small></span></a>
+        <a href="{{ route('divulgacion.imagenes') }}" wire:navigate><flux:icon name="photo" class="size-6" /><span><strong>Imágenes</strong><small>Archivo de la colección</small></span></a>
+        <button type="button" wire:click="descargarReporteDepositos"><flux:icon name="chart-bar" class="size-6" /><span><strong>Reportes</strong><small>Descargar movimientos</small></span></button>
+    </nav>
 
-    {{-- ── La colección ─────────────────────────────────────────────
-         Gestión de información taxonómica + Divulgación. Va primero
-         porque es la magnitud real del acervo bajo custodia. --}}
-    <section class="order-2 flex flex-col gap-4">
-        <div class="flex items-end justify-between gap-4">
-            <div><h2 class="hub-section-title">La colección</h2><p class="mt-1 text-sm text-text-secondary">Acervo bajo custodia y calidad de su descripción taxonómica.</p></div>
-            <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate class="hidden text-sm font-semibold text-science-blue hover:underline sm:inline">Abrir catálogo</a>
-        </div>
-
-        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-            {{-- Número protagonista. Va en la tipografía de interfaz y no en la
-                 serif de los títulos: una cifra grande en serif se lee como
-                 adorno. Uno solo por pantalla. --}}
-            <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate
-                class="flex flex-col justify-center rounded-lg border border-border bg-surface p-6 shadow-sm transition hover:border-science-blue/40 hover:shadow">
-                <p class="text-sm text-text-secondary">Especímenes bajo custodia</p>
-                <p class="mt-1 text-5xl font-semibold leading-none text-blue-navy">
-                    {{ number_format($colEspecimenes, 0, ',', '.') }}
-                </p>
-                <p class="mt-2 text-xs text-text-secondary">
-                    En {{ number_format($colLocalidades, 0, ',', '.') }} localidades registradas
-                </p>
-            </a>
-
-            <div class="grid gap-4 sm:grid-cols-3">
-                <x-stat-tile
-                    label="Taxones" :value="$colTaxones"
-                    icon="rectangle-stack" tone="blue"
-                    :href="route('inventario.taxonomia.taxones')" />
-                <x-stat-tile
-                    label="Localidades" :value="$colLocalidades"
-                    icon="map" tone="blue"
-                    :href="route('inventario.taxonomia.localidades')" />
-                <x-stat-tile
-                    label="Publicados en el portal" :value="$divPublicados"
-                    icon="globe-alt" tone="green"
-                    hint="Visibles para el público"
-                    :href="route('divulgacion.index')" />
+    <div class="hub-curator-grid">
+        <section class="hub-curator-card hub-curator-card--main" aria-labelledby="recepcion-title">
+            <div class="hub-curator-card__heading"><flux:icon name="cube" class="size-6" /><div><h2 id="recepcion-title">Recepción y depósitos</h2><p>Seguimiento de materiales en proceso de ingreso.</p></div></div>
+            <div class="hub-curator-metrics hub-curator-metrics--four">
+                <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depPorRevisar, 0, ',', '.') }}</strong><span>Depósitos<br>por revisar</span></a>
+                <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depEnviadas, 0, ',', '.') }}</strong><span>Solicitudes<br>recibidas</span></a>
+                <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depLotesRecibidos, 0, ',', '.') }}</strong><span>Lotes<br>recibidos</span></a>
+                <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depRegistrosMatriz, 0, ',', '.') }}</strong><span>Registros<br>en matrices</span></a>
             </div>
-        </div>
-
-        <div class="grid gap-4 lg:grid-cols-2">
-            <x-bar-chart
-                titulo="Familias mejor representadas"
-                :subtitulo="'Las 8 con más registros, de '.number_format($colFamilias, 0, ',', '.').' familias en la colección'"
-                :filas="$graficoFamilias" />
-            <x-bar-chart
-                titulo="Nivel de determinación"
-                subtitulo="Hasta qué rango está identificado cada espécimen"
-                :filas="$graficoDeterminacion" />
-        </div>
-    </section>
-
-    {{-- ── Recepción y depósitos ──────────────────────────────────── --}}
-    <section class="hub-depositos-analytics order-1 flex flex-col gap-2">
-        <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-                <h2 class="font-display text-lg font-semibold text-blue-navy">Recepción y depósitos</h2>
-                <p class="mt-0.5 text-sm text-text-secondary">Análisis operativo del ciclo documental, la entrega física y el cierre del acta.</p>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <flux:select wire:model.live="periodoAnalisis" aria-label="Período del análisis" class="w-40">
-                    <flux:select.option value="6">Últimos 6 meses</flux:select.option>
-                    <flux:select.option value="12">Últimos 12 meses</flux:select.option>
-                    <flux:select.option value="24">Últimos 24 meses</flux:select.option>
-                </flux:select>
-                <flux:button wire:click="descargarReporteDepositos" variant="ghost" icon="arrow-down-tray">Descargar reporte</flux:button>
-            </div>
-        </div>
-        <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            <x-stat-tile
-                label="Depósitos por revisar" :value="$depPorRevisar"
-                icon="clipboard-document-check"
-                :tone="$depPorRevisar > 0 ? 'warning' : 'blue'"
-                :href="route('prestamos.curador.depositos')" />
-            <x-stat-tile
-                label="Solicitudes recibidas" :value="$depEnviadas"
-                icon="inbox-arrow-down" tone="blue"
-                :href="route('prestamos.curador.depositos')" />
-            <x-stat-tile
-                label="Lotes recibidos físicamente" :value="$depLotesRecibidos"
-                icon="archive-box-arrow-down" tone="green"
-                :href="route('prestamos.curador.depositos')" />
-            <x-stat-tile
-                label="Registros en matrices" :value="$depRegistrosMatriz"
-                icon="table-cells" tone="blue"
-                hint="Filas estructuradas de las matrices" />
-        </div>
-
-        <div class="grid gap-3 lg:grid-cols-2">
-            <x-bar-chart
-                titulo="Tendencia de solicitudes"
-                :subtitulo="'Depósitos y donaciones enviados durante '.$periodoAnaliticoEtiqueta"
-                :filas="$graficoDepositosPorMes" />
-            <x-bar-chart
-                titulo="Estado de los depósitos"
-                :subtitulo="'Distribución documental durante '.$periodoAnaliticoEtiqueta"
-                :filas="$graficoEstadosDepositos" />
-        </div>
-
-        <div class="grid gap-3 lg:grid-cols-[1.05fr_.95fr]">
-            <article class="rounded-lg border border-border bg-surface p-4 shadow-sm">
-                <div class="flex items-start justify-between gap-3">
-                    <div><h3 class="font-display text-lg font-semibold text-blue-navy">Embudo de recepción</h3><p class="mt-1 text-sm text-text-secondary">{{ $periodoAnaliticoEtiqueta }} · del registro al acta firmada.</p></div>
-                    <span class="rounded-full bg-bio-green/10 px-2.5 py-1 text-xs font-semibold text-bio-green">Operación museológica</span>
-                </div>
-                <dl class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    @foreach ([['Solicitudes', $indicadoresDepositos['total'], 'inbox-arrow-down'], ['Aprobadas', $indicadoresDepositos['aprobadas'], 'check-circle'], ['Constatadas', $indicadoresDepositos['constatadas'], 'clipboard-document-check'], ['Con observaciones', $indicadoresDepositos['observaciones'], 'exclamation-triangle'], ['Actas pendientes', $indicadoresDepositos['actasPendientes'], 'pencil-square'], ['Actas firmadas', $indicadoresDepositos['actasFirmadas'], 'shield-check']] as [$etiqueta, $valor, $icono])
-                        <div class="rounded-lg border border-border bg-bg-main/60 p-2.5"><flux:icon name="{{ $icono }}" class="size-4 text-bio-green" /><dd class="mt-1 font-display text-xl font-semibold text-blue-navy">{{ number_format($valor, 0, ',', '.') }}</dd><dt class="mt-0.5 text-xs leading-4 text-text-secondary">{{ $etiqueta }}</dt></div>
-                    @endforeach
-                </dl>
-                <div class="mt-3 grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
-                    <div><p class="text-xs uppercase tracking-wide text-text-secondary">Tiempo medio documental</p><p class="mt-1 text-lg font-semibold text-blue-navy">{{ number_format($indicadoresDepositos['diasRevision'], 1, ',', '.') }} días</p><p class="text-xs text-text-secondary">Creación del expediente a aprobación</p></div>
-                    <div><p class="text-xs uppercase tracking-wide text-text-secondary">Tiempo medio de constatación</p><p class="mt-1 text-lg font-semibold text-blue-navy">{{ number_format($indicadoresDepositos['diasConstatacion'], 1, ',', '.') }} días</p><p class="text-xs text-text-secondary">Apertura a constatación</p></div>
-                </div>
-            </article>
-
-            <x-bar-chart titulo="Estado de recepción física" :subtitulo="$periodoAnaliticoEtiqueta.' · control de entrega y cadena de custodia'" :filas="$graficoRecepciones" />
-        </div>
-
-        <section class="overflow-hidden rounded-xl border border-border bg-surface shadow-sm" aria-labelledby="cola-curatorial">
-            <div class="flex flex-col gap-2 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 id="cola-curatorial" class="font-display text-lg font-semibold text-blue-navy">Cola de acción curatorial</h3><p class="mt-0.5 text-sm text-text-secondary">Actas y decisiones documentales que requieren atención.</p></div><a href="{{ route('prestamos.curador.depositos', ['vista' => 'actas']) }}" wire:navigate class="text-sm font-semibold text-science-blue hover:underline">Ver todas las actas</a></div>
-            <div class="overflow-x-auto"><table class="min-w-full text-sm"><thead class="bg-bg-main/70 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary"><tr><th class="px-5 py-3">Expediente</th><th class="px-5 py-3">Estado</th><th class="px-5 py-3">Fecha</th><th class="px-5 py-3 text-right">Acción</th></tr></thead><tbody class="divide-y divide-border">
-                @forelse ($colaCuratorial as $fila)
-                    <tr class="hover:bg-bg-main/40"><td class="px-5 py-3"><p class="font-mono text-xs text-text-secondary">{{ $fila['numero'] }}</p><p class="mt-0.5 font-medium text-text-primary">{{ $fila['detalle'] }}</p></td><td class="px-5 py-3"><span class="rounded-full px-2.5 py-1 text-xs font-medium {{ $fila['prioridad'] === 'acta' ? 'bg-amber-50 text-amber-800' : 'bg-science-blue/10 text-science-blue' }}">{{ $fila['estado'] }}</span></td><td class="whitespace-nowrap px-5 py-3 text-xs text-text-secondary">{{ $fila['fecha'] }}</td><td class="px-5 py-3 text-right"><a href="{{ $fila['ruta'] }}" wire:navigate class="inline-flex min-h-9 items-center rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-blue-navy hover:border-science-blue/45">{{ $fila['accion'] }}</a></td></tr>
+            <div class="hub-curator-activity">
+                <h3>Últimos movimientos</h3>
+                @forelse (array_slice($colaCuratorial, 0, 3) as $fila)
+                    <a href="{{ $fila['ruta'] }}" wire:navigate><span class="hub-curator-activity__dot"></span><span><strong>{{ $fila['numero'] }}</strong> · {{ $fila['detalle'] }}<small>{{ $fila['estado'] }} · {{ $fila['fecha'] }}</small></span><flux:icon name="arrow-right" class="size-4" /></a>
                 @empty
-                    <tr><td colspan="4" class="px-5 py-6 text-center text-sm text-text-secondary">No hay acciones curatoriales pendientes en este período.</td></tr>
+                    <p>No hay movimientos recientes.<small>Los ingresos y depósitos aparecerán aquí cuando se registren.</small></p>
                 @endforelse
-            </tbody></table></div>
+            </div>
         </section>
-    </section>
 
-    {{-- ── Préstamos ──────────────────────────────────────────────── --}}
-    <section class="order-3 flex flex-col gap-3">
-        <h2 class="font-display text-lg font-semibold text-blue-navy">Préstamos</h2>
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <x-stat-tile
-                label="Solicitudes pendientes" :value="$statSolicitudesPendientes"
-                icon="inbox"
-                :tone="$statSolicitudesPendientes > 0 ? 'warning' : 'blue'"
-                :href="route('prestamos.curador.solicitudes')" />
-            <x-stat-tile
-                label="Préstamos activos" :value="$prestActivos"
-                icon="arrow-path" tone="green"
-                :href="route('prestamos.curador.prestamos')" />
-            <x-stat-tile
-                label="Préstamos vencidos" :value="$prestVencidos"
-                icon="exclamation-circle"
-                :tone="$prestVencidos > 0 ? 'error' : 'blue'"
-                :href="route('prestamos.curador.prestamos')" />
-            <x-stat-tile
-                label="Actas por validar" :value="$statActasPorValidar"
-                icon="document-check"
-                :tone="$statActasPorValidar > 0 ? 'warning' : 'blue'"
-                :href="route('prestamos.curador.actas')" />
+        <section class="hub-curator-card hub-curator-card--main" aria-labelledby="archivo-title">
+            <div class="hub-curator-card__heading hub-curator-card__heading--split"><flux:icon name="photo" class="size-6" /><div><h2 id="archivo-title">Imagen del archivo</h2><p>Fotografías de la colección y documentos de depósitos.</p></div></div>
+            @if($archivoActual)
+                <label class="hub-curator-file-picker">Explorar archivo
+                    <select wire:model.live="archivoSeleccion" aria-label="Seleccionar fotografía o documento del archivo">
+                        @foreach ($archivoElementos as $elemento)
+                            <option value="{{ $elemento['id'] }}">{{ $elemento['tipo'] === 'imagen' ? 'Colección' : $elemento['detalle'] }} · {{ $elemento['titulo'] }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <div class="hub-curator-preview">
+                    @if($archivoActual['tipo'] === 'imagen')
+                        <a href="{{ $archivoActual['url'] }}" target="_blank" rel="noopener" aria-label="Abrir imagen {{ $archivoActual['titulo'] }}">
+                            <img src="{{ $archivoActual['url'] }}" alt="Fotografía de {{ $archivoActual['titulo'] }}" loading="lazy">
+                        </a>
+                    @else
+                        <iframe title="Vista previa de {{ $archivoActual['titulo'] }}" src="{{ $archivoActual['url'] }}#toolbar=0" loading="lazy"></iframe>
+                    @endif
+                    <div>
+                        <strong>{{ $archivoActual['titulo'] }}</strong>
+                        <small>{{ $archivoActual['detalle'] }}</small>
+                        <p>{{ $archivoActual['tipo'] === 'imagen' ? 'Imagen conservada en el archivo digital de la colección.' : 'Documento del expediente almacenado en R2.' }}</p>
+                        <a href="{{ $archivoActual['url'] }}" target="_blank" rel="noopener">Abrir {{ $archivoActual['tipo'] === 'imagen' ? 'imagen' : 'documento' }} <flux:icon name="arrow-top-right-on-square" class="size-3" /></a>
+                        @if(isset($archivoActual['expediente']))
+                            <a href="{{ $archivoActual['expediente'] }}" wire:navigate>Revisar expediente <flux:icon name="arrow-right" class="size-3" /></a>
+                        @endif
+                    </div>
+                </div>
+            @else
+                <div class="hub-curator-preview-empty"><flux:icon name="photo" class="size-9" /><strong>El archivo aún no tiene imágenes ni documentos.</strong><p>Al registrar fotografías de especímenes o recibir expedientes, podrás consultarlos aquí.</p><a href="{{ route('divulgacion.imagenes') }}" wire:navigate>Gestionar imágenes <flux:icon name="arrow-right" class="size-4" /></a></div>
+            @endif
+            <div class="hub-curator-pending">
+                <div><flux:icon name="clock" class="size-5" /><h3>Acciones pendientes</h3></div>
+                @if(count($colaCuratorial) > 0)
+                    <a href="{{ $colaCuratorial[0]['ruta'] }}" wire:navigate>{{ $colaCuratorial[0]['numero'] }} · {{ $colaCuratorial[0]['accion'] }} <flux:icon name="arrow-right" class="size-4" /></a>
+                @else
+                    <p>No hay acciones pendientes.<small>Cuando tengas actas, ingresos u otras tareas asignadas, se mostrarán aquí.</small></p>
+                @endif
+            </div>
+        </section>
+
+        <section class="hub-curator-card hub-curator-card--summary" aria-labelledby="coleccion-title">
+            <div class="hub-curator-card__heading"><flux:icon name="circle-stack" class="size-6" /><div><h2 id="coleccion-title">La colección</h2><p>Resumen general de los registros en el sistema.</p></div><a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate>Ir a la colección <flux:icon name="arrow-right" class="size-4" /></a></div>
+            <div class="hub-curator-metrics hub-curator-metrics--four">
+                <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><strong>{{ number_format($colEspecimenes, 0, ',', '.') }}</strong><span>Registros</span></a>
+                <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depLotesRecibidos, 0, ',', '.') }}</strong><span>Lotes recibidos</span></a>
+                <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><strong>{{ number_format($colLocalidades, 0, ',', '.') }}</strong><span>Localidades</span></a>
+                <a href="{{ route('inventario.taxonomia.taxones') }}" wire:navigate><strong>{{ number_format($colTaxones, 0, ',', '.') }}</strong><span>Taxones</span></a>
+            </div>
+        </section>
+        <section class="hub-curator-card hub-curator-card--summary" aria-labelledby="prestamos-title">
+            <div class="hub-curator-card__heading"><flux:icon name="book-open" class="size-6" /><div><h2 id="prestamos-title">Préstamos</h2><p>Materiales de la colección en préstamo.</p></div><a href="{{ route('prestamos.curador.prestamos') }}" wire:navigate>Ver préstamos <flux:icon name="arrow-right" class="size-4" /></a></div>
+            <div class="hub-curator-metrics hub-curator-metrics--three">
+                <a href="{{ route('prestamos.curador.prestamos') }}" wire:navigate><strong>{{ number_format($prestActivos, 0, ',', '.') }}</strong><span>Préstamos activos</span></a>
+                <a href="{{ route('prestamos.curador.solicitudes') }}" wire:navigate><strong>{{ number_format($statSolicitudesPendientes, 0, ',', '.') }}</strong><span>En evaluación</span></a>
+                <a href="{{ route('prestamos.curador.actas') }}" wire:navigate><strong>{{ number_format($statActasPorValidar, 0, ',', '.') }}</strong><span>Actas por validar</span></a>
+            </div>
+        </section>
+    </div>
+
+    <details class="hub-curator-details">
+        <summary>Estadísticas y seguimiento detallado <flux:icon name="chevron-down" class="size-4" /></summary>
+        <div class="hub-curator-details__body">
+            <div class="flex flex-wrap items-center justify-between gap-3"><h2>Depósitos y recepción</h2><div class="flex items-center gap-2"><flux:select wire:model.live="periodoAnalisis" aria-label="Período del análisis" class="w-40"><flux:select.option value="6">Últimos 6 meses</flux:select.option><flux:select.option value="12">Últimos 12 meses</flux:select.option><flux:select.option value="24">Últimos 24 meses</flux:select.option></flux:select><flux:button wire:click="descargarReporteDepositos" variant="ghost" icon="arrow-down-tray">Descargar reporte</flux:button></div></div>
+            <div class="grid gap-3 lg:grid-cols-2"><x-bar-chart titulo="Tendencia de solicitudes" :subtitulo="'Depósitos y donaciones enviados durante '.$periodoAnaliticoEtiqueta" :filas="$graficoDepositosPorMes" /><x-bar-chart titulo="Estado de los depósitos" :subtitulo="'Distribución documental durante '.$periodoAnaliticoEtiqueta" :filas="$graficoEstadosDepositos" /><x-bar-chart titulo="Familias mejor representadas" :subtitulo="'Las 8 con más registros, de '.number_format($colFamilias, 0, ',', '.').' familias'" :filas="$graficoFamilias" /><x-bar-chart titulo="Nivel de determinación" subtitulo="Rango taxonómico de cada espécimen" :filas="$graficoDeterminacion" /></div>
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><x-stat-tile label="Alertas activas" :value="$statAlertasActivas" icon="exclamation-triangle" tone="blue" :href="route('inventario.alertas')" /><x-stat-tile label="Cajas fuera de lugar" :value="$statCajasFueraDeLugar" icon="map-pin" tone="blue" :href="route('inventario.cajas')" /><x-stat-tile label="Total de cajas" :value="$statCajasTotal" icon="archive-box" tone="blue" :href="route('inventario.cajas')" /><x-stat-tile label="Movimientos registrados" :value="$fisMovimientos" icon="clock" tone="navy" :href="route('inventario.trazabilidad')" /></div>
         </div>
-    </section>
-
-    {{-- ── Seguimiento físico ─────────────────────────────────────── --}}
-    <section class="order-4 flex flex-col gap-3">
-        <h2 class="font-display text-lg font-semibold text-blue-navy">Seguimiento físico</h2>
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <x-stat-tile
-                label="Alertas activas" :value="$statAlertasActivas"
-                icon="exclamation-triangle"
-                :tone="$statAlertasActivas > 0 ? 'error' : 'blue'"
-                :href="route('inventario.alertas')" />
-            <x-stat-tile
-                label="Cajas fuera de su lugar" :value="$statCajasFueraDeLugar"
-                icon="map-pin"
-                :tone="$statCajasFueraDeLugar > 0 ? 'warning' : 'blue'"
-                :href="route('inventario.cajas')" />
-            <x-stat-tile
-                label="Total de cajas" :value="$statCajasTotal"
-                icon="archive-box" tone="blue"
-                :href="route('inventario.cajas')" />
-            <x-stat-tile
-                label="Movimientos registrados" :value="$fisMovimientos"
-                icon="clock" tone="navy"
-                hint="Trazabilidad completa"
-                :href="route('inventario.trazabilidad')" />
-        </div>
-    </section>
-
+    </details>
 </div>

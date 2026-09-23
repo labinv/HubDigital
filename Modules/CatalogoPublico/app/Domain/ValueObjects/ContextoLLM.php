@@ -17,6 +17,7 @@ final readonly class ContextoLLM
         public array $estadisticas,
         public ?RangoTaxonomico $rangoAgregacion,
         public ?int $totalUnicosEnRango,
+        public ?int $totalRegistrosEnRango,
     ) {}
 
     /** @param list<DatosEspecimenParaContexto> $especimenes */
@@ -31,6 +32,7 @@ final readonly class ContextoLLM
             estadisticas: [],
             rangoAgregacion: null,
             totalUnicosEnRango: null,
+            totalRegistrosEnRango: null,
         );
     }
 
@@ -40,6 +42,7 @@ final readonly class ContextoLLM
         RangoTaxonomico $rango,
         array $estadisticas,
         int $totalUnicosEnRango,
+        ?int $totalRegistrosEnRango = null,
     ): self {
         self::validarPregunta($pregunta);
 
@@ -54,6 +57,7 @@ final readonly class ContextoLLM
             estadisticas: array_values($estadisticas),
             rangoAgregacion: $rango,
             totalUnicosEnRango: $totalUnicosEnRango,
+            totalRegistrosEnRango: $totalRegistrosEnRango,
         );
     }
 

@@ -28,10 +28,8 @@
 >
 
     <div class="border-b border-blue-navy/10 pb-5">
-        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Origen de los especímenes</flux:heading>
-        <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-            Declara la procedencia y situación regulatoria. Con estas respuestas determinaremos los documentos que debes adjuntar.
-        </flux:text>
+        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('origen.titulo') }}</flux:heading>
+        <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{{ \App\Support\WizardCopy::text('origen.intro') }}</flux:text>
     </div>
 
     <div class="space-y-3">
@@ -43,7 +41,7 @@
                 :activo="$origenRecoleccion === 'Nacional (Ecuador)'"
                 titulo="Nacional (Ecuador)"
                 grupo="origenRecoleccion"
-                descripcion="Especímenes recolectados dentro del territorio ecuatoriano."
+                descripcion="{{ \App\Support\WizardCopy::text('origen.nacional') }}"
                 role="radio"
                 x-bind:aria-checked="active"
                 tabindex="0"
@@ -60,7 +58,7 @@
                 :activo="$origenRecoleccion === 'Exterior (Extranjero)'"
                 titulo="Exterior (Extranjero)"
                 grupo="origenRecoleccion"
-                descripcion="Provenientes de una colección o expedición fuera del país."
+                descripcion="{{ \App\Support\WizardCopy::text('origen.exterior') }}"
                 role="radio"
                 x-bind:aria-checked="active"
                 tabindex="0"
@@ -86,7 +84,7 @@
                     :activo="$situacionRegulatoria === 'Posee permisos del MAE'"
                     titulo="Posee permisos del MAE"
                     grupo="situacionRegulatoria"
-                    descripcion="Cuenta con autorización vigente de recolección y permiso de movilización emitidos por el MAE."
+                    descripcion="{{ \App\Support\WizardCopy::text('origen.con_permisos') }}"
                     role="radio"
                     x-bind:aria-checked="active"
                     tabindex="0"
@@ -103,7 +101,7 @@
                     :activo="$situacionRegulatoria === 'Sin permisos del MAE'"
                     titulo="Sin permisos del MAE"
                     grupo="situacionRegulatoria"
-                    descripcion="Solo dispone de carta de justificación institucional o personal que explica la ausencia de permisos."
+                    descripcion="{{ \App\Support\WizardCopy::text('origen.sin_permisos') }}"
                     role="radio"
                     x-bind:aria-checked="active"
                     tabindex="0"
@@ -127,7 +125,7 @@
                     :activo="$provincia === 'Pichincha'"
                     titulo="Dentro de Pichincha"
                     grupo="provincia"
-                    descripcion="Los especímenes fueron recolectados en la provincia de Pichincha."
+                    descripcion="{{ \App\Support\WizardCopy::text('origen.pichincha') }}"
                     role="radio"
                     x-bind:aria-checked="active"
                     tabindex="0"
@@ -144,7 +142,7 @@
                     :activo="$provincia === 'Fuera de Pichincha'"
                     titulo="Fuera de Pichincha"
                     grupo="provincia"
-                    descripcion="Los especímenes provienen de otra provincia del Ecuador."
+                    descripcion="{{ \App\Support\WizardCopy::text('origen.otra_provincia') }}"
                     role="radio"
                     x-bind:aria-checked="active"
                     tabindex="0"
@@ -164,7 +162,7 @@
     <div x-show="origen === 'Exterior (Extranjero)'" x-cloak>
         <flux:callout variant="info" icon="information-circle">
             <flux:text class="text-sm">
-                Para especímenes del <strong>exterior</strong> se requiere una <strong>Carta de procedencia</strong> firmada por el responsable de la colección de origen.
+                {{ \App\Support\WizardCopy::text('origen.aviso_exterior') }}
             </flux:text>
         </flux:callout>
     </div>

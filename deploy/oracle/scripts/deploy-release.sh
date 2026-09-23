@@ -99,6 +99,10 @@ if [[ "${APPLY_MIGRATIONS:-0}" == 1 ]]; then
 else
     echo 'Migraciones no aplicadas (APPLY_MIGRATIONS=1 las habilita tras validar la restauración).'
 fi
+if ! candidate_artisan migrate:status --pending=1 --no-interaction; then
+    echo 'Quedan migraciones pendientes. No se prepara una release activable hasta aplicarlas.' >&2
+    exit 65
+fi
 if [[ "$(read_env SEED_BOOTSTRAP_DEPOSITANTE)" == true ]]; then
     require_value BOOTSTRAP_DEPOSITANTE_EMAIL
     require_value BOOTSTRAP_DEPOSITANTE_PASSWORD

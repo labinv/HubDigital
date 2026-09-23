@@ -1,12 +1,8 @@
 <div class="space-y-5" x-data="{ total: {{ count($documentosRequeridos) }} }">
 
-    <div class="border-b border-blue-navy/10 pb-4">
-        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Documentos oficiales</flux:heading>
-        <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-            {{ !empty($documentosRequeridos)
-                ? 'Adjunta los PDF indicados. HubDigital verificará su contenido y que pertenezcan al mismo expediente.'
-                : 'Esta modalidad genera internamente la solicitud y sus declaraciones; no necesitas adjuntar archivos en este paso.' }}
-        </flux:text>
+    <div class="hub-wizard-copy-header border-b border-blue-navy/10 pb-4">
+        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('documentos.titulo') }}</flux:heading>
+        <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{{ !empty($documentosRequeridos) ? \App\Support\WizardCopy::text('documentos.intro_con_archivos') : \App\Support\WizardCopy::text('documentos.intro_sin_archivos') }}</flux:text>
     </div>
 
     {{-- Procesando documentos (polling activo) --}}
@@ -57,7 +53,7 @@
 
             {{-- Qué pasó --}}
             <p class="text-sm text-text-secondary">
-                La carga de documentos ha sido pausada. El funcionario responsable revisará tu caso y se pondrá en contacto contigo directamente para orientarte en el proceso.
+                {{ \App\Support\WizardCopy::text('documentos.pausa_explicacion') }}
             </p>
 
             {{-- Próximos pasos --}}
@@ -156,29 +152,29 @@
 
                 $ayudas = [
                     'Formato solicitud depósito'
-                        => 'Formulario oficial de la colección que debes completar para iniciar tu solicitud. El ejemplo de referencia te muestra cómo luce correctamente llenado.',
+                        => \App\Support\WizardCopy::text('documentos.ayuda_formato_deposito'),
                     'Formato solicitud donación'
-                        => 'Formulario oficial para formalizar la transferencia permanente de los especímenes. Consulta el ejemplo de referencia para ver cómo debe quedar.',
+                        => \App\Support\WizardCopy::text('documentos.ayuda_formato_donacion'),
                     'Copia de la autorización de recolección (MAE)'
-                        => 'Oficio emitido por el Ministerio del Ambiente que concede la autorización de recolección. El sistema extraerá el número, titular, organización, proyecto, grupos biológicos, fechas y firma.',
+                        => \App\Support\WizardCopy::text('documentos.ayuda_autorizacion'),
                     'Copia del permiso de movilización'
-                        => 'Guía que ampara el traslado. El sistema extraerá su número, autorización relacionada, vigencia, origen, destino y códigos de muestra para llenar la matriz.',
+                        => \App\Support\WizardCopy::text('documentos.ayuda_movilizacion'),
                     'Documento de explicación de motivos y/o carta de justificación (institucional o personal)'
-                        => 'Carta redactada por ti o tu institución que explica por qué no cuentas con permisos del MAE. El ejemplo te muestra el tipo de contenido y tono esperados.',
+                        => \App\Support\WizardCopy::text('documentos.ayuda_justificacion'),
                     'Documento de procedencia de los especimenes'
-                        => 'Este documento explica y justifica cómo obtuviste los especímenes que deseas depositar. Debe incluir el origen, la procedencia y cualquier información que respalde la legalidad de su obtención.',
+                        => \App\Support\WizardCopy::text('documentos.ayuda_procedencia'),
                     'Carta de cesión de derechos / origen lícito'
-                        => 'Documento que certifica que los especímenes se donan voluntariamente y que su obtención fue legal. El ejemplo te orienta sobre su contenido.',
+                        => \App\Support\WizardCopy::text('documentos.ayuda_cesion'),
                     'Carta de delegación / justificación de tercero'
-                        => 'Si el nombre en los documentos no coincide con tu perfil, adjunta esta carta explicando el motivo o autorizando a otra persona a realizar el trámite.',
+                        => \App\Support\WizardCopy::text('documentos.ayuda_delegacion'),
                 ];
             @endphp
 
-            <section class="space-y-3" aria-labelledby="documentos-requeridos-titulo">
+            <section class="hub-wizard-document-grid space-y-3" aria-labelledby="documentos-requeridos-titulo">
                 <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h3 id="documentos-requeridos-titulo" class="text-sm font-semibold text-blue-navy">Archivos requeridos</h3>
-                        <p class="mt-1 text-xs leading-5 text-text-secondary">Puedes cargarlos con cualquier nombre; validaremos el tipo mediante su contenido.</p>
+                        <p class="mt-1 text-xs leading-5 text-text-secondary">{{ \App\Support\WizardCopy::text('documentos.ayuda_archivos') }}</p>
                     </div>
                     <p class="font-mono text-xs text-text-secondary">{{ count($documentosCargados) }}/{{ count($documentosRequeridos) }} cargados</p>
                 </div>
@@ -207,7 +203,7 @@
                 </span>
                 <div class="min-w-0">
                     <p class="text-sm font-semibold text-text-primary">Sin archivos requeridos</p>
-                    <p class="mt-1 text-sm leading-5 text-text-secondary">Confirma este estado y continúa con los datos oficiales del expediente.</p>
+                    <p class="mt-1 text-sm leading-5 text-text-secondary">{{ \App\Support\WizardCopy::text('documentos.sin_archivos_explicacion') }}</p>
                 </div>
             </div>
         @endif
@@ -220,7 +216,7 @@
                 <div class="flex-1">
                     <p class="text-sm font-semibold text-text-primary">¿No cuentas con ningún documento disponible?</p>
                     <p class="text-xs text-text-secondary mt-0.5">
-                        Solicita orientación si no puedes aportar ninguno de los archivos indicados.
+                        {{ \App\Support\WizardCopy::text('documentos.asistencia_explicacion') }}
                     </p>
                 </div>
             </div>
@@ -234,7 +230,7 @@
                 icon:loading="arrow-path"
                 class="shrink-0 text-warning border-warning/40 hover:bg-warning/10"
             >
-                Solicitar asistencia
+                {{ \App\Support\WizardCopy::text('documentos.asistencia_accion') }}
             </flux:button>
         </div>
         @endif

@@ -21,6 +21,12 @@ env_file=/etc/hubdigital/hubdigital.env
     exit 66
 }
 read_env() { sed -n "s/^$1=//p" "${env_file}" | tail -n 1; }
+artisan() {
+    systemd-run --quiet --wait --collect --pipe \
+        --property=User=www-data --property=Group=www-data \
+        --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
+        /usr/bin/php8.4 artisan "$@"
+}
 [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == true && "$(read_env MAIL_MAILER)" == smtp && "$(read_env HUBDIGITAL_ALLOW_AUTH_EMAILS)" == true ]] || {
     echo 'La activacion exige validacion activa y SMTP limitado a correos de alta.' >&2
     exit 65
@@ -46,6 +52,10 @@ case "${pre_activation_state}" in
         ;;
 esac
 "${release_dir}/deploy/oracle/scripts/verify-release-state.sh" "${release_id}" "${pre_activation_state}"
+if ! artisan migrate:status --pending=1 --no-interaction; then
+    echo 'La release conserva migraciones pendientes; no se puede activar hasta aplicarlas.' >&2
+    exit 65
+fi
 "${release_dir}/deploy/oracle/scripts/inspect-restored-state.sh" "${release_dir}"
 assert_validation_queue_empty() {
     local db_name db_user db_password pgpass escaped_password pending
@@ -91,12 +101,6 @@ if ! systemctl restart php8.4-fpm nginx; then
     echo 'Fallo al reiniciar FPM o nginx; la release queda en mantenimiento y no se inician escritores.' >&2
     exit 1
 fi
-artisan() {
-    systemd-run --quiet --wait --collect --pipe \
-        --property=User=www-data --property=Group=www-data \
-        --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
-        /usr/bin/php8.4 artisan "$@"
-}
 if [[ "${nginx_source}" == *hubdigital.conf ]]; then
     local_check=(curl --fail --silent --show-error --max-time 15 --resolve dev.labinvepn.org:443:127.0.0.1 https://dev.labinvepn.org/depositos)
 else

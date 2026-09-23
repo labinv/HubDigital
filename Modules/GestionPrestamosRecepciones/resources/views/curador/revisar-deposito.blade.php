@@ -800,6 +800,19 @@
                         </div>
                         <flux:heading size="base" level="2" class="font-display flex-1">Documentos y datos ingresados</flux:heading>
                         <div class="flex items-center gap-2">
+                            @if(session('documento-retirado'))
+                                <span role="status" class="text-xs text-success">{{ session('documento-retirado') }}</span>
+                            @endif
+                            @error('documento')
+                                <span role="alert" class="text-xs text-error">{{ $message }}</span>
+                            @enderror
+                            @if(auth()->user()->esAdministrador() && !$deposito->solicitud_firmada_ruta
+                                && in_array($deposito->estado, ['En Borrador', 'Pendiente de Revisión Documental Previa', 'Pendiente de Revisión por Curaduría', 'Requiere Corrección'], true))
+                                <flux:button type="button" size="sm" variant="danger" icon="trash"
+                                    x-on:click="if (confirm('Se eliminará el documento de R2 y del expediente. ¿Continuar?')) $wire.eliminarDocumento(idx)">
+                                    Eliminar documento
+                                </flux:button>
+                            @endif
                             <a x-bind:href="urls[idx]" target="_blank" rel="noopener"
                                 class="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-science-blue hover:text-science-blue transition-colors">
                                 <flux:icon name="arrow-top-right-on-square" class="size-3.5" />

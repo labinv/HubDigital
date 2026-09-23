@@ -34,7 +34,7 @@
             <div class="mb-5">
                 <h2 class="font-display text-lg font-semibold text-blue-navy">Nueva cuenta</h2>
                 <p class="text-sm text-text-secondary">
-                    Las cuentas internas deben usar un correo institucional EPN. Cada persona debe verificar su correo antes de acceder.
+                    Las cuentas internas deben usar un correo institucional EPN. Las cuentas creadas aqui quedan habilitadas de inmediato. La clave inicial debera cambiarse en el primer acceso.
                 </p>
             </div>
 
@@ -69,7 +69,7 @@
                 <flux:input name="password" type="password" label="Contraseña inicial" required minlength="12" maxlength="72" autocomplete="new-password" />
                 <flux:input name="password_confirmation" type="password" label="Confirmar contraseña" required minlength="12" maxlength="72" autocomplete="new-password" />
                 <p class="md:col-span-2 text-xs text-text-secondary">
-                    Usa al menos 12 caracteres, mayúsculas, minúsculas, números y símbolos. La contraseña inicial no vence automáticamente; la persona puede cambiarla desde su cuenta.
+                    Usa al menos 12 caracteres, mayúsculas, minúsculas, números y símbolos. El sistema exigira cambiar la contraseña inicial al primer ingreso.
                 </p>
 
                 @if ($errors->any())
@@ -92,7 +92,7 @@
             <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <h2 class="font-display text-lg font-semibold text-blue-navy">Editar perfil de usuario</h2>
-                    <p class="text-sm text-text-secondary">El correo es la identidad de la cuenta y se conserva. Actualiza el perfil, los roles asignados y el rol operativo principal.</p>
+                    <p class="text-sm text-text-secondary">Actualiza el correo, el perfil y los roles autorizados.</p>
                 </div>
                 <flux:button wire:click="cancelarEdicion" variant="ghost" icon="x-mark">Cancelar</flux:button>
             </div>
@@ -100,6 +100,7 @@
             <form wire:submit="actualizar" class="grid gap-4 md:grid-cols-2">
                 <flux:input wire:model="edicionFirstName" label="Nombres" required autocomplete="off" />
                 <flux:input wire:model="edicionLastName" label="Apellidos" required autocomplete="off" />
+                <flux:input wire:model="edicionEmail" type="email" label="Correo electronico" required autocomplete="off" />
                 <div class="md:col-span-2 rounded-lg border border-border bg-bg-main/45 p-4">
                     <p class="text-sm font-semibold text-blue-navy">Roles asignados</p>
                     <p class="mt-1 text-xs leading-5 text-text-secondary">Los roles internos EPN son exclusivos. Los perfiles externos pueden combinar Depositante y Solicitante.</p>
@@ -129,6 +130,18 @@
                     <flux:button type="submit" variant="primary" icon="check">Guardar cambios</flux:button>
                 </div>
             </form>
+        </section>
+    @endif
+
+    @if($usuarioPorEliminar)
+        <section class="hub-panel border-error/30 p-5" role="alertdialog" aria-label="Confirmar eliminacion de usuario" aria-modal="true">
+            <h2 class="font-display text-lg font-semibold text-error">Eliminar cuenta definitivamente</h2>
+            <p class="mt-2 text-sm text-text-secondary">Se eliminara la cuenta de la base de datos. Si tiene depositos, archivos en R2 o prestamos historicos, el sistema protegera la trazabilidad y bloqueara esta accion.</p>
+            @error('usuarioPorEliminar') <p class="mt-2 text-sm text-error">{{ $message }}</p> @enderror
+            <div class="mt-4 flex gap-2">
+                <flux:button wire:click="cancelarEliminacion" variant="ghost">Cancelar</flux:button>
+                <flux:button wire:click="eliminarDefinitivamente" variant="danger">Eliminar definitivamente</flux:button>
+            </div>
         </section>
     @endif
 
@@ -196,6 +209,9 @@
                                         <flux:button wire:click="reenviarVerificacion('{{ $usuario->id }}')" variant="ghost" size="sm" icon="envelope" title="Reenviar verificación">Verificar</flux:button>
                                     @endif
                                     <flux:button wire:click="editar('{{ $usuario->id }}')" variant="ghost" size="sm" icon="pencil-square">Editar</flux:button>
+                                    @if($usuario->id !== auth()->id())
+                                        <flux:button wire:click="confirmarEliminacion('{{ $usuario->id }}')" variant="ghost" size="sm" icon="trash" aria-label="Eliminar usuario">Eliminar</flux:button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

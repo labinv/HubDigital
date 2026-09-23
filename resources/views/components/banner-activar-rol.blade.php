@@ -8,45 +8,25 @@
         $mensajeBanner = $otroRol === RolUsuario::DEPOSITANTE
             ? '¿También quieres depositar material biológico en la colección?'
             : '¿También necesitas solicitar especímenes en préstamo?';
-        $ctaBanner = $otroRol === RolUsuario::DEPOSITANTE ? 'Activar rol de Depositante' : 'Activar rol de Solicitante';
         $claveBanner = 'banner-rol-'.strtolower($otroRol->value);
     @endphp
 
     @if ($mostrarBanner)
-        <div
-            x-data="{ visible: localStorage.getItem('{{ $claveBanner }}') !== 'oculto' }"
+        <aside
+            x-data="{ visible: sessionStorage.getItem('{{ $claveBanner }}') !== 'oculto', timer: null }"
+            x-init="timer = setTimeout(() => visible = false, 8500)"
             x-show="visible"
+            x-transition
             x-cloak
+            class="fixed bottom-5 right-5 z-[80] w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface p-4 shadow-xl"
+            role="status"
+            aria-live="polite"
         >
-            <div class="flex flex-col gap-3 rounded-lg border border-info/30 bg-info/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex items-start gap-3">
-                    <flux:icon name="sparkles" class="mt-0.5 size-5 shrink-0 text-info" />
-                    <div>
-                        <p class="text-sm font-medium text-text-primary">{{ $mensajeBanner }}</p>
-                        <p class="mt-0.5 text-xs text-text-secondary">
-                            Puedes usar la misma cuenta para ambos trámites y cambiar de rol cuando quieras.
-                        </p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <flux:button
-                        size="sm"
-                        variant="primary"
-                        icon="plus-circle"
-                        :href="route('roles.activar', strtolower($otroRol->value))"
-                    >
-                        {{ $ctaBanner }}
-                    </flux:button>
-                    <button
-                        type="button"
-                        x-on:click="visible = false; localStorage.setItem('{{ $claveBanner }}', 'oculto')"
-                        class="text-text-secondary hover:text-text-primary"
-                        aria-label="Ocultar aviso"
-                    >
-                        <flux:icon name="x-mark" class="size-4" />
-                    </button>
-                </div>
-            </div>
-        </div>
+            <button type="button" x-on:click="visible = false; sessionStorage.setItem('{{ $claveBanner }}', 'oculto')" class="absolute right-2 top-2 p-2 text-text-secondary hover:text-text-primary" aria-label="Cerrar aviso">
+                <flux:icon name="x-mark" class="size-4" />
+            </button>
+            <p class="pr-6 text-sm font-semibold text-text-primary">{{ $mensajeBanner }}</p>
+            <p class="mt-1 text-xs leading-5 text-text-secondary">Puedes activarlo desde Configuracion y cambiar de rol con la misma cuenta.</p>
+        </aside>
     @endif
 @endauth

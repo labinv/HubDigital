@@ -6,7 +6,6 @@
         origenRecoleccion: $wire.entangle('origenRecoleccion'),
         situacionRegulatoria: $wire.entangle('situacionRegulatoria'),
         declaracionAceptada: $wire.entangle('declaracionAceptada'),
-        limiteAlcanzado: $wire.entangle('limiteAlcanzado'),
         matrizCargada: $wire.entangle('matrizCargada'),
         solicitudFirmada: $wire.entangle('solicitudFirmada'),
     }"
@@ -33,16 +32,6 @@
     @endif
 
     @if($paso < 7)
-        {{-- Breadcrumbs --}}
-        <div class="border-b border-blue-navy/10 pb-2">
-            <flux:breadcrumbs class="hub-form-breadcrumbs">
-                <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-solicitudes') }}">
-                    Mis solicitudes
-                </flux:breadcrumbs.item>
-                <flux:breadcrumbs.item>Nueva solicitud de depósito</flux:breadcrumbs.item>
-            </flux:breadcrumbs>
-        </div>
-
         {{-- Borrador restaurado --}}
         @if($borradorRestaurado && ! $modoCorreccion && $paso < 6)
             <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 px-3 py-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -85,9 +74,9 @@
         {{-- Header --}}
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-blue-navy/10 pb-3">
             <div class="min-w-0 max-w-3xl">
-                <flux:heading size="lg" level="1" class="font-display tracking-tight text-blue-navy">Solicitud de depósito</flux:heading>
+                <flux:heading size="lg" level="1" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('general.titulo') }}</flux:heading>
                 <flux:text class="mt-1 text-xs leading-5 text-text-secondary">
-                    Completa el expediente; el avance se guarda por etapas.
+                    {{ \App\Support\WizardCopy::text('general.intro') }}
                 </flux:text>
             </div>
             <div class="flex items-center gap-3">
@@ -163,10 +152,10 @@
                             wire:click="avanzarPaso1"
                             wire:loading.attr="disabled"
                             wire:target="avanzarPaso1"
-                            x-bind:disabled="!tipoTramite || limiteAlcanzado"
+                            x-bind:disabled="!tipoTramite"
                         >
                             <flux:icon wire:loading wire:target="avanzarPaso1" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            Continuar
+                            {{ \App\Support\WizardCopy::text('tramite.accion') }}
                         </flux:button>
                     @elseif($paso === 2)
                         <flux:button
@@ -178,7 +167,7 @@
                             x-bind:disabled="!origenRecoleccion || !situacionRegulatoria"
                         >
                             <flux:icon wire:loading wire:target="guardarPasoDos" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            Guardar y continuar
+                            {{ \App\Support\WizardCopy::text('origen.accion') }}
                         </flux:button>
                     @elseif($paso === 3)
                         @if(!$intervencionCuratoriaActiva && !$extraccionProcesando)
@@ -187,7 +176,7 @@
                                 icon-trailing="arrow-right"
                                 wire:click="guardarPasoTres"
                             >
-                                {{ empty($documentosRequeridos) ? 'Confirmar y continuar' : 'Validar documentos' }}
+                                {{ empty($documentosRequeridos) ? \App\Support\WizardCopy::text('documentos.accion_sin_archivos') : \App\Support\WizardCopy::text('documentos.accion_con_archivos') }}
                             </flux:button>
                         @endif
                     @elseif($paso === 4)
@@ -199,7 +188,7 @@
                             wire:target="guardarPasoCuatro"
                         >
                             <flux:icon wire:loading wire:target="guardarPasoCuatro" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            Continuar
+                            {{ \App\Support\WizardCopy::text('datos.accion') }}
                         </flux:button>
                     @elseif($paso === 5)
                         <flux:button
@@ -210,7 +199,7 @@
                             wire:target="guardarPasoCinco"
                         >
                             <flux:icon wire:loading wire:target="guardarPasoCinco" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            Revisar y enviar
+                            {{ \App\Support\WizardCopy::text('detalle.accion') }}
                         </flux:button>
                     @elseif($paso === 6)
                         <flux:button
@@ -222,7 +211,7 @@
                             x-bind:disabled="!declaracionAceptada || !solicitudFirmada"
                         >
                             <flux:icon wire:loading wire:target="enviarSolicitud" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            Enviar solicitud
+                            {{ \App\Support\WizardCopy::text('envio.accion') }}
                         </flux:button>
                     @endif
                 </div>

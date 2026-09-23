@@ -47,6 +47,10 @@ final class GestionUsuarios extends Component
 
     public string $edicionFirstName = '';
 
+    public string $edicionEmail = '';
+
+    public ?string $usuarioPorEliminar = null;
+
     public string $edicionLastName = '';
 
     public string $edicionRol = '';
@@ -111,7 +115,7 @@ final class GestionUsuarios extends Component
             'institucion' => [Rule::requiredIf($this->rol === RolUsuario::DEPOSITANTE->value), 'nullable', 'string', 'max:255'],
         ])->validate();
 
-        $creador->crear($datos, RolUsuario::from($datos['rol']));
+        $creador->crear($datos, RolUsuario::from($datos['rol']), creadoPorAdministrador: true);
 
         $this->reset([
             'first_name',
@@ -123,7 +127,7 @@ final class GestionUsuarios extends Component
         $this->rol = RolUsuario::DEPOSITANTE->value;
         $this->mostrarFormulario = false;
         $this->resetPage();
-        session()->flash('usuario-creado', 'Cuenta creada. La persona debe verificar su correo mediante el enlace enviado.');
+        session()->flash('usuario-creado', 'Cuenta creada y habilitada. Al iniciar sesion debera cambiar su contrasena inicial.');
     }
 
     public function editar(string $usuarioId): void
@@ -135,6 +139,7 @@ final class GestionUsuarios extends Component
         $this->usuarioEnEdicion = $usuario->getKey();
         $this->edicionFirstName = $usuario->first_name;
         $this->edicionLastName = $usuario->last_name;
+        $this->edicionEmail = $usuario->email;
         $this->edicionRol = $usuario->rol->value;
         $this->edicionRoles = $usuario->rolesAsignados()
             ->map(fn (RolUsuario $rol): string => $rol->value)
@@ -164,6 +169,7 @@ final class GestionUsuarios extends Component
         $datos = Validator::make([
             'first_name' => trim($this->edicionFirstName),
             'last_name' => trim($this->edicionLastName),
+            'email' => User::normalizarEmail($this->edicionEmail),
             'rol' => $this->edicionRol,
             'roles' => $rolesSeleccionados->map(fn (RolUsuario $rol): string => $rol->value)->all(),
             'cargo' => trim($this->edicionCargo),
@@ -171,6 +177,7 @@ final class GestionUsuarios extends Component
         ], [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email:rfc', 'max:255', Rule::unique(User::class, 'email_normalizado')->ignore($usuario->id)],
             'rol' => ['required', Rule::enum(RolUsuario::class)],
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => [Rule::enum(RolUsuario::class)],
@@ -197,7 +204,7 @@ final class GestionUsuarios extends Component
             return;
         }
 
-        if ($internos->isNotEmpty() && ! $this->esCorreoInstitucional($usuario->email)) {
+        if ($internos->isNotEmpty() && ! $this->esCorreoInstitucional($datos['email'])) {
             throw ValidationException::withMessages([
                 'edicionRol' => 'Los roles internos requieren un correo institucional autorizado.',
             ]);
@@ -213,6 +220,7 @@ final class GestionUsuarios extends Component
             $usuario->fill([
                 'first_name' => $datos['first_name'],
                 'last_name' => $datos['last_name'],
+                'email' => $datos['email'],
                 'rol' => $rol,
                 'cargo' => $this->valorOpcional($datos['cargo']),
                 'institucion' => $this->valorOpcional($datos['institucion']),
@@ -222,6 +230,68 @@ final class GestionUsuarios extends Component
 
         $this->resetEdicion();
         session()->flash('usuario-actualizado', 'Perfil y rol actualizados.');
+    }
+
+    public function confirmarEliminacion(string $usuarioId): void
+    {
+        $this->autorizarAdministracion();
+        $usuario = User::query()->findOrFail($usuarioId);
+        abort_if($usuario->is(auth()->user()), 403);
+        $this->usuarioPorEliminar = $usuario->id;
+    }
+
+    public function cancelarEliminacion(): void
+    {
+        $this->usuarioPorEliminar = null;
+    }
+
+    public function eliminarDefinitivamente(): void
+    {
+        $this->autorizarAdministracion();
+        $usuario = User::query()->findOrFail($this->usuarioPorEliminar);
+        abort_if($usuario->is(auth()->user()), 403);
+
+        if ($usuario->esAdministrador() && User::query()
+            ->whereHas('roles', fn ($roles) => $roles->where('rol', RolUsuario::ADMIN->value))
+            ->count() <= 1) {
+            throw ValidationException::withMessages([
+                'usuarioPorEliminar' => 'Debe existir al menos otra cuenta administradora.',
+            ]);
+        }
+
+        if (DB::table('recepciones.solicitudes_deposito')
+            ->where('investigador_id', $usuario->id)->exists()) {
+            throw ValidationException::withMessages([
+                'usuarioPorEliminar' => 'Esta cuenta tiene depositos registrados. Su historial y los objetos cargados en R2 deben conservar su responsable.',
+            ]);
+        }
+
+        if (DB::table('prestamos.solicitudes_prestamo')
+            ->where('investigador_id', $usuario->id)->exists()
+            || DB::table('prestamos.prestamos')
+                ->where('investigador_id', $usuario->id)->exists()) {
+            throw ValidationException::withMessages([
+                'usuarioPorEliminar' => 'Esta cuenta tiene prestamos historicos y no se puede eliminar sin perder la trazabilidad.',
+            ]);
+        }
+
+        try {
+            DB::transaction(function () use ($usuario): void {
+                $usuario->tokens()->delete();
+                DB::table((string) config('session.table', 'sessions'))
+                    ->where('user_id', $usuario->id)
+                    ->delete();
+                $usuario->delete();
+            });
+        } catch (\Illuminate\Database\QueryException) {
+            throw ValidationException::withMessages([
+                'usuarioPorEliminar' => 'La cuenta tiene registros vinculados que impiden su eliminacion. Revisa sus expedientes antes de eliminarla.',
+            ]);
+        }
+
+        $this->usuarioPorEliminar = null;
+        $this->resetPage();
+        session()->flash('usuario-actualizado', 'La cuenta fue eliminada definitivamente.');
     }
 
     public function reenviarVerificacion(string $usuarioId): void
@@ -263,6 +333,7 @@ final class GestionUsuarios extends Component
         $this->reset([
             'usuarioEnEdicion',
             'edicionFirstName',
+            'edicionEmail',
             'edicionLastName',
             'edicionRol',
             'edicionRoles',

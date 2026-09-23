@@ -37,6 +37,8 @@ class Dashboard extends Component
     #[Url]
     public string $periodoAnalisis = '12';
 
+    public string $archivoSeleccion = '';
+
     public function updatedPeriodoAnalisis(): void
     {
         if (! in_array($this->periodoAnalisis, ['6', '12', '24'], true)) {
@@ -111,6 +113,7 @@ class Dashboard extends Component
                 'graficoDepositosPorMes' => $this->graficoDepositosPorMes(),
                 'graficoEstadosDepositos' => $this->graficoEstadosDepositos(),
                 ...$this->analiticaDepositos(),
+                ...$this->archivoCuratorial(),
             ]),
             RolUsuario::RECEPTOR => view('livewire.dashboard.receptor-panel', [
                 'pendientesRecepcion' => SolicitudDepositoEloquentModel::query()
@@ -130,6 +133,57 @@ class Dashboard extends Component
                 $this->estadisticasDepositante((string) $user->id),
             ),
         };
+    }
+
+    /** Datos acotados para el visor del archivo, sin descargar objetos R2 al renderizar. */
+    private function archivoCuratorial(): array
+    {
+        $imagenes = DB::table('divulgacion.imagenes_taxonomicas as imagen')
+            ->leftJoin('taxonomia.especimenes as especimen', 'especimen.occurrence_id', '=', 'imagen.occurrence_id')
+            ->leftJoin('taxonomia.taxones as taxon', 'taxon.id', '=', 'especimen.taxon_id')
+            ->where('imagen.disco', 'r2')
+            ->whereNotNull('imagen.ruta')
+            ->orderByDesc('imagen.created_at')
+            ->limit(16)
+            ->get(['imagen.id', 'imagen.nombre_original', 'imagen.occurrence_id', 'taxon.nombre_cientifico']);
+
+        $depositos = SolicitudDepositoEloquentModel::query()
+            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
+            ->orderByDesc('created_at')
+            ->limit(16)
+            ->get(['id', 'numero', 'estado', 'documentos_cargados', 'nombres_archivos_originales']);
+
+        $elementos = [];
+        foreach ($imagenes as $imagen) {
+            $elementos[] = [
+                'id' => 'imagen:'.$imagen->id,
+                'tipo' => 'imagen',
+                'titulo' => (string) ($imagen->nombre_cientifico ?: $imagen->nombre_original ?: $imagen->occurrence_id),
+                'detalle' => (string) $imagen->occurrence_id,
+                'url' => route('archivo.imagen', $imagen->id),
+            ];
+        }
+        foreach ($depositos as $deposito) {
+            $nombres = $deposito->nombres_archivos_originales ?? [];
+            foreach (array_keys($deposito->documentos_cargados ?? []) as $indice => $clave) {
+                $elementos[] = [
+                    'id' => 'deposito:'.$deposito->id.':'.$indice,
+                    'tipo' => 'documento',
+                    'titulo' => (string) ($nombres[$clave] ?? $clave),
+                    'detalle' => (string) $deposito->numero,
+                    'url' => route('prestamos.deposito.documento', [$deposito->id, $indice]),
+                    'expediente' => route('prestamos.curador.deposito.revisar', $deposito->id),
+                ];
+            }
+        }
+
+        $seleccion = collect($elementos)->firstWhere('id', $this->archivoSeleccion) ?? ($elementos[0] ?? null);
+
+        return [
+            'archivoElementos' => $elementos,
+            'archivoActual' => $seleccion,
+            'archivoDepositos' => $depositos,
+        ];
     }
 
     /**
@@ -568,11 +622,6 @@ class Dashboard extends Component
             [$pendiente, $pausada, $rechazada],
         )->first();
 
-        $depositosAnio = (clone $base)
-            ->where('tipo_tramite', TipoTramite::Deposito->value)
-            ->whereYear('created_at', now()->year)
-            ->count();
-
         $donacionesRealizadas = (clone $base)
             ->where('tipo_tramite', TipoTramite::Donacion->value)
             ->count();
@@ -587,9 +636,8 @@ class Dashboard extends Component
             'pendientesRevision' => (int) $resumen->pendientes_revision,
             'pausadasAsesoria' => (int) $resumen->pausadas_asesoria,
             'rechazadas' => (int) $resumen->rechazadas,
-            'depositosAnio' => $depositosAnio,
-            'cupoMaximoDepositos' => 3,
             'donacionesRealizadas' => $donacionesRealizadas,
+            'depositosRecientes' => (clone $base)->orderByDesc('created_at')->limit(4)->get(['id', 'numero', 'estado', 'tipo_tramite', 'created_at']),
         ];
     }
 

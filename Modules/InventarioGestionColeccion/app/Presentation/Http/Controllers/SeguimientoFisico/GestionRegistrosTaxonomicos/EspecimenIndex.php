@@ -374,6 +374,7 @@ final class EspecimenIndex extends Component
 
     public function mount(): void
     {
+        $this->q = mb_substr(trim((string) request()->query('q', '')), 0, 200);
         $guardado = session(self::CLAVE_SESION_COLUMNAS);
         if (is_array($guardado) && isset($guardado['orden'], $guardado['visibles'])) {
             $this->normalizarColumnas($guardado['orden'], $guardado['visibles']);

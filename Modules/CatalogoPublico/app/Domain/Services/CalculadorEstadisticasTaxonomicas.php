@@ -41,6 +41,11 @@ final readonly class CalculadorEstadisticasTaxonomicas
         return count($this->conteoPorTaxon($rango));
     }
 
+    public function conteoTotalRegistros(RangoTaxonomico $rango): int
+    {
+        return array_sum($this->conteoPorTaxon($rango));
+    }
+
     /** @return array<string, int> */
     private function conteoPorTaxon(RangoTaxonomico $rango): array
     {

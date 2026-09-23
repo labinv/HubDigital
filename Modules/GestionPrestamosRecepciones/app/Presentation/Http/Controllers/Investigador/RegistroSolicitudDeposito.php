@@ -53,7 +53,6 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSol
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaciosException;
-use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAlcanzado;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
@@ -102,11 +101,6 @@ final class RegistroSolicitudDeposito extends Component
 
     public string $numeroSolicitud = '';
 
-    public bool $limiteAlcanzado = false;
-
-    public string $mensajeLimite = '';
-
-    public int $solicitudesPreviasDeposito = 0;
 
     // ── Paso 2 – Origen ───────────────────────────────────────────────────────────
 
@@ -365,12 +359,6 @@ final class RegistroSolicitudDeposito extends Component
 
             return;
         }
-
-        $this->solicitudesPreviasDeposito = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())
-            ->where('tipo_tramite', TipoTramite::Deposito->value)
-            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
-            ->whereYear('created_at', (int) date('Y'))
-            ->count();
     }
 
     /**
@@ -426,21 +414,6 @@ final class RegistroSolicitudDeposito extends Component
         $this->restaurarDesdeBorrador($model);
     }
 
-    /**
-     * Hook que se ejecuta al cambiar el tipo de trámite.
-     *
-     * Limpia el aviso de cupo anual: solo aplica al Depósito, y el propio aviso invita
-     * a continuar como Donación. Sin esto la bandera sobrevive al cambio de trámite y
-     * el botón de avance (deshabilitado mientras $limiteAlcanzado sea true) deja al
-     * depositante sin salida salvo recargando la página.
-     */
-    public function updatedTipoTramite(): void
-    {
-        if ($this->tipoTramite !== TipoTramite::Deposito->value) {
-            $this->limiteAlcanzado = false;
-            $this->mensajeLimite = '';
-        }
-    }
 
     /**
      * Hook que se ejecuta al actualizar la propiedad origenRecoleccion.
@@ -587,12 +560,6 @@ final class RegistroSolicitudDeposito extends Component
         // Restaurar paso y pasos completados
         $this->paso = $pasoGuardado;
         $this->pasosCompletados = $this->calcularPasosCompletados($pasoGuardado);
-
-        $this->solicitudesPreviasDeposito = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())
-            ->where('tipo_tramite', TipoTramite::Deposito->value)
-            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
-            ->whereYear('created_at', (int) date('Y'))
-            ->count();
     }
 
     /** @return int[] */
@@ -686,11 +653,6 @@ final class RegistroSolicitudDeposito extends Component
 
         $this->reset();
         $this->borradorRestaurado = false;
-        $this->solicitudesPreviasDeposito = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())
-            ->where('tipo_tramite', TipoTramite::Deposito->value)
-            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
-            ->whereYear('created_at', (int) date('Y'))
-            ->count();
     }
 
     // ── Paso 1 ────────────────────────────────────────────────────────────────────
@@ -703,39 +665,15 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        if ($this->tipoTramite === TipoTramite::Deposito->value) {
-            $conteo = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())
-                ->where('tipo_tramite', TipoTramite::Deposito->value)
-                ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
-                ->whereYear('created_at', (int) date('Y'))
-                ->count();
-
-            if ($conteo >= 3) {
-                $this->limiteAlcanzado = true;
-                $this->mensajeLimite = 'Has alcanzado el límite anual de 3 depósitos.';
-
-                return;
-            }
-        }
-
-        $this->limiteAlcanzado = false;
-        $this->mensajeLimite = '';
 
         // Crear registro en BD si aún no existe
         if ($this->solicitudId === null) {
-            try {
-                $output = ($registrar)(new RegistrarSolicitudDepositoInput(
+            $output = ($registrar)(new RegistrarSolicitudDepositoInput(
                     investigadorId: (string) auth()->id(),
                     tipoTramite: $this->tipoTramite,
                 ));
                 $this->solicitudId = $output->id;
                 $this->numeroSolicitud = $output->numero;
-            } catch (LimiteAnualDepositosAlcanzado $e) {
-                $this->limiteAlcanzado = true;
-                $this->mensajeLimite = $e->getMessage();
-
-                return;
-            }
         } else {
             // El usuario regresó al paso 1 y puede haber cambiado el tipo: sincronizar en BD.
             SolicitudDepositoEloquentModel::where('id', $this->solicitudId)

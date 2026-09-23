@@ -1,17 +1,14 @@
 <div class="space-y-6">
 
     <div class="border-b border-blue-navy/10 pb-5">
-        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">Datos del depósito de material MEPN</flux:heading>
-        <flux:text class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">
-            Completa dentro de HubDigital la información de <strong>Datos depósito material MEPN.xlsx</strong>.
-            El sistema recupera lo posible de tus documentos y te pide confirmar el resultado.
-        </flux:text>
+        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('datos.titulo') }}</flux:heading>
+        <flux:text class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">{{ \App\Support\WizardCopy::text('datos.intro') }}</flux:text>
     </div>
 
     <div class="overflow-hidden rounded-xl border border-science-blue/25 bg-surface shadow-sm">
         <div class="border-b border-science-blue/20 bg-science-blue/5 px-4 py-3">
             <p class="text-sm font-semibold text-blue-navy">Identificación del consultor · columnas A–C</p>
-            <p class="mt-0.5 text-xs text-text-secondary">Se toman de tu perfil autenticado para evitar volver a digitarlas.</p>
+            <p class="mt-0.5 text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.perfil') }}</p>
         </div>
         <dl class="grid gap-px bg-border sm:grid-cols-3">
             <div class="bg-white p-4"><dt class="text-xs font-semibold text-text-secondary">A. Nombre representante legal empresa</dt><dd class="mt-1 text-sm text-text-primary">{{ $nombreEnDocumento ?: auth()->user()->name }}</dd></div>
@@ -91,7 +88,7 @@
     @elseif(!empty($datosFaltantes))
         <flux:callout variant="warning" icon="pencil-square">
             <flux:heading>{{ count($datosFaltantes) }} dato(s) pendientes de completar</flux:heading>
-            <flux:text>Completa manualmente los campos marcados abajo para continuar.</flux:text>
+            <flux:text>{{ \App\Support\WizardCopy::text('datos.manual_explicacion') }}</flux:text>
         </flux:callout>
     @endif
 
@@ -112,7 +109,7 @@
         @endif
         <div>
             <flux:heading size="sm" level="3">Columnas D–J · Material entregado</flux:heading>
-            <flux:text class="mt-1 text-xs text-text-secondary">Permisos, grupo biológico, cantidades y localidades. Estos datos son responsabilidad del consultor.</flux:text>
+            <flux:text class="mt-1 text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.material_explicacion') }}</flux:text>
         </div>
 
         @php
@@ -239,7 +236,7 @@
             <flux:icon name="building-library" class="mt-0.5 size-5 shrink-0 text-bio-green" />
             <div>
                 <p class="text-sm font-semibold text-text-primary">Columnas K–O · Uso interno de la EPN</p>
-                <p class="mt-1 text-xs text-text-secondary">Proceso interno, fecha de recepción, período, observaciones y estado serán completados por el receptor y la curaduría. El consultor no puede modificarlos.</p>
+                <p class="mt-1 text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.uso_interno_explicacion') }}</p>
             </div>
         </div>
     </div>
@@ -270,7 +267,7 @@
                         <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0" />
                         <div>
                             <p class="text-sm font-semibold text-text-primary">{{ count($sinFirma) }} documento(s) sin firma electrónica digital</p>
-                            <p class="text-xs text-text-secondary mt-0.5">Puedes continuar, pero el funcionario responsable revisará los documentos antes de aprobar la solicitud.</p>
+                            <p class="text-xs text-text-secondary mt-0.5">{{ \App\Support\WizardCopy::text('datos.sin_firma_explicacion') }}</p>
                         </div>
                     </div>
                     <div class="space-y-1.5">
@@ -296,7 +293,7 @@
                         <flux:icon name="shield-exclamation" class="size-5 text-error shrink-0" />
                         <div>
                             <p class="text-sm font-semibold text-text-primary">No se pudo verificar la firma de {{ count($noVerificados) }} documento(s)</p>
-                            <p class="text-xs text-text-secondary mt-0.5">El sistema no pudo comprobar la firma electrónica. Vuelve al paso anterior y carga nuevamente los documentos.</p>
+                            <p class="text-xs text-text-secondary mt-0.5">{{ \App\Support\WizardCopy::text('datos.firma_no_verificada') }}</p>
                         </div>
                     </div>
                     <div class="space-y-1.5">
@@ -390,7 +387,7 @@
         @if($resultadoIdentidad === 'Discrepancia (Tipográfica)')
             <flux:callout variant="warning" icon="exclamation-triangle">
                 <flux:heading>Discrepancia tipográfica detectada</flux:heading>
-                <flux:text>Hay una diferencia menor entre tu nombre de perfil y el nombre del documento. Puedes continuar, pero se recomienda corregir el nombre en tu perfil de usuario.</flux:text>
+                <flux:text>{{ \App\Support\WizardCopy::text('datos.discrepancia_menor') }}</flux:text>
                 <flux:button size="sm" variant="outline" wire:navigate href="{{ route('profile.edit') }}" class="mt-2">
                     Corregir nombre en perfil
                 </flux:button>
@@ -398,13 +395,13 @@
         @elseif($resultadoIdentidad === 'Discrepancia (Tercero)')
             <flux:callout variant="danger" icon="x-circle">
                 <flux:heading>Discrepancia significativa detectada</flux:heading>
-                <flux:text>El nombre del documento y el del perfil difieren considerablemente. Elige una opción:</flux:text>
+                <flux:text>{{ \App\Support\WizardCopy::text('datos.discrepancia_mayor') }}</flux:text>
                 <div class="mt-3 flex flex-wrap gap-2">
                     <flux:button size="sm" variant="outline" wire:navigate href="{{ route('profile.edit') }}" icon="user">
                         Actualizar nombre en perfil
                     </flux:button>
                 </div>
-                <flux:text class="mt-2 text-xs opacity-70">O adjunta la carta de delegación si gestionas el trámite a nombre de otra persona.</flux:text>
+                <flux:text class="mt-2 text-xs opacity-70">{{ \App\Support\WizardCopy::text('datos.carta_delegacion') }}</flux:text>
             </flux:callout>
 
             <x-gestionprestamosrecepciones::dropzone
@@ -416,7 +413,7 @@
             <flux:error name="cartaDelegacion" />
         @elseif($resultadoIdentidad === 'Conforme')
             <flux:callout variant="success" icon="check-circle">
-                <flux:text>Los nombres coinciden correctamente. Puedes continuar con el trámite.</flux:text>
+                <flux:text>{{ \App\Support\WizardCopy::text('datos.nombres_coinciden') }}</flux:text>
             </flux:callout>
         @endif
 

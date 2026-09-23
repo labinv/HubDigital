@@ -27,6 +27,7 @@ class ResetUserPassword implements ResetsUserPasswords
         DB::transaction(function () use ($user, $input): void {
             $user->forceFill([
                 'password' => $input['password'],
+                'must_change_password' => false,
                 'remember_token' => Str::random(60),
             ])->save();
 

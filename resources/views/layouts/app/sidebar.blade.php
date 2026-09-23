@@ -3,29 +3,41 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
+        <script>
+            try {
+                if (localStorage.getItem('flux-sidebar-collapsed-desktop') === null) {
+                    localStorage.setItem('flux-sidebar-collapsed-desktop', 'true');
+                }
+            } catch (_) {}
+        </script>
     </head>
     <body class="min-h-screen bg-bg-main">
         <x-estado-conectividad />
-        <flux:sidebar sticky collapsible="mobile" class="hub-app-sidebar border-e border-border bg-blue-navy">
+        <flux:sidebar sticky :collapsible="true" class="hub-app-sidebar border-e border-border bg-blue-navy">
+
+            <div class="hub-sidebar-collapse-row">
+                <span class="hub-sidebar-collapse-label">Menú</span>
+                <flux:sidebar.collapse tooltip="Contraer o ampliar menú" class="hub-sidebar-collapse-control" />
+            </div>
 
             {{-- Navigation --}}
             <flux:sidebar.nav class="hub-sidebar-navigation mt-0 min-h-0 flex-1 overflow-y-auto pb-3 pt-4">
-                <flux:sidebar.group heading="Principal" class="grid">
+
                     <flux:sidebar.item
                         icon="home"
+                        aria-label="Dashboard"
                         :href="route('dashboard')"
                         :current="request()->routeIs('dashboard')"
                         wire:navigate
                     >
                         Dashboard
                     </flux:sidebar.item>
-                </flux:sidebar.group>
                 @auth
                     @php
                         $rolActivo = auth()->user()->rolActivo();
                     @endphp
                     @if($rolActivo === RolUsuario::PRESTAMISTA)
-                        <flux:sidebar.group heading="Préstamos" class="grid">
+                        <flux:sidebar.group heading="Préstamos" icon="document-text" class="grid" expandable :expanded="request()->routeIs('prestamos.investigador.*')">
                             <flux:sidebar.item
                                 icon="document-text"
                                 :href="route('prestamos.investigador.mis-solicitudes')"
@@ -52,7 +64,7 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif($rolActivo === RolUsuario::DEPOSITANTE)
-                        <flux:sidebar.group heading="Depósitos" class="grid">
+                        <flux:sidebar.group heading="Depósitos" icon="archive-box" class="grid" expandable :expanded="request()->routeIs('prestamos.investigador.*')">
                             <flux:sidebar.item icon="archive-box" :href="route('prestamos.investigador.mis-depositos')" :current="request()->routeIs('prestamos.investigador.mis-depositos')" wire:navigate>
                                 Mis depósitos
                             </flux:sidebar.item>
@@ -61,7 +73,7 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif($rolActivo === RolUsuario::RECEPTOR)
-                        <flux:sidebar.group heading="Recepción EPN" class="grid">
+                        <flux:sidebar.group heading="Recepción EPN" icon="clipboard-document-check" class="grid" expandable :expanded="request()->routeIs('prestamos.receptor.*')">
                             <flux:sidebar.item
                                 icon="clipboard-document-check"
                                 :href="route('prestamos.receptor.depositos')"
@@ -72,36 +84,8 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif(in_array($rolActivo, [RolUsuario::CURADOR, RolUsuario::ADMIN], true))
-                        @if($rolActivo === RolUsuario::ADMIN)
-                            <flux:sidebar.group heading="Administración" class="grid">
-                                <flux:sidebar.item
-                                    icon="squares-2x2"
-                                    :href="route('admin.centro')"
-                                    :current="request()->routeIs('admin.centro')"
-                                    wire:navigate
-                                >
-                                    Centro de administración
-                                </flux:sidebar.item>
-                                <flux:sidebar.item
-                                    icon="users"
-                                    :href="route('admin.usuarios')"
-                                    :current="request()->routeIs('admin.usuarios')"
-                                    wire:navigate
-                                >
-                                    Usuarios y perfiles
-                                </flux:sidebar.item>
-                                <flux:sidebar.item
-                                    icon="cog-6-tooth"
-                                    :href="route('admin.configuracion')"
-                                    :current="request()->routeIs('admin.configuracion')"
-                                    wire:navigate
-                                >
-                                    Configuración del sistema
-                                </flux:sidebar.item>
-                            </flux:sidebar.group>
-                        @endif
                         <flux:sidebar.group
-                            heading="Gestión de préstamos"
+                            heading="Gestión de préstamos" icon="document-text"
                             class="grid"
                             expandable
                             :expanded="request()->routeIs('prestamos.curador.solicitudes', 'prestamos.curador.solicitud.*', 'prestamos.curador.actas', 'prestamos.curador.acta.*', 'prestamos.curador.prestamos', 'prestamos.curador.prestamo.*', 'prestamos.curador.configuracion')"
@@ -140,7 +124,7 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
-                            heading="Gestión de depósitos"
+                            heading="Gestión de depósitos" icon="archive-box"
                             class="grid"
                             expandable
                             :expanded="request()->routeIs('prestamos.curador.depositos', 'prestamos.curador.deposito.*')"
@@ -155,7 +139,7 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
-                            heading="Catálogo"
+                            heading="Catálogo" icon="rectangle-stack"
                             class="grid"
                             expandable
                             :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.importar', 'inventario.taxonomia.etiquetas', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades', 'inventario.taxonomia.entidades-depositantes')"
@@ -210,7 +194,7 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
-                            heading="Control de calidad"
+                            heading="Control de calidad" icon="shield-check"
                             class="grid"
                             expandable
                             :expanded="request()->routeIs('inventario.taxonomia.revision', 'inventario.taxonomia.localidades.revision', 'inventario.taxonomia.especimenes.duplicados', 'inventario.taxonomia.fechas.revision', 'inventario.taxonomia.muestras')"
@@ -257,7 +241,7 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
-                            heading="Configuración del catálogo"
+                            heading="Configuración del catálogo" icon="adjustments-horizontal"
                             class="grid"
                             expandable
                             :expanded="request()->routeIs('inventario.taxonomia.dataset.config', 'inventario.taxonomia.columnas.config')"
@@ -280,7 +264,7 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
-                            heading="Seguimiento físico"
+                            heading="Seguimiento físico" icon="map-pin"
                             class="grid"
                             expandable
                             :expanded="request()->routeIs('inventario.dashboard', 'inventario.mapa', 'inventario.gabinetes*', 'inventario.cajas', 'inventario.unit-trays', 'inventario.trazabilidad', 'inventario.alertas', 'inventario.orden-familias', 'inventario.horario', 'inventario.visitantes')"
@@ -367,7 +351,7 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
-                            heading="Divulgación"
+                            heading="Divulgación" icon="megaphone"
                             class="grid"
                             expandable
                             :expanded="request()->routeIs('divulgacion.*')"
@@ -397,6 +381,42 @@
                                 Imágenes
                             </flux:sidebar.item>
                         </flux:sidebar.group>
+                        @if($rolActivo === RolUsuario::ADMIN)
+                            <flux:sidebar.group heading="Administración" icon="cog-6-tooth" expandable :expanded="request()->routeIs('admin.*')" class="grid">
+                                <flux:sidebar.item
+                                    icon="squares-2x2"
+                                    :href="route('admin.centro')"
+                                    :current="request()->routeIs('admin.centro')"
+                                    wire:navigate
+                                >
+                                    Centro de administración
+                                </flux:sidebar.item>
+                                <flux:sidebar.item
+                                    icon="users"
+                                    :href="route('admin.usuarios')"
+                                    :current="request()->routeIs('admin.usuarios')"
+                                    wire:navigate
+                                >
+                                    Usuarios y perfiles
+                                </flux:sidebar.item>
+                                <flux:sidebar.item
+                                    icon="cog-6-tooth"
+                                    :href="route('admin.configuracion')"
+                                    :current="request()->routeIs('admin.configuracion')"
+                                    wire:navigate
+                                >
+                                    Configuración del sistema
+                                </flux:sidebar.item>
+                                <flux:sidebar.item
+                                    icon="pencil-square"
+                                    :href="route('admin.textos-depositos')"
+                                    :current="request()->routeIs('admin.textos-depositos')"
+                                    wire:navigate
+                                >
+                                    Textos de depósitos
+                                </flux:sidebar.item>
+                            </flux:sidebar.group>
+                        @endif
                     @endif
                 @endauth
             </flux:sidebar.nav>
@@ -405,6 +425,8 @@
                 <flux:modal.trigger name="account-settings">
                 <a
                     href="#"
+                    aria-label="Configuración"
+                    title="Configuración"
                     x-on:click.prevent
                     class="hub-sidebar-utility mx-3 flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
@@ -418,6 +440,8 @@
                     <button
                         type="submit"
                         data-test="logout-button"
+                        aria-label="Cerrar sesión"
+                        title="Cerrar sesión"
                         class="flex min-h-12 w-full cursor-pointer items-center gap-3 px-6 text-start text-sm font-medium text-white/65 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
                     >
                         <flux:icon name="arrow-right-start-on-rectangle" class="size-5 shrink-0" />
@@ -427,22 +451,32 @@
             </div>
         </flux:sidebar>
 
-        {{-- Barra superior: marca centrada; alertas y cuenta a la derecha. --}}
-        <flux:header class="hub-mobile-header border-b border-blue-navy bg-blue-navy">
-            <flux:sidebar.toggle class="text-white/80 hover:text-white lg:invisible" icon="bars-2" inset="left" />
+        {{-- Barra superior compartida por todas las pantallas internas. --}}
+        <flux:header class="hub-mobile-header hub-app-topbar border-b border-blue-navy bg-blue-navy">
+            <flux:sidebar.toggle class="text-white/80 hover:text-white lg:hidden" icon="bars-2" inset="left" />
 
-            <div class="hub-mobile-brand flex items-center gap-2">
-                <span class="flex h-6 w-6 items-center justify-center rounded bg-white/20">
+            <a href="{{ route('dashboard') }}" wire:navigate class="hub-mobile-brand hub-topbar-brand">
+                <span class="flex h-7 w-7 items-center justify-center rounded bg-white/15">
                     <x-app-logo-icon class="size-5 fill-current text-white" />
                 </span>
-                <span class="font-display text-sm font-bold text-white">Hub Digital</span>
-            </div>
+                <span><strong>Hub Digital</strong><small>Museo de Historia Natural</small></span>
+            </a>
+
+            @php
+                $busquedaColeccionInterna = auth()->user()->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN);
+            @endphp
+            <form action="{{ $busquedaColeccionInterna ? route('inventario.taxonomia.especimenes') : route('portal.catalogo') }}" method="GET" role="search" class="hub-topbar-search">
+                <flux:icon name="magnifying-glass" class="size-5" />
+                <input name="{{ $busquedaColeccionInterna ? 'q' : 'ft' }}" type="search" maxlength="120" aria-label="Buscar en la colección" placeholder="Buscar en la colección..." value="{{ request()->query($busquedaColeccionInterna ? 'q' : 'ft', '') }}">
+                <button type="submit" aria-label="Buscar"><flux:icon name="arrow-right" class="size-4" /></button>
+            </form>
 
             <div class="hub-mobile-actions flex items-center justify-end gap-1 text-white">
                 <div class="flex items-center">
                     <livewire:campana-notificaciones />
                 </div>
 
+                <span class="hub-topbar-identity"><strong>{{ auth()->user()->name }}</strong><small>{{ auth()->user()->rolActivo()->etiqueta() }}</small></span>
                 <flux:dropdown position="top" align="end">
                     <flux:profile
                         :initials="auth()->user()->initials()"
@@ -480,7 +514,6 @@
                         </div>
                     </flux:menu.radio.group>
 
-                    <livewire:selector-rol-activo />
 
                     <div class="border-y border-border px-3 py-3" x-data>
                         <p class="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary">Apariencia</p>
@@ -580,9 +613,26 @@
                     syncInert();
                 };
 
+                const labelCollapsedGroups = () => {
+                    document.querySelectorAll('[data-flux-sidebar-group-dropdown] > button').forEach((button) => {
+                        const label = button.textContent.trim();
+                        if (label) {
+                            button.setAttribute('aria-label', label);
+                            button.setAttribute('title', label);
+                        }
+                    });
+                };
+
                 protectCollapsedSidebar();
-                document.addEventListener('DOMContentLoaded', protectCollapsedSidebar, { once: true });
-                document.addEventListener('livewire:navigated', protectCollapsedSidebar);
+                labelCollapsedGroups();
+                document.addEventListener('DOMContentLoaded', () => {
+                    protectCollapsedSidebar();
+                    labelCollapsedGroups();
+                }, { once: true });
+                document.addEventListener('livewire:navigated', () => {
+                    protectCollapsedSidebar();
+                    labelCollapsedGroups();
+                });
             })();
         </script>
     </body>

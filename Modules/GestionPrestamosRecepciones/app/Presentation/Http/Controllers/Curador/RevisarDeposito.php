@@ -6,6 +6,8 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Cura
 
 use App\Concerns\HandlesDomainExceptions;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -445,6 +447,68 @@ final class RevisarDeposito extends Component
         $columnas = $registros !== [] ? array_keys($registros[0]->datosDwC()) : [];
 
         return array_values(array_filter($columnas, fn (string $c) => $c !== 'scientificName'));
+    }
+
+    public function eliminarDocumento(int $indice, AlmacenamientoDepositos $almacenamiento): void
+    {
+        abort_unless(auth()->user()?->esAdministrador(), 403);
+        set_time_limit(120);
+
+        DB::transaction(function () use ($indice, $almacenamiento): void {
+            $deposito = SolicitudDepositoEloquentModel::query()
+                ->whereKey($this->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($deposito->estado, [
+                'En Borrador',
+                'Pendiente de Revisión Documental Previa',
+                'Pendiente de Revisión por Curaduría',
+                'Requiere Corrección',
+            ], true) || $deposito->solicitud_firmada_ruta) {
+                throw ValidationException::withMessages([
+                    'documento' => 'No se pueden retirar documentos de un expediente firmado o con decision final.',
+                ]);
+            }
+
+            $documentos = $deposito->documentos_cargados ?? [];
+            $clave = array_keys($documentos)[$indice] ?? null;
+            abort_if($clave === null, 404);
+            $ruta = $documentos[$clave];
+            if (! is_string($ruta) || $ruta === '') {
+                abort(404);
+            }
+
+            $nombres = $deposito->nombres_archivos_originales ?? [];
+            unset($documentos[$clave], $nombres[$clave]);
+            $metadatos = $deposito->extraccion_metadatos ?? [];
+            $historial = $metadatos['retiros_curatoriales'] ?? [];
+            $historial[] = [
+                'documento' => $clave,
+                'usuario_id' => (string) auth()->id(),
+                'fecha' => now()->toIso8601String(),
+            ];
+
+            try {
+                $almacenamiento->eliminar($ruta);
+            } catch (\Throwable $error) {
+                report($error);
+                throw ValidationException::withMessages([
+                    'documento' => 'R2 no respondió. El documento se conservó; vuelve a intentar en unos minutos.',
+                ]);
+            }
+            $deposito->forceFill([
+                'documentos_cargados' => $documentos,
+                'nombres_archivos_originales' => $nombres,
+                'documentos_procesados' => [],
+                'extraccion_estado' => null,
+                'extraccion_metadatos' => [
+                    ...$metadatos,
+                    'revision_documental' => null,
+                    'retiros_curatoriales' => $historial,
+                ],
+            ])->save();
+        });
+
+        session()->flash('documento-retirado', 'Documento retirado del expediente y de R2.');
     }
 
     /**

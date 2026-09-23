@@ -100,7 +100,7 @@
             type="submit"
             variant="primary"
             x-bind:disabled="!turnstileVerified"
-            class="mt-1 w-full bg-bio-green! border-bio-green! hover:bg-bio-green/90! text-white! font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+            class="mt-1 w-full bg-science-blue! border-science-blue! hover:bg-science-blue/90! text-white! font-semibold disabled:cursor-not-allowed disabled:opacity-45"
         >
             <span class="flex items-center justify-center gap-2">
                 Iniciar Sesión

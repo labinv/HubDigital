@@ -86,8 +86,8 @@ try {
         & $Php artisan migrate --database=pgsql --force --no-interaction
         if ($LASTEXITCODE -ne 0) { throw 'No se pudieron aplicar las migraciones locales.' }
 
-        Write-Host 'Ejecutando la suite PHP completa con PostgreSQL local...' -ForegroundColor Cyan
-        & $Php artisan test
+        Write-Host 'Ejecutando la suite PHP con PostgreSQL local (sin bootstrap inicial)...' -ForegroundColor Cyan
+        & $Php artisan test --exclude-group=bootstrap-inicial
         $codigoPruebas = $LASTEXITCODE
     }
     finally { Pop-Location }

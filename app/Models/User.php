@@ -20,7 +20,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 
-#[Fillable(['first_name', 'last_name', 'email', 'password', 'rol', 'cargo', 'institucion'])]
+#[Fillable(['first_name', 'last_name', 'email', 'password', 'email_verified_at', 'must_change_password', 'rol', 'cargo', 'institucion'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -38,6 +38,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'id' => 'string',
             'email_verified_at' => 'datetime',
+            'must_change_password' => 'boolean',
             'password' => 'hashed',
             'rol' => RolUsuario::class,
         ];
