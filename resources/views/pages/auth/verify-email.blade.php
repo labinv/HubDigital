@@ -9,7 +9,9 @@
             <h1 class="font-display text-2xl font-bold text-blue-navy">Verifica tu correo</h1>
             <p class="text-sm text-text-secondary">
                 Tu cuenta está <span class="font-medium text-text-primary">pendiente de verificación</span>.
-                Te enviamos un enlace a tu correo electrónico; ábrelo para activar tu cuenta y acceder a la plataforma.
+                Te enviamos un enlace a
+                <strong class="break-all font-semibold text-text-primary">{{ auth()->user()->email }}</strong>;
+                ábrelo para activar tu cuenta y acceder a la plataforma.
             </p>
         </div>
 
@@ -18,7 +20,8 @@
             <div class="flex items-start gap-2 rounded-lg border border-success/30 bg-success/5 p-3">
                 <flux:icon name="check-circle" variant="outline" class="mt-px size-4 shrink-0 text-success" />
                 <p class="text-xs text-text-primary">
-                    Enviamos un nuevo enlace de verificación al correo que registraste. Revisa también tu carpeta de spam.
+                    Enviamos un nuevo enlace de verificación a <strong>{{ auth()->user()->email }}</strong>.
+                    Revisa también tu carpeta de spam.
                 </p>
             </div>
         @endif

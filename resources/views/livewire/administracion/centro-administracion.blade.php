@@ -65,4 +65,14 @@
             </div>
         </article>
     </section>
+
+    <section class="hub-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="titulo-configuracion-sistema">
+        <div>
+            <h2 id="titulo-configuracion-sistema" class="font-display text-xl font-semibold text-blue-navy">Configuración del sistema</h2>
+            <p class="mt-1 text-sm text-text-secondary">Correo transaccional y parámetros operativos administrables sin editar archivos del servidor.</p>
+        </div>
+        <a href="{{ route('admin.configuracion') }}" wire:navigate class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-navy/25 bg-surface px-4 py-2 text-sm font-semibold text-blue-navy transition hover:bg-blue-navy/[0.04]">
+            <flux:icon name="cog-6-tooth" class="size-4" /> Administrar configuración
+        </a>
+    </section>
 </div>

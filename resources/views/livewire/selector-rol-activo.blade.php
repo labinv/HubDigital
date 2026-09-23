@@ -22,7 +22,6 @@
         <flux:menu.item
             :href="route('roles.activar', strtolower($rolActivable->value))"
             icon="plus-circle"
-            wire:navigate
         >
             Activar rol de {{ $rolActivable->etiqueta() }}
         </flux:menu.item>

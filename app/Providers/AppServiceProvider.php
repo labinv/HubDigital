@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Services\SystemMailConfigurationService;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -27,7 +30,28 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureTranslations();
+        $this->configureSystemMail();
         $this->preventExternalNotificationsDuringValidation();
+    }
+
+    /** La base prevalece sobre .env tras la primera configuración administrativa. */
+    protected function configureSystemMail(): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        try {
+            $service = app(SystemMailConfigurationService::class);
+            $service->importEnvironmentIfMissing();
+            $service->applyStored();
+        } catch (\Throwable $exception) {
+            // Migraciones, instalación inicial o una caída de PostgreSQL deben
+            // conservar el fallback de entorno sin revelar secretos en logs.
+            Log::warning('No se pudo cargar la configuración SMTP administrativa.', [
+                'exception_type' => $exception::class,
+            ]);
+        }
     }
 
     /**
@@ -75,7 +99,15 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Event::listen(NotificationSending::class, static function (NotificationSending $event): ?bool {
-            return $event->channel === 'database' ? null : false;
+            if ($event->channel === 'database') {
+                return null;
+            }
+
+            $esVerificacionAutorizada = config('hubdigital.allow_auth_emails_during_validation')
+                && $event->channel === 'mail'
+                && $event->notification instanceof VerifyEmail;
+
+            return $esVerificacionAutorizada ? null : false;
         });
     }
 }

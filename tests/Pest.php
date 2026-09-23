@@ -15,7 +15,7 @@ use Tests\PostgresIntegrationTestCase;
 |
 */
 
-// Los flujos funcionales que persisten datos usan una base aislada. Se
+// Los flujos funcionales que persisten datos usan la base local hubdigital. Se
 // enumeran expresamente para que una prueba nueva no ejecute DDL sin declarar
 // su dependencia de PostgreSQL.
 pest()->extend(DatabaseFeatureTestCase::class)
@@ -44,7 +44,7 @@ pest()->extend(InfrastructureTestCase::class)
     );
 
 // Las rutas que verifican R2 con relaciones reales se ejecutan contra una
-// base PostgreSQL aislada y previamente migrada. No emplean SQLite ni hacen
+// base PostgreSQL local previamente migrada. No emplean SQLite ni hacen
 // DDL por caso de prueba: el procedimiento de integración crea y elimina esa
 // base efímera completa.
 pest()->extend(PostgresIntegrationTestCase::class)

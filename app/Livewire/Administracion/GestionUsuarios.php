@@ -84,8 +84,7 @@ final class GestionUsuarios extends Component
         CreadorUsuario $creador,
         #[\SensitiveParameter] string $password,
         #[\SensitiveParameter] string $passwordConfirmation,
-    ): void
-    {
+    ): void {
         $this->autorizarAdministracion();
         $this->email = User::normalizarEmail($this->email);
         $this->first_name = trim($this->first_name);
@@ -108,8 +107,8 @@ final class GestionUsuarios extends Component
             'email' => ['required', 'email:rfc', 'max:255', Rule::unique(User::class, 'email_normalizado')],
             'password' => ['required', 'string', 'max:72', Password::min(12)->mixedCase()->numbers()->symbols(), 'confirmed'],
             'rol' => ['required', Rule::enum(RolUsuario::class)],
-            'cargo' => ['nullable', 'string', 'max:255'],
-            'institucion' => ['nullable', 'string', 'max:255'],
+            'cargo' => [Rule::requiredIf($this->rol === RolUsuario::DEPOSITANTE->value), 'nullable', 'string', 'max:255'],
+            'institucion' => [Rule::requiredIf($this->rol === RolUsuario::DEPOSITANTE->value), 'nullable', 'string', 'max:255'],
         ])->validate();
 
         $creador->crear($datos, RolUsuario::from($datos['rol']));
@@ -175,8 +174,8 @@ final class GestionUsuarios extends Component
             'rol' => ['required', Rule::enum(RolUsuario::class)],
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => [Rule::enum(RolUsuario::class)],
-            'cargo' => ['nullable', 'string', 'max:255'],
-            'institucion' => ['nullable', 'string', 'max:255'],
+            'cargo' => [Rule::requiredIf($rolesSeleccionados->contains(RolUsuario::DEPOSITANTE)), 'nullable', 'string', 'max:255'],
+            'institucion' => [Rule::requiredIf($rolesSeleccionados->contains(RolUsuario::DEPOSITANTE)), 'nullable', 'string', 'max:255'],
         ])->validate();
 
         if ($rol === null || ! $rolesSeleccionados->contains($rol)) {

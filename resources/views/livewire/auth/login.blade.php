@@ -13,6 +13,7 @@
         cuando la cuenta tiene 2FA. No autenticar desde un método Livewire.
     --}}
     <form
+        id="hub-login-form"
         method="POST"
         action="{{ route('login.store') }}"
         class="flex flex-col gap-4"
@@ -22,6 +23,9 @@
         x-on:hub-turnstile-reset.window="turnstileVerified = false"
     >
         @csrf
+        @if (config('services.turnstile.enabled'))
+            <input type="hidden" name="cf-turnstile-response" value="">
+        @endif
 
         <flux:field>
             <flux:label class="text-text-primary font-medium">Correo electrónico</flux:label>
@@ -72,6 +76,7 @@
                         data-sitekey="{{ config('services.turnstile.site_key') }}"
                         data-action="turnstile-spin-v2"
                         data-theme="auto"
+                        data-response-field="false"
                         data-callback="hubLoginTurnstilePassed"
                         data-expired-callback="hubLoginTurnstileReset"
                         data-error-callback="hubLoginTurnstileReset"
@@ -124,8 +129,17 @@
 
     @if (config('services.turnstile.enabled') && filled(config('services.turnstile.site_key')))
         <script>
-            window.hubLoginTurnstilePassed = () => window.dispatchEvent(new CustomEvent('hub-turnstile-passed'));
-            window.hubLoginTurnstileReset = () => window.dispatchEvent(new CustomEvent('hub-turnstile-reset'));
+            window.hubLoginTurnstilePassed = (token) => {
+                const field = document.querySelector('#hub-login-form input[name="cf-turnstile-response"]');
+                if (!field || !token) return;
+                field.value = token;
+                window.dispatchEvent(new CustomEvent('hub-turnstile-passed'));
+            };
+            window.hubLoginTurnstileReset = () => {
+                const field = document.querySelector('#hub-login-form input[name="cf-turnstile-response"]');
+                if (field) field.value = '';
+                window.dispatchEvent(new CustomEvent('hub-turnstile-reset'));
+            };
         </script>
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     @endif

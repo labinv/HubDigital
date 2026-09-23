@@ -32,7 +32,7 @@ require_exact DEPOSIT_STORAGE_DRIVER r2
 require_exact DEPOSIT_STORAGE_REQUIRE_REMOTE true
 require_exact DEPOSIT_STORAGE_VERIFY_AFTER_WRITE true
 require_exact HUBDIGITAL_VALIDATION_MODE true
-require_exact MAIL_MAILER log
+require_exact MAIL_MAILER smtp
 validation_queue="$(read_env HUBDIGITAL_VALIDATION_QUEUE)"
 [[ "${validation_queue}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ && "${validation_queue}" != default ]] || {
     echo 'HUBDIGITAL_VALIDATION_QUEUE debe ser una cola dedicada valida distinta de default.' >&2
@@ -98,6 +98,11 @@ if [[ "${APPLY_MIGRATIONS:-0}" == 1 ]]; then
     fi
 else
     echo 'Migraciones no aplicadas (APPLY_MIGRATIONS=1 las habilita tras validar la restauración).'
+fi
+if [[ "$(read_env SEED_BOOTSTRAP_DEPOSITANTE)" == true ]]; then
+    require_value BOOTSTRAP_DEPOSITANTE_EMAIL
+    require_value BOOTSTRAP_DEPOSITANTE_PASSWORD
+    candidate_artisan db:seed --class='Database\Seeders\DepositanteBootstrapSeeder' --force --no-interaction
 fi
 if ! candidate_artisan optimize || ! candidate_artisan depositos:verificar-almacenamiento --exigir-r2; then
     echo 'El candidato no superó optimización o R2; no se activa y permanece en mantenimiento.' >&2

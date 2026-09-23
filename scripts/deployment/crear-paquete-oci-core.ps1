@@ -351,7 +351,10 @@ try {
         'DEPOSIT_STORAGE_VERIFY_AFTER_WRITE', 'DEPOSIT_STORAGE_MAX_OBJECT_BYTES',
         'R2_ACCOUNT_ID', 'R2_BUCKET', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY',
         'R2_ENDPOINT', 'TURNSTILE_ENABLED', 'TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET',
-        'TURNSTILE_EXPECTED_HOSTNAME'
+        'TURNSTILE_EXPECTED_HOSTNAME', 'MAIL_MAILER', 'MAIL_HOST', 'MAIL_PORT',
+        'MAIL_USERNAME', 'MAIL_PASSWORD', 'MAIL_FROM_ADDRESS',
+        'SEED_BOOTSTRAP_DEPOSITANTE', 'BOOTSTRAP_DEPOSITANTE_EMAIL',
+        'BOOTSTRAP_DEPOSITANTE_PASSWORD'
     )
     foreach ($clave in $clavesOciRequeridas) {
         if ([string]::IsNullOrWhiteSpace($valoresEntorno[$clave])) {
@@ -369,6 +372,13 @@ try {
     }
     if ($valoresEntorno['TURNSTILE_EXPECTED_HOSTNAME'] -ne 'dev.labinvepn.org') {
         throw 'TURNSTILE_EXPECTED_HOSTNAME debe ser dev.labinvepn.org para OCI.'
+    }
+    if ($valoresEntorno['MAIL_MAILER'] -ne 'smtp' -or
+        $valoresEntorno['MAIL_HOST'] -ne 'smtp.zoho.com' -or
+        $valoresEntorno['MAIL_PORT'] -ne '587' -or
+        $valoresEntorno['MAIL_USERNAME'] -ne 'hubdigital.epn@kintiflow.com' -or
+        $valoresEntorno['MAIL_FROM_ADDRESS'] -ne 'hubdigital.epn@kintiflow.com') {
+        throw 'El correo OCI debe usar SMTP Zoho con hubdigital.epn@kintiflow.com y puerto 587.'
     }
     $bytesPassword = [byte[]]::new(36)
     $generadorAleatorio = [Security.Cryptography.RandomNumberGenerator]::Create()
@@ -412,6 +422,8 @@ try {
         '<VAPID_PRIVATE_KEY>' = $vapidPrivada
         '<turnstile-site-key>' = $valoresEntorno['TURNSTILE_SITE_KEY']
         '<turnstile-secret>' = $valoresEntorno['TURNSTILE_SECRET']
+        '<CONTRASENA_DE_APLICACION_ZOHO>' = $valoresEntorno['MAIL_PASSWORD']
+        '<CONTRASENA_DE_LA_CUENTA>' = $valoresEntorno['BOOTSTRAP_DEPOSITANTE_PASSWORD']
     }
     foreach ($marcador in $reemplazosEntorno.Keys) {
         $contenidoEntornoOci = $contenidoEntornoOci.Replace($marcador, $reemplazosEntorno[$marcador])

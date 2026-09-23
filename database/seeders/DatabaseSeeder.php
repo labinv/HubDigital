@@ -14,5 +14,9 @@ class DatabaseSeeder extends Seeder
         if (filter_var(env('SEED_DEMO_USERS', false), FILTER_VALIDATE_BOOL)) {
             $this->call(DepositosDemoSeeder::class);
         }
+
+        if (filter_var(env('SEED_BOOTSTRAP_DEPOSITANTE', false), FILTER_VALIDATE_BOOL)) {
+            $this->call(DepositanteBootstrapSeeder::class);
+        }
     }
 }

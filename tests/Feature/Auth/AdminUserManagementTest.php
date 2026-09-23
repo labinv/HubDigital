@@ -10,6 +10,7 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
@@ -25,7 +26,9 @@ test('only an administrator can open user management', function () {
 
     $this->actingAs($admin)->get(route('admin.usuarios'))
         ->assertOk()
-        ->assertSee('data-testid="admin-users-page"', false);
+        ->assertSee('data-testid="admin-users-page"', false)
+        ->assertSee('aria-label="Ruta de navegación"', false)
+        ->assertSee('Centro de administración');
 
     $this->actingAs($depositante)->get(route('admin.usuarios'))->assertForbidden();
 });
@@ -155,6 +158,7 @@ test('validation errors never serialize passwords into Livewire snapshots or eff
 });
 
 test('a database duplicate is converted into validation without creating partial membership', function () {
+    $cantidadInicial = User::query()->count();
     User::factory()->depositante()->create(['email' => 'duplicado@example.org']);
     $creador = app(CreadorUsuario::class);
 
@@ -165,7 +169,7 @@ test('a database duplicate is converted into validation without creating partial
         'password' => 'Inicial-Segura-2026!',
     ], RolUsuario::DEPOSITANTE))->toThrow(ValidationException::class);
 
-    expect(User::query()->count())->toBe(1);
+    expect(User::query()->count())->toBe($cantidadInicial + 1);
     Notification::assertNothingSent();
 });
 
@@ -183,7 +187,7 @@ test('curatorial notifications include administrators and exclude citizens', fun
     $curador = User::factory()->curador()->create();
     $ciudadano = User::factory()->depositante()->create();
 
-    app(NotificacionCuratoriaAdapter::class)->notificarNuevaSolicitudPorRevisar((string) \Illuminate\Support\Str::uuid());
+    app(NotificacionCuratoriaAdapter::class)->notificarNuevaSolicitudPorRevisar((string) Str::uuid());
 
     Notification::assertSentTo([$admin, $curador], NuevaSolicitudPorRevisarNotification::class);
     Notification::assertNotSentTo($ciudadano, NuevaSolicitudPorRevisarNotification::class);
@@ -196,10 +200,49 @@ test('passwords that resemble hashes are still treated as the entered password',
         'last_name' => 'Hash',
         'email' => 'hash@example.org',
         'password' => $entrada,
+        'cargo' => 'Investigadora',
+        'institucion' => 'Institución de prueba',
     ], RolUsuario::DEPOSITANTE);
 
     expect(Hash::check($entrada, $usuario->password))->toBeTrue()
         ->and($usuario->password)->not->toBe($entrada);
+});
+
+test('administrator assigns both external memberships but only one active primary role', function () {
+    $admin = User::factory()->administrador()->create();
+    $usuario = User::factory()->prestamista()->create();
+
+    Livewire::actingAs($admin)
+        ->test(GestionUsuarios::class)
+        ->call('editar', $usuario->id)
+        ->set('edicionRoles', [RolUsuario::PRESTAMISTA->value, RolUsuario::DEPOSITANTE->value])
+        ->set('edicionRol', RolUsuario::DEPOSITANTE->value)
+        ->set('edicionCargo', 'Investigadora asociada')
+        ->set('edicionInstitucion', 'Universidad de prueba')
+        ->call('actualizar')
+        ->assertHasNoErrors();
+
+    $usuario->refresh()->load('roles');
+
+    expect($usuario->rolesAsignados()->all())
+        ->toContain(RolUsuario::PRESTAMISTA, RolUsuario::DEPOSITANTE)
+        ->and($usuario->rol)->toBe(RolUsuario::DEPOSITANTE)
+        ->and($usuario->cargo)->toBe('Investigadora asociada');
+});
+
+test('administrator cannot assign investigator deposit membership without its requirements', function () {
+    $admin = User::factory()->administrador()->create();
+    $usuario = User::factory()->prestamista()->create();
+
+    Livewire::actingAs($admin)
+        ->test(GestionUsuarios::class)
+        ->call('editar', $usuario->id)
+        ->set('edicionRoles', [RolUsuario::PRESTAMISTA->value, RolUsuario::DEPOSITANTE->value])
+        ->set('edicionRol', RolUsuario::DEPOSITANTE->value)
+        ->set('edicionCargo', '')
+        ->set('edicionInstitucion', '')
+        ->call('actualizar')
+        ->assertHasErrors(['cargo', 'institucion']);
 });
 
 test('long multibyte passwords produce validation instead of a hashing failure', function () {
@@ -210,6 +253,7 @@ test('long multibyte passwords produce validation instead of a hashing failure',
         ->set('first_name', 'Cuenta')
         ->set('last_name', 'Larga')
         ->set('email', 'larga@example.org')
+        ->set('rol', RolUsuario::PRESTAMISTA->value)
         ->call('crear', $clave, $clave)
         ->assertHasErrors('password');
 

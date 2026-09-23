@@ -10,9 +10,6 @@
                     <flux:subheading class="mt-1">Administra tu perfil, seguridad y preferencias de tu cuenta.</flux:subheading>
                 </div>
             </div>
-            <flux:modal.close>
-                <flux:button variant="ghost" icon="x-mark" aria-label="Cerrar configuración" />
-            </flux:modal.close>
         </header>
 
         <div class="grid min-h-[28rem] gap-6 md:grid-cols-[12rem_minmax(0,1fr)]">

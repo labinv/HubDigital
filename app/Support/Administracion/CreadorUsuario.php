@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 final class CreadorUsuario
 {
     /**
-     * @param array{first_name:string,last_name:string,email:string,password:string,cargo?:?string,institucion?:?string} $datos
+     * @param  array{first_name:string,last_name:string,email:string,password:string,cargo?:?string,institucion?:?string}  $datos
      */
     public function crear(#[\SensitiveParameter] array $datos, RolUsuario $rol): User
     {
@@ -34,6 +34,17 @@ final class CreadorUsuario
             throw ValidationException::withMessages([
                 'email' => 'Los roles internos requieren un correo institucional autorizado.',
             ]);
+        }
+
+        if ($rol === RolUsuario::DEPOSITANTE) {
+            $faltantes = collect(['cargo', 'institucion'])
+                ->filter(fn (string $campo): bool => trim((string) ($datos[$campo] ?? '')) === '')
+                ->mapWithKeys(fn (string $campo): array => [$campo => 'Este dato es obligatorio para el perfil investigador depositante.'])
+                ->all();
+
+            if ($faltantes !== []) {
+                throw ValidationException::withMessages($faltantes);
+            }
         }
 
         try {

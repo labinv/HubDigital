@@ -16,6 +16,15 @@
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
     --font-display: 'Roboto Slab', ui-serif, Georgia, serif;
 
+    /* Geometría compacta solicitada para toda la aplicación. Los radios
+       equivalen aproximadamente a una cuarta parte de los valores base de
+       Tailwind, sin reducir el área táctil de botones ni controles. */
+    --radius-sm: .0625rem;
+    --radius-md: .09375rem;
+    --radius-lg: .125rem;
+    --radius-xl: .1875rem;
+    --radius-2xl: .25rem;
+
     /* Hub Digital Design System — Primary Colors */
     --color-blue-navy: #102B46;
     --color-bio-green: #1D6A4D;
@@ -398,7 +407,18 @@ img, svg, video, canvas, iframe, embed, object {
     max-width: none;
     min-width: 0;
     margin-inline: auto;
-    padding-inline: clamp(1rem, 2.25vw, 2rem) !important;
+    padding-inline: clamp(.25rem, .5625vw, .5rem) !important;
+}
+
+.hub-global-breadcrumb {
+    width: 100%;
+    min-width: 0;
+    padding: 0 0 .75rem;
+}
+
+.hub-global-breadcrumb [data-flux-breadcrumbs] {
+    flex-wrap: wrap;
+    row-gap: .25rem;
 }
 
 [data-flux-main],
@@ -471,6 +491,11 @@ img, svg, video, canvas, iframe, embed, object {
    estructura ni alterar los flujos curatoriales. */
 [data-flux-main] {
     background: var(--color-bg-main);
+    padding: .375rem !important;
+}
+
+@media (min-width: 1024px) {
+    [data-flux-main] { padding: .5rem !important; }
 }
 
 [data-flux-sidebar] {
@@ -565,7 +590,7 @@ img, svg, video, canvas, iframe, embed, object {
 
 [data-flux-sidebar] [data-flux-sidebar-item] {
     border: 0;
-    border-radius: .5rem;
+    border-radius: .125rem;
     color: rgba(255, 255, 255, .78) !important;
     font-size: .84rem;
     font-weight: 500;

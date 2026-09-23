@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\Notification;
 
 beforeEach(function (): void {
     Notification::fake();
+    // El alta inicial sólo existe antes de crear la primera cuenta. La base
+    // local de desarrollo conserva usuarios, así que este flujo requiere una
+    // instalación vacía (por ejemplo, la validación de instalación en OCI).
+    if (User::query()->exists()) {
+        $this->markTestSkipped('El bootstrap inicial requiere una base sin usuarios.');
+    }
     config()->set('administracion.bootstrap', [
         'enabled' => true,
         'token' => 'token-efimero-de-prueba-no-real',

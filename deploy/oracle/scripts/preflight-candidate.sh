@@ -28,7 +28,7 @@ require_exact DEPOSIT_STORAGE_REQUIRE_REMOTE true
 require_exact DEPOSIT_STORAGE_VERIFY_AFTER_WRITE true
 require_exact HUBDIGITAL_VALIDATION_MODE true
 [[ "$(read_env DB_QUEUE_RETRY_AFTER)" -gt 300 ]] || { echo 'retry_after debe superar 300 s.' >&2; exit 65; }
-require_exact MAIL_MAILER log
+require_exact MAIL_MAILER smtp
 validation_queue="$(read_env HUBDIGITAL_VALIDATION_QUEUE)"
 [[ "${validation_queue}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ && "${validation_queue}" != default ]] || {
     echo 'HUBDIGITAL_VALIDATION_QUEUE debe ser una cola dedicada valida distinta de default.' >&2

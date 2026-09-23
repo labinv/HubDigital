@@ -11,11 +11,12 @@ beforeEach(function () {
 });
 
 test('email verification screen can be rendered', function () {
-    $user = User::factory()->unverified()->create();
+    $user = User::factory()->unverified()->create(['email' => 'destino-visible@example.com']);
 
     $response = $this->actingAs($user)->get(route('verification.notice'));
 
-    $response->assertOk();
+    $response->assertOk()
+        ->assertSee('destino-visible@example.com');
 });
 
 test('email can be verified', function () {

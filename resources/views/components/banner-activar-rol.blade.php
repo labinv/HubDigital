@@ -34,7 +34,6 @@
                         variant="primary"
                         icon="plus-circle"
                         :href="route('roles.activar', strtolower($otroRol->value))"
-                        wire:navigate
                     >
                         {{ $ctaBanner }}
                     </flux:button>

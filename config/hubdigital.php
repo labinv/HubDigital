@@ -7,6 +7,13 @@ return [
     // de Notification se bloquean desde AppServiceProvider.
     'validation_mode' => filter_var(env('HUBDIGITAL_VALIDATION_MODE', false), FILTER_VALIDATE_BOOL),
 
+    // Permite únicamente los correos de alta imprescindibles mientras la
+    // instancia OCI continúa aislando el resto de notificaciones externas.
+    'allow_auth_emails_during_validation' => filter_var(
+        env('HUBDIGITAL_ALLOW_AUTH_EMAILS', false),
+        FILTER_VALIDATE_BOOL,
+    ),
+
     // El worker de validación sólo consume esta cola. Los trabajos restaurados
     // de `default` se conservan para revisión y nunca se ejecutan por accidente
     // al activar localmente la release.

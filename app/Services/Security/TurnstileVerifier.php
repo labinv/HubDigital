@@ -15,6 +15,19 @@ final class TurnstileVerifier
      */
     public function validateLogin(Request $request): void
     {
+        $this->validate($request, 'iniciar sesión');
+    }
+
+    /**
+     * Valida el alta pública antes de crear la cuenta o emitir eventos.
+     */
+    public function validateRegistration(Request $request): void
+    {
+        $this->validate($request, 'crear la cuenta');
+    }
+
+    private function validate(Request $request, string $operation): void
+    {
         if (! config('services.turnstile.enabled')) {
             return;
         }
@@ -23,7 +36,7 @@ final class TurnstileVerifier
         $token = (string) $request->input('cf-turnstile-response');
 
         if ($secret === '' || $token === '') {
-            $this->reject();
+            $this->reject($operation);
         }
 
         try {
@@ -39,7 +52,7 @@ final class TurnstileVerifier
                 ->throw()
                 ->json();
         } catch (ConnectionException|RequestException) {
-            $this->reject('No fue posible validar que eres una persona. Intenta nuevamente.');
+            $this->reject($operation, 'No fue posible validar que eres una persona. Intenta nuevamente.');
         }
 
         $expectedHostname = (string) config('services.turnstile.expected_hostname');
@@ -48,14 +61,14 @@ final class TurnstileVerifier
         if (($result['success'] ?? false) !== true
             || ($expectedHostname !== '' && ($result['hostname'] ?? null) !== $expectedHostname)
             || ($expectedAction !== '' && ($result['action'] ?? null) !== $expectedAction)) {
-            $this->reject();
+            $this->reject($operation);
         }
     }
 
-    private function reject(string $message = 'Completa la verificación de seguridad antes de iniciar sesión.'): never
+    private function reject(string $operation, ?string $message = null): never
     {
         throw ValidationException::withMessages([
-            'cf-turnstile-response' => $message,
+            'cf-turnstile-response' => $message ?? "Completa la verificación de seguridad antes de {$operation}.",
         ]);
     }
 }

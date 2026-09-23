@@ -90,6 +90,14 @@
                                 >
                                     Usuarios y perfiles
                                 </flux:sidebar.item>
+                                <flux:sidebar.item
+                                    icon="cog-6-tooth"
+                                    :href="route('admin.configuracion')"
+                                    :current="request()->routeIs('admin.configuracion')"
+                                    wire:navigate
+                                >
+                                    Configuración del sistema
+                                </flux:sidebar.item>
                             </flux:sidebar.group>
                         @endif
                         <flux:sidebar.group

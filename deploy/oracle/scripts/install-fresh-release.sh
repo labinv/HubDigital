@@ -31,7 +31,7 @@ require_exact DEPOSIT_STORAGE_DRIVER r2
 require_exact DEPOSIT_STORAGE_REQUIRE_REMOTE true
 require_exact DEPOSIT_STORAGE_VERIFY_AFTER_WRITE true
 require_exact HUBDIGITAL_VALIDATION_MODE true
-require_exact MAIL_MAILER log
+require_exact MAIL_MAILER smtp
 for key in APP_KEY DB_DATABASE DB_USERNAME DB_PASSWORD R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY DEPOSIT_STORAGE_PREFIX; do require_value "${key}"; done
 validation_queue="$(read_env HUBDIGITAL_VALIDATION_QUEUE)"
 [[ "${validation_queue}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ && "${validation_queue}" != default ]] || {
@@ -72,6 +72,11 @@ done
 artisan config:clear
 # Las migraciones crean todas las tablas antes de cualquier comando que las consulta.
 artisan migrate --force --no-interaction
+if [[ "$(read_env SEED_BOOTSTRAP_DEPOSITANTE)" == true ]]; then
+    require_value BOOTSTRAP_DEPOSITANTE_EMAIL
+    require_value BOOTSTRAP_DEPOSITANTE_PASSWORD
+    artisan db:seed --class='Database\Seeders\DepositanteBootstrapSeeder' --force --no-interaction
+fi
 artisan cache:clear
 artisan migrate:status --no-interaction
 artisan depositos:verificar-almacenamiento --exigir-r2

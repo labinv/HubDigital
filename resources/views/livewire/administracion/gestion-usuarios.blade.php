@@ -64,8 +64,8 @@
                         <flux:select.option value="{{ $opcionRol->value }}">{{ $opcionRol->etiqueta() }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:input wire:model="cargo" name="cargo" label="Cargo o función" autocomplete="off" />
-                <flux:input wire:model="institucion" name="institucion" label="Institución" autocomplete="off" />
+                <flux:input wire:model="cargo" name="cargo" label="Cargo o función" :required="$rol === \App\Enums\RolUsuario::DEPOSITANTE->value" autocomplete="off" />
+                <flux:input wire:model="institucion" name="institucion" label="Institución" :required="$rol === \App\Enums\RolUsuario::DEPOSITANTE->value" autocomplete="off" />
                 <flux:input name="password" type="password" label="Contraseña inicial" required minlength="12" maxlength="72" autocomplete="new-password" />
                 <flux:input name="password_confirmation" type="password" label="Confirmar contraseña" required minlength="12" maxlength="72" autocomplete="new-password" />
                 <p class="md:col-span-2 text-xs text-text-secondary">
@@ -91,7 +91,7 @@
         <section class="hub-panel border-science-blue/30 p-5">
             <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h2 class="font-display text-lg font-semibold text-blue-navy">Editar perfil institucional</h2>
+                    <h2 class="font-display text-lg font-semibold text-blue-navy">Editar perfil de usuario</h2>
                     <p class="text-sm text-text-secondary">El correo es la identidad de la cuenta y se conserva. Actualiza el perfil, los roles asignados y el rol operativo principal.</p>
                 </div>
                 <flux:button wire:click="cancelarEdicion" variant="ghost" icon="x-mark">Cancelar</flux:button>
@@ -118,8 +118,8 @@
                         <flux:select.option value="{{ $opcionRol->value }}">{{ $opcionRol->etiqueta() }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:input wire:model="edicionCargo" label="Cargo o función" autocomplete="off" />
-                <flux:input wire:model="edicionInstitucion" class="md:col-span-2" label="Institución" autocomplete="off" />
+                <flux:input wire:model="edicionCargo" label="Cargo o función" :required="in_array(\App\Enums\RolUsuario::DEPOSITANTE->value, $edicionRoles, true)" autocomplete="off" />
+                <flux:input wire:model="edicionInstitucion" class="md:col-span-2" label="Institución" :required="in_array(\App\Enums\RolUsuario::DEPOSITANTE->value, $edicionRoles, true)" autocomplete="off" />
 
                 @if ($errors->any())
                     <div role="alert" class="md:col-span-2 rounded-lg border border-error/25 bg-error/5 p-3 text-sm text-error">{{ $errors->first() }}</div>

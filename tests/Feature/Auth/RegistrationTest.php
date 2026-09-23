@@ -3,6 +3,7 @@
 use App\Enums\RolUsuario;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -13,6 +14,61 @@ test('registration screen can be rendered', function () {
     $response = $this->get(route('register'));
 
     $response->assertOk();
+});
+
+test('registration renders turnstile and keeps submit disabled until verification', function () {
+    config()->set('services.turnstile.enabled', true);
+    config()->set('services.turnstile.site_key', 'site-key-for-test');
+
+    $this->get(route('register'))
+        ->assertOk()
+        ->assertSee('class="cf-turnstile', false)
+        ->assertSee('data-action="turnstile-spin-v2"', false)
+        ->assertSee('data-size="flexible"', false)
+        ->assertSee('x-bind:disabled="!turnstileVerified"', false);
+});
+
+test('registration validates the turnstile token before creating the account', function () {
+    config()->set('services.turnstile.enabled', true);
+    config()->set('services.turnstile.secret', 'secret-for-test');
+    config()->set('services.turnstile.expected_hostname', 'dev.labinvepn.org');
+
+    Http::fake([
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::response([
+            'success' => true,
+            'hostname' => 'dev.labinvepn.org',
+            'action' => 'turnstile-spin-v2',
+        ]),
+    ]);
+
+    $this->post(route('register.store'), [
+        'first_name' => 'Captcha',
+        'last_name' => 'Validado',
+        'email' => 'captcha@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'rol' => RolUsuario::PRESTAMISTA->value,
+        'cf-turnstile-response' => 'valid-token',
+    ])->assertSessionHasNoErrors();
+
+    Http::assertSentCount(1);
+    expect(User::query()->where('email_normalizado', 'captcha@example.com')->exists())->toBeTrue();
+});
+
+test('registration rejects a missing turnstile token without creating an account', function () {
+    config()->set('services.turnstile.enabled', true);
+    config()->set('services.turnstile.secret', 'secret-for-test');
+
+    $this->post(route('register.store'), [
+        'first_name' => 'Captcha',
+        'last_name' => 'Ausente',
+        'email' => 'sin-captcha@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'rol' => RolUsuario::PRESTAMISTA->value,
+    ])->assertSessionHasErrors('cf-turnstile-response');
+
+    expect(User::query()->where('email_normalizado', 'sin-captcha@example.com')->exists())->toBeFalse();
 });
 
 test('new users can register', function () {

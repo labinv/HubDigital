@@ -11,7 +11,7 @@ $servicio = 'hubdigital-postgresql-16'
 $pgBin = 'C:\Program Files\PostgreSQL\16\bin'
 $raizRepositorio = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $archivoClave = Join-Path $raizRepositorio '.local\secrets\postgres-test-password.clixml'
-$basePruebas = 'hubdigital_test'
+$basePruebas = 'hubdigital'
 
 function Invoke-ServicioElevado {
     param([Parameter(Mandatory)] [ValidateSet('start', 'stop')] [string]$Accion)
@@ -22,7 +22,7 @@ function Invoke-ServicioElevado {
         "Stop-Service -Name '$servicio' -Force"
     }
     Write-Host "Se solicitara UAC para $Accion PostgreSQL de pruebas." -ForegroundColor Yellow
-    $proceso = Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList @('-NoProfile', '-Command', $comando) -Wait -PassThru
+    $proceso = Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList @('-NoProfile', '-Command', $comando) -WindowStyle Hidden -Wait -PassThru
     if ($proceso.ExitCode -ne 0) { throw "No se pudo $Accion PostgreSQL (codigo $($proceso.ExitCode))." }
 }
 
@@ -33,7 +33,7 @@ function Assert-PuertoCerrado {
 }
 
 if (-not (Test-Path -LiteralPath $archivoClave -PathType Leaf)) { throw "No existe la credencial cifrada: $archivoClave" }
-foreach ($programa in @('pg_isready.exe', 'psql.exe', 'createdb.exe', 'dropdb.exe')) {
+foreach ($programa in @('pg_isready.exe', 'psql.exe', 'createdb.exe')) {
     if (-not (Test-Path -LiteralPath (Join-Path $pgBin $programa) -PathType Leaf)) { throw "No se encontro $programa en PostgreSQL 16." }
 }
 
@@ -54,12 +54,12 @@ try {
     if (-not $listo) { throw 'PostgreSQL no quedo listo en 30 segundos.' }
 
     $env:PGPASSWORD = $clave
-    & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$basePruebas' AND pid <> pg_backend_pid();" *> $null
-    if ($LASTEXITCODE -ne 0) { throw "No se pudieron cerrar las conexiones de $basePruebas." }
-    & (Join-Path $pgBin 'dropdb.exe') -h 127.0.0.1 -p 5432 -U postgres --if-exists $basePruebas
-    if ($LASTEXITCODE -ne 0) { throw "No se pudo recrear de forma segura la base aislada $basePruebas." }
-    & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p 5432 -U postgres $basePruebas
-    if ($LASTEXITCODE -ne 0) { throw "No se pudo crear la base aislada $basePruebas." }
+    $existe = & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p 5432 -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$basePruebas';"
+    if ($LASTEXITCODE -ne 0) { throw "No se pudo consultar la base local $basePruebas." }
+    if ([string]::IsNullOrWhiteSpace([string]$existe)) {
+        & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p 5432 -U postgres $basePruebas
+        if ($LASTEXITCODE -ne 0) { throw "No se pudo crear la base local $basePruebas." }
+    }
 
     $env:APP_ENV = 'testing'
     $env:DB_CONNECTION = 'pgsql'
@@ -74,21 +74,26 @@ try {
     $env:TEST_DB_DATABASE = $basePruebas
     $env:TEST_DB_USERNAME = 'postgres'
     $env:TEST_DB_PASSWORD = $clave
+    $lineaClave = Get-Content -LiteralPath (Join-Path $Proyecto '.env') |
+        Where-Object { $_.StartsWith('APP_KEY=') } |
+        Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace($lineaClave)) { throw 'Falta APP_KEY en el .env local.' }
+    $env:APP_KEY = $lineaClave.Substring('APP_KEY='.Length).Trim('"')
 
     Push-Location $Proyecto
     try {
-        Write-Host "Preparando esquema aislado $basePruebas..." -ForegroundColor Cyan
-        & $Php artisan migrate:fresh --database=pgsql_test --force
-        if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar el esquema PostgreSQL de pruebas.' }
+        Write-Host "Aplicando migraciones pendientes en la base local unica $basePruebas..." -ForegroundColor Cyan
+        & $Php artisan migrate --database=pgsql --force --no-interaction
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudieron aplicar las migraciones locales.' }
 
-        Write-Host 'Ejecutando la suite PHP completa con PostgreSQL aislado...' -ForegroundColor Cyan
+        Write-Host 'Ejecutando la suite PHP completa con PostgreSQL local...' -ForegroundColor Cyan
         & $Php artisan test
         $codigoPruebas = $LASTEXITCODE
     }
     finally { Pop-Location }
 }
 finally {
-    foreach ($nombre in @('PGPASSWORD','DB_PASSWORD','TEST_DB_PASSWORD')) { Remove-Item "Env:$nombre" -ErrorAction SilentlyContinue }
+    foreach ($nombre in @('PGPASSWORD','DB_PASSWORD','TEST_DB_PASSWORD','APP_KEY')) { Remove-Item "Env:$nombre" -ErrorAction SilentlyContinue }
     $clave = $null
     Invoke-ServicioElevado -Accion stop
     Start-Sleep -Seconds 2

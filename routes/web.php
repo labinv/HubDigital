@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminBootstrapController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Livewire\ActivarRol;
 use App\Livewire\Administracion\CentroAdministracion;
+use App\Livewire\Administracion\ConfiguracionSistema;
 use App\Livewire\Administracion\GestionUsuarios;
 use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/administracion/usuarios', GestionUsuarios::class)
         ->middleware('role:admin')
         ->name('admin.usuarios');
+    Route::get('/administracion/configuracion', ConfiguracionSistema::class)
+        ->middleware('role:admin')
+        ->name('admin.configuracion');
     Route::prefix('pwa')->name('pwa.')->group(function (): void {
         Route::get('/configuracion', [PushSubscriptionController::class, 'configuration'])
             ->name('configuration');

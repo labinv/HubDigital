@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-4">
 
     {{-- Header --}}
     <div class="flex flex-col gap-1 text-center">
@@ -7,9 +7,17 @@
     </div>
 
     {{-- Fortify centraliza validación, normalización, hash y evento Registered. --}}
-    <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-4" novalidate
-        x-data="{ role: @js(strtolower(old('rol', 'PRESTAMISTA'))) }">
+    <form id="hub-register-form" method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-3" novalidate
+        x-data="{
+            role: @js(strtolower(old('rol', 'PRESTAMISTA'))),
+            turnstileVerified: {{ config('services.turnstile.enabled') ? 'false' : 'true' }}
+        }"
+        x-on:hub-register-turnstile-passed.window="turnstileVerified = true"
+        x-on:hub-register-turnstile-reset.window="turnstileVerified = false">
         @csrf
+        @if (config('services.turnstile.enabled'))
+            <input type="hidden" name="cf-turnstile-response" value="">
+        @endif
 
         {{-- Selector de rol público. Los roles internos nunca se aceptan aquí. --}}
         <div class="flex flex-col gap-2">
@@ -24,11 +32,11 @@
                 x-bind:class="role === 'prestamista'
                     ? 'border-science-blue bg-science-blue/5'
                     : 'border-border bg-surface hover:border-science-blue/40'"
-                class="flex cursor-pointer flex-col items-center gap-2.5 rounded-lg border-2 p-4 transition-all duration-150"
+                class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150"
             >
                 <div
                     x-bind:class="role === 'prestamista' ? 'bg-science-blue/15' : 'bg-bg-main'"
-                    class="flex h-10 w-10 items-center justify-center rounded-lg"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg"
                 >
                     <flux:icon name="magnifying-glass" variant="outline"
                         x-bind:class="role === 'prestamista' ? 'text-science-blue' : 'text-text-secondary'"
@@ -52,11 +60,11 @@
                 x-bind:class="role === 'depositante'
                     ? 'border-science-blue bg-science-blue/5'
                     : 'border-border bg-surface hover:border-science-blue/40'"
-                class="flex cursor-pointer flex-col items-center gap-2.5 rounded-lg border-2 p-4 transition-all duration-150"
+                class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150"
             >
                 <div
                     x-bind:class="role === 'depositante' ? 'bg-science-blue/15' : 'bg-bg-main'"
-                    class="flex h-10 w-10 items-center justify-center rounded-lg"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg"
                 >
                     <flux:icon name="building-library" variant="outline"
                         x-bind:class="role === 'depositante' ? 'text-science-blue' : 'text-text-secondary'"
@@ -84,7 +92,7 @@
             <input type="hidden" name="rol" x-bind:value="role.toUpperCase()">
         </div>
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <flux:field>
                 <flux:label class="font-medium text-text-primary">Nombre</flux:label>
                 <flux:input
@@ -109,26 +117,26 @@
                 />
                 <flux:error name="last_name" />
             </flux:field>
-        </div>
 
-        <flux:field>
-            <flux:label class="font-medium text-text-primary">Correo electrónico</flux:label>
-            <flux:input
-                name="email"
-                type="email"
-                value="{{ old('email') }}"
-                placeholder="tu@email.com"
-                autocomplete="email"
-            />
-            <flux:error name="email" />
-        </flux:field>
+            <flux:field>
+                <flux:label class="font-medium text-text-primary">Correo electrónico</flux:label>
+                <flux:input
+                    name="email"
+                    type="email"
+                    value="{{ old('email') }}"
+                    placeholder="tu@email.com"
+                    autocomplete="email"
+                />
+                <flux:error name="email" />
+            </flux:field>
+        </div>
 
         {{-- Datos del depositante: solo cuando el propósito es depositar material biológico.
              Alimentan el Acta recepción-depósito oficial (MEPN). --}}
         <div
             x-show="role === 'depositante'"
             x-collapse
-            class="flex flex-col gap-4"
+            class="grid grid-cols-1 gap-3 sm:grid-cols-2"
         >
             <flux:field>
                 <flux:label class="font-medium text-text-primary">Cargo o posición</flux:label>
@@ -155,29 +163,31 @@
             </flux:field>
         </div>
 
-        <flux:field>
-            <flux:label class="font-medium text-text-primary">Contraseña</flux:label>
-            <flux:input
-                name="password"
-                type="password"
-                placeholder="Mínimo 8 caracteres"
-                autocomplete="new-password"
-                viewable
-            />
-            <flux:error name="password" />
-        </flux:field>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <flux:field>
+                <flux:label class="font-medium text-text-primary">Contraseña</flux:label>
+                <flux:input
+                    name="password"
+                    type="password"
+                    placeholder="Mínimo 8 caracteres"
+                    autocomplete="new-password"
+                    viewable
+                />
+                <flux:error name="password" />
+            </flux:field>
 
-        <flux:field>
-            <flux:label class="font-medium text-text-primary">Confirmar contraseña</flux:label>
-            <flux:input
-                name="password_confirmation"
-                type="password"
-                placeholder="Repite tu contraseña"
-                autocomplete="new-password"
-                viewable
-            />
-            <flux:error name="password_confirmation" />
-        </flux:field>
+            <flux:field>
+                <flux:label class="font-medium text-text-primary">Confirmar contraseña</flux:label>
+                <flux:input
+                    name="password_confirmation"
+                    type="password"
+                    placeholder="Repite tu contraseña"
+                    autocomplete="new-password"
+                    viewable
+                />
+                <flux:error name="password_confirmation" />
+            </flux:field>
+        </div>
 
         @error('form')
             <p class="flex items-center gap-1 text-xs text-error">
@@ -186,15 +196,48 @@
             </p>
         @enderror
 
-        <flux:button
-            type="submit"
-            variant="primary"
-            class="mt-1 w-full bg-bio-green! border-bio-green! hover:bg-bio-green/90! text-white! font-semibold"
-        >
-            <span class="flex items-center justify-center gap-2">
-                Crear cuenta
-            </span>
-        </flux:button>
+        <div class="grid items-end gap-3 sm:grid-cols-[minmax(18rem,1fr)_minmax(12rem,.7fr)]">
+            @if (config('services.turnstile.enabled'))
+                <div class="hub-turnstile flex min-w-0 flex-col gap-2" aria-label="Verificación de seguridad">
+                    @if (filled(config('services.turnstile.site_key')))
+                        <div
+                            class="cf-turnstile min-h-[4.0625rem]"
+                            data-sitekey="{{ config('services.turnstile.site_key') }}"
+                            data-action="turnstile-spin-v2"
+                            data-size="flexible"
+                            data-theme="auto"
+                            data-response-field="false"
+                            data-callback="hubRegisterTurnstilePassed"
+                            data-expired-callback="hubRegisterTurnstileReset"
+                            data-error-callback="hubRegisterTurnstileReset"
+                        ></div>
+                    @else
+                        <p class="rounded-md border border-error/30 bg-error/5 px-3 py-2 text-sm text-error">
+                            La verificación de seguridad no está configurada. Solicita asistencia.
+                        </p>
+                    @endif
+
+                    @error('cf-turnstile-response')
+                        <p class="flex items-start gap-1.5 text-sm text-error" role="alert">
+                            <flux:icon name="exclamation-triangle" class="mt-0.5 size-4 shrink-0" />
+                            <span>{{ $message }}</span>
+                        </p>
+                    @enderror
+                </div>
+            @endif
+
+            <flux:button
+                type="submit"
+                variant="primary"
+                :disabled="config('services.turnstile.enabled')"
+                x-bind:disabled="!turnstileVerified"
+                class="w-full bg-bio-green! border-bio-green! hover:bg-bio-green/90! text-white! font-semibold disabled:cursor-not-allowed disabled:opacity-45 {{ config('services.turnstile.enabled') ? '' : 'sm:col-span-2' }}"
+            >
+                <span class="flex items-center justify-center gap-2">
+                    Crear cuenta
+                </span>
+            </flux:button>
+        </div>
 
     </form>
 
@@ -206,5 +249,22 @@
             Inicie sesión aquí
         </a>
     </p>
+
+    @if (config('services.turnstile.enabled') && filled(config('services.turnstile.site_key')))
+        <script>
+            window.hubRegisterTurnstilePassed = (token) => {
+                const field = document.querySelector('#hub-register-form input[name="cf-turnstile-response"]');
+                if (!field || !token) return;
+                field.value = token;
+                window.dispatchEvent(new CustomEvent('hub-register-turnstile-passed'));
+            };
+            window.hubRegisterTurnstileReset = () => {
+                const field = document.querySelector('#hub-register-form input[name="cf-turnstile-response"]');
+                if (field) field.value = '';
+                window.dispatchEvent(new CustomEvent('hub-register-turnstile-reset'));
+            };
+        </script>
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @endif
 
 </div>

@@ -6,6 +6,7 @@ use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Enums\RolUsuario;
 use App\Models\User;
+use App\Services\Security\TurnstileVerifier;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -24,6 +25,8 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        app(TurnstileVerifier::class)->validateRegistration(request());
+
         $input['email'] = User::normalizarEmail($input['email'] ?? '');
         $input['first_name'] = trim($input['first_name'] ?? '');
         $input['last_name'] = trim($input['last_name'] ?? '');

@@ -27,8 +27,8 @@ env_file=/etc/hubdigital/hubdigital.env
     exit 65
 }
 read_env() { sed -n "s/^$1=//p" "${env_file}" | tail -n 1; }
-[[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == true && "$(read_env MAIL_MAILER)" == log ]] || {
-    echo 'El scheduler de validacion exige modo de validacion y correo log.' >&2
+[[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == true && "$(read_env MAIL_MAILER)" == smtp && "$(read_env HUBDIGITAL_ALLOW_AUTH_EMAILS)" == true ]] || {
+    echo 'El scheduler exige validacion activa y SMTP limitado a correos de alta.' >&2
     exit 65
 }
 validation_queue="$(read_env HUBDIGITAL_VALIDATION_QUEUE)"
