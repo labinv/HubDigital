@@ -16,7 +16,9 @@ for runtime_file in \
     artisan \
     vendor/autoload.php \
     vendor/livewire/flux/dist/manifest.json \
-    public/build/manifest.json; do
+    public/build/manifest.json \
+    resources/bin/hubdigital-pdf-signature.jar \
+    deploy/oracle/scripts/verify-deposit-pdf.php; do
     [[ -f "${repo_dir}/${runtime_file}" ]] || {
         echo "Falta archivo runtime obligatorio: ${runtime_file}." >&2
         exit 65

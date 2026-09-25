@@ -149,6 +149,33 @@ check_public_url() {
 check_public_url 'https://dev.labinvepn.org/' || verification_failed=1
 check_public_url 'https://dev.labinvepn.org/depositos' || verification_failed=1
 
+# Comprueba el artefacto Java de ESTA release y el camino real de admisión PDF
+# de Laravel. La autoprueba firma, altera y rechaza PDFs sintéticos; la prueba
+# PHP usa el inspector, qpdf, antivirus y adaptador de firmas sin tocar R2.
+signature_jar="${release_dir}/resources/bin/hubdigital-pdf-signature.jar"
+if [[ ! -r "${signature_jar}" ]] || ! command -v java >/dev/null 2>&1; then
+    echo 'NO OK Java PDF: falta el JAR de la release o el runtime Java.' >&2
+    verification_failed=1
+elif ! java_result="$(runuser -u www-data -- java -jar "${signature_jar}" selftest)"; then
+    echo 'NO OK Java PDF: fallo la autoprueba criptografica.' >&2
+    verification_failed=1
+elif ! jq -e '.status == "firmado" and .cryptographically_valid == true' >/dev/null 2>&1 <<<"${java_result}"; then
+    echo "NO OK Java PDF: la autoprueba no confirmo la firma valida: ${java_result}" >&2
+    verification_failed=1
+else
+    echo 'OK Java PDF: JAR de la release ejecutado; firma valida, alteracion, PDF sin firma, PDF activo y PDF danado comprobados.'
+fi
+
+if ! pdf_result="$(systemd-run --quiet --wait --collect --pipe \
+    --property=User=www-data --property=Group=www-data \
+    --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
+    /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-deposit-pdf.php" 2>&1)"; then
+    echo "NO OK solucion PDF depositos: ${pdf_result}" >&2
+    verification_failed=1
+else
+    echo "${pdf_result}"
+fi
+
 for unit in hubdigital-worker.service php8.4-fpm.service nginx.service; do
     if systemctl is-active --quiet "${unit}"; then
         echo "OK ${unit}: active"
@@ -178,7 +205,7 @@ jq --arg activated_at "$(date --utc +%FT%TZ)" --arg worker_queue "${validation_q
     '. + {activado_local_en:$activated_at, worker_queue:$worker_queue, estado:"activo_local_validacion"}' "${state_file}" > "${state_file}.tmp"
 chmod 0600 "${state_file}.tmp"
 mv "${state_file}.tmp" "${state_file}"
-echo 'Verificacion final OK: release, URLs publicas y servicios en el estado esperado.'
+echo 'Verificacion final OK: release, URLs publicas, servicios, Java y admision PDF de depositos en el estado esperado.'
 echo "Release activa en el origen directo: ${release_id}. Worker limitado a ${validation_queue}; scheduler detenido."
 
 echo

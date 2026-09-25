@@ -42,6 +42,12 @@ systemctl is-active --quiet hubdigital-schedule.timer && { echo 'Timer activo du
 systemctl is-active --quiet cloudflared-hubdigital.service && { echo 'Tunnel activo durante preflight de candidato.' >&2; exit 65; }
 
 php_modules="$(/usr/bin/php8.4 -m)"
+for binary in java qpdf clamscan; do
+    command -v "${binary}" >/dev/null 2>&1 || {
+        echo "Falta ${binary} para inspeccionar PDFs y firmas. Instale el runtime de documentos antes de continuar." >&2
+        exit 65
+    }
+done
 for extension in curl gd intl mbstring openssl pdo_pgsql xml zip bcmath; do
     grep -Fxq "${extension}" <<<"${php_modules}" || { echo "Falta la extension PHP ${extension}." >&2; exit 65; }
 done

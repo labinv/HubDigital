@@ -88,7 +88,7 @@ public final class PdfSignatureCli {
                 emit(new Result("firmado", "Firma CMS creada en el PDF.", true));
             } else if (args.length == 1 && "selftest".equals(args[0])) {
                 selftest();
-                emit(new Result("firmado", "Autoprueba Java: firma genuina, alteración y ausencia de firma comprobadas.", true));
+                emit(new Result("firmado", "Autoprueba Java: firma genuina, alteración, ausencia de firma, PDF activo y PDF dañado comprobados.", true));
             } else {
                 emit(new Result("verificacion_no_disponible", "Uso: verify PDF | sign ENTRADA SALIDA P12 ARCHIVO_CLAVE", false));
                 System.exit(2);
@@ -493,12 +493,26 @@ public final class PdfSignatureCli {
             Path unsigned = temp.resolve("sin-firma.pdf");
             Path signed = temp.resolve("firmado.pdf");
             Path altered = temp.resolve("alterado.pdf");
+            Path active = temp.resolve("activo.pdf");
+            Path malformed = temp.resolve("malformado.pdf");
             Path p12 = temp.resolve("prueba.p12");
             Path password = temp.resolve("clave.txt");
             try (PDDocument pdf = new PDDocument()) {
                 pdf.addPage(new PDPage());
                 pdf.save(unsigned.toFile());
             }
+            if (!"seguro".equals(inspect(unsigned).status))
+                throw new IllegalStateException("Se rechazó un PDF seguro.");
+            try (PDDocument pdf = new PDDocument()) {
+                pdf.addPage(new PDPage());
+                pdf.getDocumentCatalog().getCOSObject().setItem(COSName.OPEN_ACTION, new COSDictionary());
+                pdf.save(active.toFile());
+            }
+            if (!"archivo_inseguro".equals(inspect(active).status))
+                throw new IllegalStateException("Se aceptó un PDF con acción activa.");
+            Files.writeString(malformed, "%PDF-1.7\ncontenido inválido", StandardCharsets.UTF_8);
+            if (!"archivo_inseguro".equals(inspect(malformed).status))
+                throw new IllegalStateException("Se aceptó un PDF dañado.");
             KeyPairGenerator keygen = KeyPairGenerator.getInstance("RSA");
             keygen.initialize(2048);
             KeyPair keys = keygen.generateKeyPair();

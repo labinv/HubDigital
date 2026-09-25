@@ -46,9 +46,12 @@ function Invoke-Comando {
     try {
         # .gitattributes ya fija LF. En Windows, Git avisa por cada archivo CRLF
         # aunque la conversion sea correcta; ese ruido puede saturar la consola.
-        $argumentosEjecucion = if ([IO.Path]::GetFileNameWithoutExtension($Programa) -eq 'git') {
-            @('-c', 'core.safecrlf=false') + $Argumentos
-        } else { $Argumentos }
+        # PowerShell desenvuelve un array de un elemento al salir de `if`.
+        # Mantener string[] evita que el splatting divida una ruta en letras.
+        [string[]]$argumentosEjecucion = @($Argumentos)
+        if ([IO.Path]::GetFileNameWithoutExtension($Programa) -eq 'git') {
+            $argumentosEjecucion = @('-c', 'core.safecrlf=false') + $argumentosEjecucion
+        }
         & $Programa @argumentosEjecucion
         if ($LASTEXITCODE -ne 0) { throw "Fallo: $Descripcion (codigo $LASTEXITCODE)." }
     }
@@ -202,11 +205,15 @@ Invoke-Comando -Programa $composerPrograma -Argumentos @('install', '--no-intera
 $maven = Get-Command 'mvn.cmd' -ErrorAction SilentlyContinue
 if (-not $maven) { throw 'No se encontro Maven para compilar el validador criptografico Java.' }
 Invoke-Comando -Programa $maven.Source -Argumentos @('-q', '-f', 'tools/pdf-signature/pom.xml', '-DskipTests', 'package') -Descripcion 'Compilando firmador y validador criptografico Java' -DirectorioTrabajo $Proyecto
+Write-Host 'OK Maven: firmador y validador Java compilados.' -ForegroundColor Green
 $destinoJar = Join-Path $Proyecto 'resources/bin/hubdigital-pdf-signature.jar'
 New-Item -ItemType Directory -Path (Split-Path -Parent $destinoJar) -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $Proyecto 'tools/pdf-signature/target/pdf-signature-1.0.0.jar') -Destination $destinoJar -Force
 Invoke-Comando -Programa 'java.exe' -Argumentos @('-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, firma alterada y PDF sin firma con Java' -DirectorioTrabajo $Proyecto
+Write-Host 'OK Java: firma valida, alteracion, ausencia de firma y seguridad PDF comprobadas.' -ForegroundColor Green
 
+$suitePostgresCompletada = $false
+$solucionPdfComprobada = $false
 $php = Get-Command 'php' -ErrorAction SilentlyContinue
 if (-not $php) {
     $phpAlternativo = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages\PHP.PHP.8.4_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe'
@@ -239,6 +246,9 @@ if ($php) {
                 '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $validadorPostgres,
                 '-Proyecto', $Proyecto, '-Php', $phpPrograma
             ) -Descripcion 'Validando con PostgreSQL temporal y apagado automatico'
+            $suitePostgresCompletada = $true
+            Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-deposit-pdf.php') -Descripcion 'Comprobando admision PDF y firma integrada PHP/Java' -DirectorioTrabajo $Proyecto
+            $solucionPdfComprobada = $true
         }
 
     }
@@ -254,6 +264,7 @@ if (-not $OmitirCompilacion) {
 $requeridos = @(
     'vendor/autoload.php', 'vendor/livewire/flux/dist/manifest.json',
     'public/build/manifest.json', 'deploy/oracle/scripts/stage-linux-candidate.sh',
+    'deploy/oracle/scripts/verify-deposit-pdf.php',
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',
     'composer.json', 'composer.lock', 'modules_statuses.json',
     'resources/bin/hubdigital-pdf-signature.jar'
@@ -708,6 +719,15 @@ confirma con "platform=ok" y "Candidato preparado correctamente".
 
 PASO 5 - PREPARAR LA RELEASE Y APLICAR MIGRACIONES
 --------------------------------------------
+En una VM existente, el preflight exige Java 17, qpdf y ClamAV. Si falta
+alguno, instale el runtime PDF antes de preparar la release:
+
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends openjdk-17-jre-headless qpdf clamav clamav-freshclam
+
+La comprobacion final tambien exige que ClamAV pueda analizar un PDF real.
+Si la base de firmas de ClamAV aun no esta lista, actualicela antes de activar.
+
 Al terminar el staging aparecera un bloque titulado:
 
 COPIE Y PEGUE ESTE COMANDO EN LA VM (CON MIGRACIONES)
@@ -747,12 +767,17 @@ La activacion comprueba automaticamente:
 - https://dev.labinvepn.org/depositos con HTTP 200.
 - Nginx, PHP-FPM y el worker en estado active.
 - Scheduler y Tunnel detenidos durante la validacion.
+- El JAR Java de esta release: firma autentica, alterada y ausente; PDF
+  con contenido activo o danado rechazado.
+- El flujo PHP de depositos: PDF real admitido por inspector, qpdf y
+  antivirus; PDF falso rechazado; firma sintetica valida aceptada,
+  alterada rechazada y PDF sin firma detectado por el adaptador PHP/Java.
 
 Cada comprobacion muestra OK o NO OK con la causa. Si alguna falla, el script
 detiene el worker, devuelve Laravel a mantenimiento y termina con error.
 El despliegue solo esta activo cuando aparece:
 
-Verificacion final OK: release, URLs publicas y servicios en el estado esperado.
+Verificacion final OK: release, URLs publicas, servicios, Java y admision PDF de depositos en el estado esperado.
 Release activa en el origen directo: ID.
 
 PASO 7 - VERIFICACION EN EL NAVEGADOR
@@ -837,6 +862,17 @@ Write-Host "Guia:      $instruccionesCloudShell"
 Write-Host "SHA-256:   $hash"
 Write-Host "SHA kit:   $hashKit"
 Write-Host "Tamano:    $tamanoMiB MiB"
+Write-Host 'Java PDF:  OK, compilacion Maven y autoprueba criptografica.'
+if ($suitePostgresCompletada) {
+    Write-Host 'Depositos: OK, suite PHP/PostgreSQL completada.'
+} else {
+    Write-Host 'Depositos: suite PHP/PostgreSQL omitida.' -ForegroundColor Yellow
+}
+if ($solucionPdfComprobada) {
+    Write-Host 'Solucion PDF: OK, archivo real, antivirus y firmas valida/alterada/ausente por PHP y Java.'
+} else {
+    Write-Host 'Solucion PDF: comprobacion integrada local omitida; se exigira al activar la release en OCI.' -ForegroundColor Yellow
+}
 Write-Host "`nSube solamente este archivo a OCI Cloud Shell: $nombreKitCloudShell"
 Write-Host "Luego ejecuta:"
 Write-Host "  mkdir -p ~/hubdigital-upload && tar -xzf ~/$nombreKitCloudShell -C ~/hubdigital-upload"
