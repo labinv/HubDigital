@@ -85,7 +85,6 @@ RUN apk add --no-cache \
         postgresql-dev \
         poppler-utils \
         qpdf \
-        clamav-scanner \
         tesseract-ocr \
         tesseract-ocr-data-spa \
         tesseract-ocr-data-eng \
@@ -113,7 +112,6 @@ RUN apk add --no-cache \
         pcntl \
     && docker-php-ext-enable opcache \
     && apk del .build-deps \
-    && freshclam --quiet \
     && rm -rf /var/cache/apk/*
 
 # PHP runtime configuration

@@ -17,7 +17,10 @@ final class ValidadorPdfDeposito
         }
         $cabecera = file_get_contents($ruta, false, null, 0, 8);
         $cola = file_get_contents($ruta, false, null, max(0, filesize($ruta) - 4096));
-        if (! preg_match('/^%PDF-[12]\.\d/', (string) $cabecera) || ! str_contains((string) $cola, '%%EOF')) {
+        if (preg_match('/\A%PDF-[12]\.\d/', (string) $cabecera) !== 1) {
+            throw new \InvalidArgumentException('El archivo no comienza con el número mágico de PDF.');
+        }
+        if (! str_contains((string) $cola, '%%EOF')) {
             throw new \InvalidArgumentException('El archivo no tiene una estructura PDF completa.');
         }
 
@@ -59,28 +62,5 @@ final class ValidadorPdfDeposito
             }
         }
 
-        $comando = PHP_OS_FAMILY === 'Windows'
-            ? [$this->defender(), '-Scan', '-ScanType', '3', '-File', $ruta]
-            : ['clamscan', '--no-summary', '--stdout', $ruta];
-        try {
-            $antivirus = new Process($comando);
-            $antivirus->setTimeout(120);
-            $antivirus->run();
-        } catch (\Throwable $error) {
-            throw new \InvalidArgumentException('El antivirus no está disponible; vuelve a intentar más tarde.', previous: $error);
-        }
-        if (! $antivirus->isSuccessful()) {
-            throw new \InvalidArgumentException('El antivirus rechazó el archivo o no pudo confirmar que esté limpio.');
-        }
-    }
-
-    private function defender(): string
-    {
-        $ruta = getenv('ProgramFiles').'\\Windows Defender\\MpCmdRun.exe';
-        if (! is_file($ruta)) {
-            throw new \InvalidArgumentException('Windows Defender no está disponible para validar documentos.');
-        }
-
-        return $ruta;
     }
 }

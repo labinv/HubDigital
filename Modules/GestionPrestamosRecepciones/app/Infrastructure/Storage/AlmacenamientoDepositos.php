@@ -52,8 +52,7 @@ final class AlmacenamientoDepositos
         if ($contenido === false) {
             throw new \RuntimeException('No se pudo leer el archivo cargado.');
         }
-        $this->asegurarContenidoPdf($contenido);
-        app(ValidadorPdfDeposito::class)->validar($archivo->getRealPath());
+        $this->validarCargaPdf($archivo->getRealPath(), $contenido);
         $sha256 = $this->guardarContenido($ruta, $contenido, $archivo->getMimeType() ?: 'application/octet-stream');
 
         return ['ruta' => $ruta, 'sha256' => $sha256];
@@ -65,8 +64,7 @@ final class AlmacenamientoDepositos
         if ($contenido === false) {
             throw new \RuntimeException('No se pudo leer el archivo cargado.');
         }
-        $this->asegurarContenidoPdf($contenido);
-        app(ValidadorPdfDeposito::class)->validar($archivo->getRealPath());
+        $this->validarCargaPdf($archivo->getRealPath(), $contenido);
         $this->guardarContenido($ruta, $contenido, $archivo->getMimeType() ?: 'application/pdf');
 
         return $ruta;
@@ -116,10 +114,16 @@ final class AlmacenamientoDepositos
         return $sha256;
     }
 
-    private function asegurarContenidoPdf(string $contenido): void
+    private function validarCargaPdf(string $ruta, string $contenido): void
     {
-        if (! str_contains(substr($contenido, 0, 1024), '%PDF-')) {
+        if (preg_match('/\A%PDF-[12]\.\d/', substr($contenido, 0, 8)) !== 1) {
             throw new \InvalidArgumentException('El contenido del archivo no corresponde a un documento PDF.');
+        }
+
+        app(ValidadorPdfDeposito::class)->validar($ruta);
+        $huellaInspeccionada = hash_file('sha256', $ruta);
+        if ($huellaInspeccionada === false || ! hash_equals(hash('sha256', $contenido), $huellaInspeccionada)) {
+            throw new \RuntimeException('El contenido del PDF cambió durante su inspección.');
         }
     }
 

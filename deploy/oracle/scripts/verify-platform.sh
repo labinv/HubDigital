@@ -25,6 +25,15 @@ for runtime_file in \
     }
 done
 
+# Este archivo se ejecuta ya durante staging, antes de detener la aplicacion.
+# Asi una VM antigua sin runtime documental no deja una release a medio preparar.
+for binary in java qpdf; do
+    command -v "${binary}" >/dev/null 2>&1 || {
+        echo "Falta ${binary} para validar depositos. Instale openjdk-17-jre-headless y qpdf antes del staging." >&2
+        exit 65
+    }
+done
+
 "${php_bin}" -r 'exit(PHP_VERSION_ID >= 80400 ? 0 : 1);' || {
     echo 'HubDigital bloqueado requiere PHP >= 8.4.' >&2
     exit 65

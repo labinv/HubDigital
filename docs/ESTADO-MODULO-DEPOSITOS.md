@@ -192,8 +192,9 @@ curador administrador y no se gestiona mediante seeders o SQL.
   sola a una evaluación legal u homologación oficial.
 - Configurar correo transaccional institucional. Mailpit es únicamente para
   desarrollo.
-- Incorporar antivirus/antimalware para archivos subidos antes de abrir el
-  portal en producción.
+- La admisión de PDF comprueba el número mágico, la estructura, el contenido
+  activo y la huella SHA-256. Estas comprobaciones no garantizan ausencia de
+  malware; la política de producción debe reconocer este riesgo residual.
 - Confirmar en el ambiente correspondiente la entrega de Web Push con VAPID
   para navegadores cerrados o sin conexión; el código está implementado pero
   este documento no declara una comprobación de ejecución.

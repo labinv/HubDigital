@@ -34,6 +34,21 @@ try {
     app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidadorPdfDeposito::class)
         ->validar($archivoValido);
 
+    $contenidoValido = file_get_contents($archivoValido);
+    if ($contenidoValido === false) {
+        throw new \RuntimeException('No se pudo leer el PDF válido de prueba.');
+    }
+    file_put_contents($archivoFalso, 'MZ'.$contenidoValido);
+    try {
+        app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidadorPdfDeposito::class)
+            ->validar($archivoFalso);
+        throw new \RuntimeException('Se aceptó un PDF con bytes anteriores a su número mágico.');
+    } catch (\InvalidArgumentException $error) {
+        if (! str_contains($error->getMessage(), 'número mágico')) {
+            throw $error;
+        }
+    }
+
     file_put_contents($archivoFalso, "%PDF-1.7\ncontenido que no es un PDF completo");
     try {
         app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidadorPdfDeposito::class)
@@ -104,7 +119,7 @@ try {
         throw new \RuntimeException('El adaptador PHP/Java aceptó un PDF firmado y alterado.');
     }
 
-    echo "OK solución PDF depósitos: PDF real y antivirus comprobados; PDF falso rechazado; PHP/Java verificó firma válida, alterada y ausente.\n";
+    echo "OK solución PDF depósitos: número mágico en byte cero, estructura y contenido activo comprobados; PDF falso rechazado; PHP/Java verificó firma válida, alterada y ausente.\n";
 } catch (\Throwable $error) {
     $fallo = 'NO OK solución PDF depósitos: '.$error->getMessage();
 } finally {

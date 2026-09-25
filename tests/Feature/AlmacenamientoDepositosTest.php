@@ -40,6 +40,16 @@ test('rechaza como PDF un archivo cuyo contenido no tiene cabecera PDF', functio
     Storage::disk('local')->assertMissing('depositos/prueba');
 });
 
+test('rechaza un PDF si el numero magico no comienza en el byte cero', function (): void {
+    Storage::fake('local');
+
+    $archivo = UploadedFile::fake()->createWithContent('aparente.pdf', 'MZ'.pdfValidoParaDepositos());
+
+    expect(fn () => (new AlmacenamientoDepositos)->guardarArchivo($archivo, 'depositos/prueba'))
+        ->toThrow(InvalidArgumentException::class, 'no corresponde a un documento PDF');
+    Storage::disk('local')->assertMissing('depositos/prueba');
+});
+
 test('acepta un PDF estructuralmente valido y lo persiste en R2', function (): void {
     Http::fake(['*' => Http::response('', 200)]);
     config()->set('deposit-storage.driver', 'r2');

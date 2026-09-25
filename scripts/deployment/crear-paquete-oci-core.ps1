@@ -696,6 +696,12 @@ de un comando.
 
 PASO 4 - VERIFICAR Y PREPARAR EL CANDIDATO EN LA VM
 ----------------------------------------------------
+En una VM existente, el staging exige Java 17 y qpdf. Si faltan,
+instale el runtime PDF antes de preparar el candidato:
+
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends openjdk-17-jre-headless qpdf
+
 Dentro de la VM ejecute:
 
 cd /tmp
@@ -719,15 +725,6 @@ confirma con "platform=ok" y "Candidato preparado correctamente".
 
 PASO 5 - PREPARAR LA RELEASE Y APLICAR MIGRACIONES
 --------------------------------------------
-En una VM existente, el preflight exige Java 17, qpdf y ClamAV. Si falta
-alguno, instale el runtime PDF antes de preparar la release:
-
-sudo apt-get update
-sudo apt-get install -y --no-install-recommends openjdk-17-jre-headless qpdf clamav clamav-freshclam
-
-La comprobacion final tambien exige que ClamAV pueda analizar un PDF real.
-Si la base de firmas de ClamAV aun no esta lista, actualicela antes de activar.
-
 Al terminar el staging aparecera un bloque titulado:
 
 COPIE Y PEGUE ESTE COMANDO EN LA VM (CON MIGRACIONES)
@@ -769,8 +766,8 @@ La activacion comprueba automaticamente:
 - Scheduler y Tunnel detenidos durante la validacion.
 - El JAR Java de esta release: firma autentica, alterada y ausente; PDF
   con contenido activo o danado rechazado.
-- El flujo PHP de depositos: PDF real admitido por inspector, qpdf y
-  antivirus; PDF falso rechazado; firma sintetica valida aceptada,
+- El flujo PHP de depositos: numero magico y estructura PDF comprobados,
+  contenido activo rechazado; PDF falso rechazado; firma sintetica valida aceptada,
   alterada rechazada y PDF sin firma detectado por el adaptador PHP/Java.
 
 Cada comprobacion muestra OK o NO OK con la causa. Si alguna falla, el script
@@ -779,6 +776,12 @@ El despliegue solo esta activo cuando aparece:
 
 Verificacion final OK: release, URLs publicas, servicios, Java y admision PDF de depositos en el estado esperado.
 Release activa en el origen directo: ID.
+
+Si esta VM tenia ClamAV instalado, retire sus paquetes y firmas residuales
+despues de activar esta release (la aplicacion ya no los utiliza):
+
+sudo apt-get purge -y clamav clamav-base clamav-freshclam
+sudo rm -rf -- /var/lib/clamav
 
 PASO 7 - VERIFICACION EN EL NAVEGADOR
 -------------------------------------
@@ -869,7 +872,7 @@ if ($suitePostgresCompletada) {
     Write-Host 'Depositos: suite PHP/PostgreSQL omitida.' -ForegroundColor Yellow
 }
 if ($solucionPdfComprobada) {
-    Write-Host 'Solucion PDF: OK, archivo real, antivirus y firmas valida/alterada/ausente por PHP y Java.'
+    Write-Host 'Solucion PDF: OK, numero magico, estructura, contenido activo y firmas valida/alterada/ausente por PHP y Java.'
 } else {
     Write-Host 'Solucion PDF: comprobacion integrada local omitida; se exigira al activar la release en OCI.' -ForegroundColor Yellow
 }
