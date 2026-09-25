@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'portal' => [
+        'titulo_depositante' => 'Depósitos',
+    ],
     'general' => [
         'titulo' => 'Solicitud de depósito',
         'intro' => 'Completa el expediente; el avance se guarda por etapas.',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories;
 
 use DateTimeImmutable;
+use App\Support\ConfiguracionExpediente;
 use Illuminate\Support\Facades\DB;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\AlertaSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
@@ -43,17 +44,14 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
      */
     public function nextNumero(): NumeroSolicitudDeposito
     {
-        // El prefijo 'MEPN-INV-DEP-' ocupa 13 caracteres; la secuencia empieza en la posición 14.
-        // El filtro es una expresión regular y no un LIKE: con 'MEPN-INV-DEP-%' bastaba una
-        // sola fila con sufijo no numérico (importada o creada a mano) para que el CAST
-        // abortara la consulta y dejara de poder crearse cualquier solicitud.
+        // La secuencia es global: cambiar las siglas no reutiliza un número anterior.
         $maxSeq = DB::selectOne(
-            "SELECT MAX(CAST(SUBSTRING(numero FROM 14) AS INTEGER)) AS max_seq
+            "SELECT MAX(CAST(SUBSTRING(numero FROM '[0-9]{5}$') AS INTEGER)) AS max_seq
              FROM recepciones.solicitudes_deposito
-             WHERE numero ~ '^MEPN-INV-DEP-[0-9]+$'"
+             WHERE numero ~ '-DEP-[0-9]{5}$'"
         );
 
-        return NumeroSolicitudDeposito::fromSecuencia(($maxSeq->max_seq ?? 0) + 1);
+        return NumeroSolicitudDeposito::fromSecuencia(($maxSeq->max_seq ?? 0) + 1, ConfiguracionExpediente::prefijo());
     }
 
     /**
@@ -76,6 +74,7 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
                 'origen_recoleccion' => $solicitud->origenRecoleccion(),
                 'situacion_regulatoria' => $solicitud->situacionRegulatoria(),
                 'provincia_origen' => $solicitud->provinciaOrigen(),
+                'canton_origen' => $solicitud->cantonOrigen(),
                 'sin_documentacion' => $solicitud->sinDocumentacionDisponible(),
                 'nro_permiso_recoleccion' => $solicitud->nroPermisoRecoleccion(),
                 'nro_permiso_movilizacion' => $solicitud->nroPermisoMovilizacion(),
@@ -218,6 +217,7 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             origenRecoleccion: $model->origen_recoleccion,
             situacionRegulatoria: $model->situacion_regulatoria,
             provinciaOrigen: $model->provincia_origen,
+            cantonOrigen: $model->canton_origen,
             sinDocumentacion: (bool) $model->sin_documentacion,
             nroPermisoRecoleccion: $model->nro_permiso_recoleccion,
             nroPermisoMovilizacion: $model->nro_permiso_movilizacion,

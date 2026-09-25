@@ -386,6 +386,9 @@
                                 <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->provincia_origen }}</dd>
                             </div>
                         @endif
+                        @if($deposito->canton_origen)
+                            <div><dt class="text-text-secondary">Cantón de origen</dt><dd class="font-medium text-text-primary mt-0.5">{{ $deposito->canton_origen }}</dd></div>
+                        @endif
                         @if($deposito->localidad)
                             <div>
                                 <dt class="text-text-secondary">Localidad</dt>

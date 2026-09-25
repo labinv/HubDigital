@@ -12,6 +12,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumen
 use Modules\GestionPrestamosRecepciones\Domain\Services\AnalizadorDocumentoAmbiental;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use setasign\Fpdi\Fpdi;
 use Smalot\PdfParser\Parser;
 use Symfony\Component\Process\Process;
 
@@ -211,6 +212,30 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
 
         try {
             $totalPaginas = $this->validarPdfSeguro($archivo);
+            if (PHP_OS_FAMILY === 'Windows') {
+                $paginas = [];
+                $fragmentos = [];
+                foreach ((new Parser)->parseFile($archivo)->getPages() as $indice => $pagina) {
+                    $texto = trim($pagina->getText());
+                    $paginas[] = [
+                        'numero' => $indice + 1,
+                        'metodo' => 'pdf-parser',
+                        'caracteres' => mb_strlen($texto),
+                        'estado' => $texto === '' ? 'sin_texto' : 'texto_nativo',
+                    ];
+                    if ($texto !== '') {
+                        $fragmentos[] = sprintf('[Página %d · pdf-parser]%s%s', $indice + 1, PHP_EOL, $texto);
+                    }
+                }
+
+                return [
+                    'texto' => implode(PHP_EOL.PHP_EOL, $fragmentos),
+                    'motor' => 'pdf-parser',
+                    'uso_ocr' => false,
+                    'procesamiento_parcial' => count($paginas) !== $totalPaginas || count($fragmentos) !== $totalPaginas,
+                    'paginas' => $paginas,
+                ];
+            }
             $minimo = max(1, (int) config('document-extraction.minimum_text_length', 80));
             $paginas = [];
             $fragmentos = [];
@@ -285,6 +310,33 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
         $maxPoints = max(842, (int) config('document-extraction.max_page_points', 1440));
         $dpi = max(72, min(300, (int) config('document-extraction.ocr_dpi', 200)));
         $maxPixeles = max(10_000_000, (int) config('document-extraction.max_render_pixels', 120_000_000));
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            try {
+                $pdf = new Fpdi;
+                $paginas = $pdf->setSourceFile($archivo);
+                if ($paginas < 1 || $paginas > $maxPaginas) {
+                    throw new \RuntimeException("El PDF debe tener entre 1 y {$maxPaginas} páginas.");
+                }
+                $pixeles = 0.0;
+                for ($numero = 1; $numero <= $paginas; $numero++) {
+                    $tamano = $pdf->getTemplateSize($pdf->importPage($numero));
+                    $ancho = (float) $tamano['width'] * 72 / 25.4;
+                    $alto = (float) $tamano['height'] * 72 / 25.4;
+                    if ($ancho <= 0 || $alto <= 0 || $ancho > $maxPoints || $alto > $maxPoints) {
+                        throw new \RuntimeException('El PDF contiene una página con dimensiones no permitidas.');
+                    }
+                    $pixeles += ($ancho * $dpi / 72) * ($alto * $dpi / 72);
+                }
+                if ($pixeles > $maxPixeles) {
+                    throw new \RuntimeException('El PDF excede el límite seguro de procesamiento gráfico.');
+                }
+
+                return $paginas;
+            } catch (\Throwable $error) {
+                throw new \RuntimeException('El PDF no superó la validación técnica previa.', previous: $error);
+            }
+        }
 
         $proceso = new Process([
             'pdfinfo', '-box', '-f', '1', '-l', (string) ($maxPaginas + 1), $archivo,

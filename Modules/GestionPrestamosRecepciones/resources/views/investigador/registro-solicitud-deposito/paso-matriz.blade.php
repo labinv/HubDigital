@@ -7,22 +7,22 @@
     $pendientesSinCatalogar = $pendientes->filter(fn ($r) => $r['noCatalogado'] === true);
     $alertasJustificadas = collect($estadosRegistros)->where('estado', 'Validación Manual por Curaduría')->count();
     $noVerificados = collect($estadosRegistros)->where('estado', 'No Verificado')->count();
-    $todosResueltos = $pendientes->isEmpty();
+    $todosResueltos = $pendientes->isEmpty() && $noVerificados === 0;
 
     $totalRegistros = count($estadosRegistros);
-    $resueltoCount = $totalRegistros - $pendientes->count();
+    $resueltoCount = $totalRegistros - $pendientes->count() - $noVerificados;
     $porcentajeResuelto = $totalRegistros > 0 ? round(($resueltoCount / $totalRegistros) * 100) : 0;
 @endphp
 
-<div class="space-y-6" wire:loading.class="opacity-40 pointer-events-none" wire:target="archivoMatriz,guardarMatrizNativa">
+<div class="space-y-3" wire:loading.class="opacity-40 pointer-events-none" wire:target="archivoMatriz,guardarMatrizNativa">
 
     {{-- Header --}}
-    <div class="flex flex-col gap-3 border-b border-blue-navy/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
+    <div class="flex flex-col gap-2 border-b border-blue-navy/10 pb-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('detalle.titulo') }}</flux:heading>
-            <flux:text class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">{{ \App\Support\WizardCopy::text('detalle.intro') }}</flux:text>
+            <flux:text class="mt-0.5 text-xs text-text-secondary">Registra cada espécimen o lote y selecciona su taxón.</flux:text>
         </div>
-        <span class="inline-flex items-center gap-1.5 border-l-2 border-science-blue px-3 py-1 text-xs font-semibold text-science-blue whitespace-nowrap self-start">
+        <span class="hidden items-center gap-1.5 border-l-2 border-science-blue px-3 py-1 text-xs font-semibold text-science-blue whitespace-nowrap self-start sm:inline-flex">
             <flux:icon name="sparkles" class="size-3" />
             Estándar Darwin Core
         </span>
@@ -55,24 +55,18 @@
     @endif
 
     {{-- Formulario nativo: vía principal para consultores y depositantes --}}
-    <section class="space-y-5 rounded-xl border border-bio-green/30 bg-bio-green/[0.04] p-5" aria-labelledby="registro-biologico-nativo">
-        <div class="flex items-start gap-3">
-            <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-bio-green/10">
-                <flux:icon name="bug-ant" class="size-5 text-bio-green" />
+    <section class="space-y-2 rounded-xl border border-science-blue/30 bg-science-blue/[0.04] p-3" aria-labelledby="registro-biologico-nativo">
+        <div class="flex items-center gap-2">
+            <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-science-blue/10">
+                <flux:icon name="bug-ant" class="size-4 text-science-blue" />
             </div>
-            <div>
-                <flux:heading id="registro-biologico-nativo" size="sm" level="3">Registrar especímenes en HubDigital</flux:heading>
-                <flux:text class="mt-1 text-xs text-text-secondary">
-                    Busca el taxón en EPN/GBIF y confirma los datos de recolección. No debes llenar manualmente la plantilla interna de 106 columnas.
-                </flux:text>
-            </div>
+            <flux:heading id="registro-biologico-nativo" size="sm" level="3">Especímenes y lotes</flux:heading>
         </div>
 
         @if(!empty($muestrasDetectadas))
-            <div class="rounded-lg border border-science-blue/25 bg-white p-4">
-                <p class="text-sm font-semibold text-blue-navy">Códigos leídos de la guía de movilización</p>
-                <p class="mt-1 text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('detalle.codigos_explicacion') }}</p>
-                <div class="mt-3 flex flex-wrap gap-2">
+            <div class="flex flex-wrap items-center gap-2 rounded-lg border border-science-blue/25 bg-white px-2.5 py-2">
+                <p class="mr-1 text-xs font-semibold text-blue-navy">Códigos de la guía</p>
+                <div class="flex flex-wrap gap-1.5">
                     @foreach($muestrasDetectadas as $muestra)
                         <button type="button" wire:click="usarMuestraDetectada(@js($muestra['recordNumber']))" class="rounded-full border border-science-blue/30 bg-science-blue/5 px-3 py-1 font-mono text-xs font-semibold text-science-blue hover:bg-science-blue/10">
                             {{ $muestra['recordNumber'] }}
@@ -86,7 +80,7 @@
             <flux:field>
                 <flux:label>Taxón científico</flux:label>
                 <flux:input wire:model.live.debounce.400ms="busquedaTaxon" placeholder="Escribe al menos 3 caracteres, por ejemplo Atta…" autocomplete="off" />
-                <flux:description>{{ \App\Support\WizardCopy::text('detalle.taxon_explicacion') }}</flux:description>
+                <flux:description>Selecciona una opción de EPN o GBIF.</flux:description>
                 <flux:error name="registroNativo.scientificName" />
             </flux:field>
             @if(!empty($opcionesTaxones))
@@ -107,25 +101,25 @@
             </p>
         @endif
 
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div class="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
             <flux:field><flux:label>Código de campo</flux:label><flux:input wire:model="registroNativo.recordNumber" /><flux:error name="registroNativo.recordNumber" /></flux:field>
             <flux:field><flux:label>Origen</flux:label><select wire:model="registroNativo.origin" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"><option value="research">Investigación</option><option value="consulting">Consultoría</option></select><flux:error name="registroNativo.origin" /></flux:field>
-            <flux:field><flux:label>Identificado por</flux:label><flux:input wire:model="registroNativo.identifiedBy" /><flux:error name="registroNativo.identifiedBy" /></flux:field>
+            <flux:field class="col-span-2 md:col-span-1"><flux:label>Identificado por</flux:label><flux:input wire:model="registroNativo.identifiedBy" /><flux:error name="registroNativo.identifiedBy" /></flux:field>
             <flux:field><flux:label>Fecha de identificación</flux:label><flux:input type="date" wire:model="registroNativo.dateIdentified" /><flux:error name="registroNativo.dateIdentified" /></flux:field>
-            <flux:field><flux:label>Permiso de investigación</flux:label><flux:input wire:model="registroNativo.researchPermit" readonly /><flux:description>{{ \App\Support\WizardCopy::text('detalle.permiso_investigacion') }}</flux:description><flux:error name="registroNativo.researchPermit" /></flux:field>
-            <flux:field><flux:label>Permiso de transporte</flux:label><flux:input wire:model="registroNativo.transportPermit" readonly /><flux:description>{{ \App\Support\WizardCopy::text('detalle.permiso_transporte') }}</flux:description><flux:error name="registroNativo.transportPermit" /></flux:field>
-            <flux:field class="lg:col-span-2"><flux:label>Localidad verbatim</flux:label><flux:input wire:model="registroNativo.verbatimLocality" /><flux:error name="registroNativo.verbatimLocality" /></flux:field>
+            <flux:field class="col-span-2 md:col-span-1"><flux:label>Permiso de investigación</flux:label><flux:input wire:model="registroNativo.researchPermit" readonly placeholder="Desde autorización" /><flux:error name="registroNativo.researchPermit" /></flux:field>
+            <flux:field class="col-span-2 md:col-span-1"><flux:label>Permiso de transporte</flux:label><flux:input wire:model="registroNativo.transportPermit" readonly placeholder="Desde guía" /><flux:error name="registroNativo.transportPermit" /></flux:field>
+            <flux:field class="col-span-2"><flux:label>Localidad verbatim</flux:label><flux:input wire:model="registroNativo.verbatimLocality" /><flux:error name="registroNativo.verbatimLocality" /></flux:field>
             <flux:field><flux:label>País</flux:label><select wire:model.live="registroNativo.country" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm">@foreach($catalogoPaises as $pais)<option value="{{ $pais['nombre'] }}">{{ $pais['nombre'] }} ({{ $pais['codigo'] }})</option>@endforeach</select><flux:error name="registroNativo.country" /></flux:field>
-            <flux:field><flux:label>Provincia/estado</flux:label><flux:input wire:model="registroNativo.stateProvince" /><flux:error name="registroNativo.stateProvince" /></flux:field>
-            <flux:field><flux:label>Cantón/municipio</flux:label><flux:input wire:model="registroNativo.municipality" /><flux:error name="registroNativo.municipality" /></flux:field>
+            <flux:field class="col-span-2 md:col-span-1"><flux:label>Provincia/estado</flux:label><flux:input wire:model="registroNativo.stateProvince" /><flux:error name="registroNativo.stateProvince" /></flux:field>
+            <flux:field class="col-span-2 md:col-span-1"><flux:label>Cantón/municipio</flux:label><flux:input wire:model="registroNativo.municipality" /><flux:error name="registroNativo.municipality" /></flux:field>
             <flux:field><flux:label>Latitud decimal</flux:label><flux:input type="number" step="any" wire:model="registroNativo.decimalLatitude" placeholder="-0.2100" /><flux:error name="registroNativo.decimalLatitude" /></flux:field>
             <flux:field><flux:label>Longitud decimal</flux:label><flux:input type="number" step="any" wire:model="registroNativo.decimalLongitude" placeholder="-78.4900" /><flux:error name="registroNativo.decimalLongitude" /></flux:field>
             <flux:field><flux:label>Fecha de colecta</flux:label><flux:input type="date" wire:model="registroNativo.eventDate" /><flux:error name="registroNativo.eventDate" /></flux:field>
-            <flux:field><flux:label>Colector</flux:label><flux:input wire:model="registroNativo.recordedBy" /><flux:error name="registroNativo.recordedBy" /></flux:field>
+            <flux:field class="col-span-2 md:col-span-1"><flux:label>Colector</flux:label><flux:input wire:model="registroNativo.recordedBy" /><flux:error name="registroNativo.recordedBy" /></flux:field>
             <flux:field><flux:label>N.º de individuos</flux:label><flux:input type="number" min="1" wire:model="registroNativo.individualCount" /><flux:error name="registroNativo.individualCount" /></flux:field>
-            <flux:field><flux:label>Método de colecta</flux:label><select wire:model="registroNativo.samplingProtocol" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"><option value="">Selecciona…</option><option value="hand_collection">Colecta manual</option><option value="aquatic_net">Red acuática</option><option value="malaise_trap">Trampa Malaise</option><option value="light_trap">Trampa de luz</option><option value="pitfall_trap">Trampa de caída</option><option value="leaf_litter">Hojarasca</option><option value="beating_sheet">Paraguas entomológico</option><option value="fogging">Nebulización</option><option value="other">Otro documentado</option></select><flux:error name="registroNativo.samplingProtocol" /></flux:field>
-            <flux:field><flux:label>Preparación</flux:label><select wire:model="registroNativo.preparations" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"><option value="ethanol">Preservado en etanol</option><option value="dry_pin">Montado en alfiler</option><option value="slide">Portaobjetos</option><option value="other">Otra preparación</option></select><flux:error name="registroNativo.preparations" /></flux:field>
-            <flux:field class="md:col-span-2 lg:col-span-3"><flux:label>Observaciones del espécimen/lote</flux:label><flux:textarea wire:model="registroNativo.occurrenceRemarks" rows="2" /><flux:error name="registroNativo.occurrenceRemarks" /></flux:field>
+            <flux:field class="col-span-2 md:col-span-1"><flux:label>Método de colecta</flux:label><select wire:model="registroNativo.samplingProtocol" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"><option value="">Selecciona…</option><option value="hand_collection">Colecta manual</option><option value="aquatic_net">Red acuática</option><option value="malaise_trap">Trampa Malaise</option><option value="light_trap">Trampa de luz</option><option value="pitfall_trap">Trampa de caída</option><option value="leaf_litter">Hojarasca</option><option value="beating_sheet">Paraguas entomológico</option><option value="fogging">Nebulización</option><option value="other">Otro documentado</option></select><flux:error name="registroNativo.samplingProtocol" /></flux:field>
+            <flux:field class="col-span-2 md:col-span-1"><flux:label>Preparación</flux:label><select wire:model="registroNativo.preparations" class="block min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"><option value="ethanol">Preservado en etanol</option><option value="dry_pin">Montado en alfiler</option><option value="slide">Portaobjetos</option><option value="other">Otra preparación</option></select><flux:error name="registroNativo.preparations" /></flux:field>
+            <flux:field class="col-span-2 md:col-span-3 xl:col-span-4"><flux:label>Observaciones del espécimen/lote</flux:label><flux:textarea wire:model="registroNativo.occurrenceRemarks" rows="2" /><flux:error name="registroNativo.occurrenceRemarks" /></flux:field>
         </div>
 
         <div class="flex justify-end">
@@ -171,11 +165,12 @@
                 fn($c) => !in_array($c, $camposClasificados)
             ));
         @endphp
-        <div class="space-y-3">
-            <div class="flex items-center gap-2">
+        <details class="rounded-lg border border-border bg-surface px-3 py-2">
+            <summary class="flex cursor-pointer items-center gap-2 text-sm font-semibold text-blue-navy">
                 <flux:icon name="document-text" class="size-4 text-text-secondary" />
-                <flux:heading size="sm" level="3">Integridad de campos Darwin Core</flux:heading>
-            </div>
+                Campos Darwin Core · {{ count($camposDwCPresentes) }} incluidos
+            </summary>
+            <div class="space-y-2 pt-3">
 
             {{-- Críticos --}}
             @if(!empty($camposDwCCriticos))
@@ -224,7 +219,8 @@
                     </div>
                 </div>
             @endif
-        </div>
+            </div>
+        </details>
     @endif
 
     {{-- Validacion taxonomica --}}
@@ -242,7 +238,7 @@
                         @if($esDonacion)
                             Transferencia por donación — se omite la validación de inconsistencias tipográficas.
                         @else
-                            Revisa cada espécimen contra el catálogo taxonómico mundial de GBIF.
+                            Revisa cada espécimen contra el catálogo EPN o GBIF.
                         @endif
                     </flux:text>
                 </div>
@@ -457,7 +453,7 @@
                     <flux:callout variant="success" icon="check-circle">
                         <flux:heading>Matriz validada técnicamente</flux:heading>
                         <flux:text class="text-sm">
-                            Todos los especímenes coinciden con el catálogo de GBIF. La matriz está lista para el envío.
+                            Todos los especímenes coinciden con el catálogo EPN o GBIF. La matriz está lista para el envío.
                         </flux:text>
                     </flux:callout>
                 @else

@@ -52,6 +52,8 @@ final class ActualizarOrigenSolicitudDepositoHandler
             $solicitud->declararProvincia($input->provinciaOrigen);
         }
 
+        $solicitud->declararCanton($input->cantonOrigen);
+
         $this->transactionManager->executeTransactional(function () use ($solicitud): void {
             $this->repo->guardar($solicitud);
             foreach ($solicitud->pullEvents() as $event) {

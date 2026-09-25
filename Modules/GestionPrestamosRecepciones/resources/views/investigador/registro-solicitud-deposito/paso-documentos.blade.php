@@ -1,4 +1,7 @@
 <div class="space-y-5" x-data="{ total: {{ count($documentosRequeridos) }} }">
+    @if(in_array('validando', $firmasElectronicas, true) || in_array('analizando', $validacionArchivos, true))
+        <span wire:poll.1s="actualizarFirmas" class="sr-only">Comprobando documentos y firmas electrónicas</span>
+    @endif
 
     <div class="hub-wizard-copy-header border-b border-blue-navy/10 pb-4">
         <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('documentos.titulo') }}</flux:heading>
@@ -185,6 +188,9 @@
                         :propiedad="$prop"
                         :requerido="true"
                         :cargado="isset($documentosCargados[$docNombre])"
+                        :estado-firma="$firmasElectronicas[$docNombre] ?? null"
+                        :estado-archivo="$validacionArchivos[$docNombre] ?? null"
+                        :validando-firma="($firmasElectronicas[$docNombre] ?? null) === 'validando'"
                         :archivo-nombre="$nombresArchivosOriginales[$docNombre] ?? null"
                         :plantilla="$plantillasDisponibles[$docNombre] ?? null"
                         :ayuda="$ayudas[$docNombre] ?? null"
@@ -196,6 +202,12 @@
                     />
                 @endforeach
             </section>
+            @if(!$analisisDocumentalCompletado && in_array('revocacion_no_comprobable', $firmasElectronicas, true))
+                <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-xs text-text-primary" role="alert">
+                    <p>La firma es íntegra, pero no se pudo consultar una fuente vigente de revocación del emisor. Conservamos los PDF; vuelve a comprobar cuando el servicio responda.</p>
+                    <flux:button size="xs" variant="outline" icon="arrow-path" wire:click="repetirVerificacionFirmas" wire:loading.attr="disabled" wire:target="repetirVerificacionFirmas">Volver a comprobar</flux:button>
+                </div>
+            @endif
         @else
             <div class="flex items-start gap-3 rounded-lg border border-success/30 bg-success/5 p-4">
                 <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success">
@@ -220,19 +232,13 @@
                     </p>
                 </div>
             </div>
-            <flux:button
-                variant="outline"
-                size="sm"
-                wire:click="solicitarIntervencion"
-                wire:loading.attr="disabled"
-                wire:target="solicitarIntervencion"
-                icon="hand-raised"
-                icon:loading="arrow-path"
-                class="shrink-0 text-warning border-warning/40 hover:bg-warning/10"
-            >
-                {{ \App\Support\WizardCopy::text('documentos.asistencia_accion') }}
-            </flux:button>
+            <flux:modal.trigger name="asistencia-depositos">
+                <flux:button variant="outline" size="sm" icon="hand-raised" class="shrink-0 border-warning/40 text-warning hover:bg-warning/10">
+                    {{ \App\Support\WizardCopy::text('documentos.asistencia_accion') }}
+                </flux:button>
+            </flux:modal.trigger>
         </div>
+        @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.asistencia-modal')
         @endif
 
     </div>{{-- fin wire:key="formulario-documentos" --}}
@@ -240,5 +246,9 @@
     @endif
 
     @endif {{-- fin @if(!$extraccionProcesando) --}}
+
+    @if(!$extraccionProcesando && $analisisDocumentalCompletado)
+        @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-firmas')
+    @endif
 
 </div>

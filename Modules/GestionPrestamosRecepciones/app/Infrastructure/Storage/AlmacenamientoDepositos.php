@@ -16,6 +16,11 @@ final class AlmacenamientoDepositos
     public function driver(): string
     {
         $seleccionado = strtolower(trim((string) config('deposit-storage.driver', 'auto')));
+        if ($seleccionado === 'local'
+            && app()->environment(['local', 'testing'])
+            && ! (bool) config('deposit-storage.require_remote', true)) {
+            return 'local';
+        }
         if ($seleccionado !== 'r2') {
             throw new \RuntimeException('DEPOSIT_STORAGE_DRIVER debe ser r2; los expedientes no admiten fallback local.');
         }
@@ -48,6 +53,7 @@ final class AlmacenamientoDepositos
             throw new \RuntimeException('No se pudo leer el archivo cargado.');
         }
         $this->asegurarContenidoPdf($contenido);
+        app(ValidadorPdfDeposito::class)->validar($archivo->getRealPath());
         $sha256 = $this->guardarContenido($ruta, $contenido, $archivo->getMimeType() ?: 'application/octet-stream');
 
         return ['ruta' => $ruta, 'sha256' => $sha256];
@@ -60,6 +66,7 @@ final class AlmacenamientoDepositos
             throw new \RuntimeException('No se pudo leer el archivo cargado.');
         }
         $this->asegurarContenidoPdf($contenido);
+        app(ValidadorPdfDeposito::class)->validar($archivo->getRealPath());
         $this->guardarContenido($ruta, $contenido, $archivo->getMimeType() ?: 'application/pdf');
 
         return $ruta;

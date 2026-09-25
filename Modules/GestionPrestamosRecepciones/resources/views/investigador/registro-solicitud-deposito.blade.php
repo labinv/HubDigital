@@ -3,8 +3,6 @@
     x-data="{
         domainError: null,
         tipoTramite: $wire.entangle('tipoTramite'),
-        origenRecoleccion: $wire.entangle('origenRecoleccion'),
-        situacionRegulatoria: $wire.entangle('situacionRegulatoria'),
         declaracionAceptada: $wire.entangle('declaracionAceptada'),
         matrizCargada: $wire.entangle('matrizCargada'),
         solicitudFirmada: $wire.entangle('solicitudFirmada'),
@@ -18,7 +16,7 @@
     </div>
 
     {{-- Corrección de un rechazo subsanable: recordatorio de las observaciones --}}
-    @if($modoCorreccion && $paso < 7)
+    @if($modoCorreccion && $paso < 9)
         <div class="rounded-lg border border-warning/40 bg-warning/5 p-3 flex items-start gap-3">
             <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0 mt-0.5" />
             <div class="min-w-0">
@@ -31,26 +29,9 @@
         </div>
     @endif
 
-    @if($paso < 7)
+    @if($paso < 9)
         {{-- Borrador restaurado --}}
-        @if($borradorRestaurado && ! $modoCorreccion && $paso < 6)
-            <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 px-3 py-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <div class="flex items-center gap-2.5">
-                    <flux:icon name="bookmark" class="size-5 text-science-blue shrink-0" />
-                    <p class="text-sm text-text-secondary"><span class="font-semibold text-text-primary">Borrador recuperado.</span> Continúa donde lo dejaste.</p>
-                </div>
-                <flux:modal.trigger name="confirmar-descartar-borrador">
-                    <flux:button
-                        variant="outline"
-                        size="sm"
-                        icon="trash"
-                        class="shrink-0"
-                    >
-                        Descartar
-                    </flux:button>
-                </flux:modal.trigger>
-            </div>
-
+        @if($borradorRestaurado && ! $modoCorreccion && $paso < 8)
             <flux:modal name="confirmar-descartar-borrador" class="max-w-sm">
                 <div class="space-y-4">
                     <div>
@@ -87,25 +68,35 @@
                     </div>
                 @endif
                 <x-gestionprestamosrecepciones::deposito-status-badge :estado="$modoCorreccion ? 'Requiere Corrección' : 'En Borrador'" />
+                @if($borradorRestaurado && ! $modoCorreccion && $paso < 8)
+                    <flux:modal.trigger name="confirmar-descartar-borrador">
+                        <flux:button variant="ghost" size="sm" icon="document-minus">Eliminar borrador</flux:button>
+                    </flux:modal.trigger>
+                @endif
             </div>
         </div>
 
         {{-- Stepper --}}
         <div aria-label="Progreso de la solicitud" class="hub-wizard-progress overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
             <div class="flex items-center justify-between px-3 pt-2 sm:hidden">
-                <p class="text-sm font-semibold text-blue-navy">Paso {{ $paso }} de 6</p>
+                @php
+                    $pasoVisible = $paso <= 4 ? $paso : $paso - 1;
+                    $etiquetaPaso = ['Trámite', 'Origen', 'Archivos y firmas', 'Datos', 'Identidad', 'Detalle', 'Envío'][$pasoVisible - 1] ?? '';
+                @endphp
+                <p class="text-sm font-semibold text-blue-navy">Paso {{ $pasoVisible }} de 7 · {{ $etiquetaPaso }}</p>
             </div>
             <x-gestionprestamosrecepciones::wizard-stepper
                 :pasos="[
                     ['label' => 'Trámite',    'sub' => 'Modalidad'],
                     ['label' => 'Origen',     'sub' => 'Procedencia'],
-                    ['label' => 'Documentos', 'sub' => 'Lectura asistida'],
-                    ['label' => 'Datos MEPN', 'sub' => 'Formulario'],
+                    ['label' => 'Archivos y firmas', 'sub' => 'Validación'],
+                    ['label' => 'Datos', 'sub' => 'Formulario'],
+                    ['label' => 'Identidad',  'sub' => 'Solicitante'],
                     ['label' => 'Detalle',    'sub' => 'Taxonomía'],
                     ['label' => 'Envío',      'sub' => 'Firma'],
                 ]"
-                :pasoActual="$paso"
-                :pasosCompletados="$pasosCompletados"
+                :pasoActual="$paso <= 4 ? $paso : $paso - 1"
+                :pasosCompletados="array_values(array_unique(array_map(fn ($numero) => $numero <= 4 ? $numero : $numero - 1, array_filter($pasosCompletados, fn ($numero) => $numero !== 5))))"
             />
         </div>
     @endif
@@ -124,9 +115,11 @@
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-documentos')
                 @elseif($paso === 4)
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-datos')
-                @elseif($paso === 5)
+                @elseif($paso === 6)
+                    @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-identidad')
+                @elseif($paso === 7)
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-matriz')
-                @elseif($paso === 6 || $paso === 7)
+                @elseif($paso === 8 || $paso === 9)
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-envio')
                 @endif
 
@@ -134,7 +127,7 @@
         </div>
 
         {{-- Footer navigation --}}
-        @if($paso < 7)
+        @if($paso < 9)
             <div class="flex items-center justify-between gap-3 border-t border-blue-navy/10 bg-[#F8FAFC] px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
                 <div>
                     @if($paso > 1 && !$extraccionProcesando)
@@ -161,22 +154,28 @@
                         <flux:button
                             variant="primary"
                             icon-trailing="arrow-right"
-                            wire:click="guardarPasoDos"
+                            x-on:click.prevent="$wire.guardarOrigenDesdeFormulario(document.getElementById('provincia-recoleccion')?.value ?? '', document.getElementById('canton-recoleccion')?.value ?? '', document.querySelector('[data-situacion][aria-pressed=true]')?.dataset.situacion ?? '')"
                             wire:loading.attr="disabled"
-                            wire:target="guardarPasoDos"
-                            x-bind:disabled="!origenRecoleccion || !situacionRegulatoria"
+                            wire:target="guardarOrigenDesdeFormulario"
                         >
-                            <flux:icon wire:loading wire:target="guardarPasoDos" name="arrow-path" class="animate-spin size-4 mr-1" />
+                            <flux:icon wire:loading wire:target="guardarOrigenDesdeFormulario" name="arrow-path" class="animate-spin size-4 mr-1" />
                             {{ \App\Support\WizardCopy::text('origen.accion') }}
                         </flux:button>
                     @elseif($paso === 3)
                         @if(!$intervencionCuratoriaActiva && !$extraccionProcesando)
+                            @php
+                                $firmasListas = collect($documentosRequeridos)->every(
+                                    fn ($documento) => ($validacionArchivos[$documento] ?? null) === 'valido'
+                                        && in_array($firmasElectronicas[$documento] ?? null, ['firmado', 'firmado_sin_revocacion'], true)
+                                );
+                            @endphp
                             <flux:button
                                 variant="primary"
                                 icon-trailing="arrow-right"
                                 wire:click="guardarPasoTres"
+                                :disabled="!$firmasListas"
                             >
-                                {{ empty($documentosRequeridos) ? \App\Support\WizardCopy::text('documentos.accion_sin_archivos') : \App\Support\WizardCopy::text('documentos.accion_con_archivos') }}
+                                {{ $analisisDocumentalCompletado ? 'Continuar a datos' : (empty($documentosRequeridos) ? \App\Support\WizardCopy::text('documentos.accion_sin_archivos') : \App\Support\WizardCopy::text('documentos.accion_con_archivos')) }}
                             </flux:button>
                         @endif
                     @elseif($paso === 4)
@@ -190,7 +189,11 @@
                             <flux:icon wire:loading wire:target="guardarPasoCuatro" name="arrow-path" class="animate-spin size-4 mr-1" />
                             {{ \App\Support\WizardCopy::text('datos.accion') }}
                         </flux:button>
-                    @elseif($paso === 5)
+                    @elseif($paso === 6)
+                        <flux:button variant="primary" icon-trailing="arrow-right" wire:click="guardarPasoIdentidad" wire:loading.attr="disabled" wire:target="guardarPasoIdentidad">
+                            Continuar al detalle
+                        </flux:button>
+                    @elseif($paso === 7)
                         <flux:button
                             variant="primary"
                             icon-trailing="arrow-right"
@@ -201,7 +204,7 @@
                             <flux:icon wire:loading wire:target="guardarPasoCinco" name="arrow-path" class="animate-spin size-4 mr-1" />
                             {{ \App\Support\WizardCopy::text('detalle.accion') }}
                         </flux:button>
-                    @elseif($paso === 6)
+                    @elseif($paso === 8)
                         <flux:button
                             variant="primary"
                             icon-trailing="paper-airplane"
@@ -227,16 +230,14 @@
                 show: false,
                 message: '',
                 variant: 'warning',
-                timer: null,
                 showToast(data) {
                     this.message = data.message;
                     this.variant = data.variant || 'warning';
                     this.show = true;
-                    clearTimeout(this.timer);
-                    this.timer = setTimeout(() => this.show = false, 5000);
                 }
             }"
             x-on:show-toast.window="showToast($event.detail)"
+            x-on:close-toast.window="show = false"
             x-show="show"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 translate-x-full"
@@ -246,30 +247,36 @@
             x-transition:leave-end="opacity-0 translate-x-full"
             x-bind:class="variant === 'error'
                 ? 'border-error/50 bg-error/5 ring-1 ring-error/20'
-                : 'border-warning/50 bg-warning/5 ring-1 ring-warning/20'"
-            class="rounded-xl border bg-surface px-5 py-4 flex items-start gap-3"
-            style="display: none; position: fixed; top: 1.25rem; right: 1.5rem; z-index: 9999; width: 22rem; max-width: calc(100dvi - 3rem); box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.1);"
+                : variant === 'success'
+                    ? 'border-science-blue/50 bg-science-blue/5 ring-1 ring-science-blue/20'
+                    : 'border-warning/50 bg-warning/5 ring-1 ring-warning/20'"
+            class="rounded-xl border bg-surface px-3 py-2.5 flex items-start gap-2.5"
+            style="display: none; position: fixed; top: 1rem; right: 1rem; z-index: 9999; width: 19rem; max-width: calc(100dvi - 2rem); box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.1);"
         >
             <div x-show="variant === 'error'" class="flex-shrink-0 mt-0.5">
-                <div class="flex items-center justify-center size-8 rounded-full bg-error/10">
-                    <svg class="size-5 text-error" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <div class="flex items-center justify-center size-6 rounded-full bg-error/10">
+                    <svg class="size-4 text-error" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
                 </div>
             </div>
-            <div x-show="variant !== 'error'" class="flex-shrink-0 mt-0.5">
-                <div class="flex items-center justify-center size-8 rounded-full bg-warning/10">
-                    <svg class="size-5 text-warning" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <div x-show="variant === 'success'" class="flex-shrink-0 mt-0.5">
+                <flux:icon name="check-circle" class="size-6 text-science-blue" />
+            </div>
+            <div x-show="variant !== 'error' && variant !== 'success'" class="flex-shrink-0 mt-0.5">
+                <div class="flex items-center justify-center size-6 rounded-full bg-warning/10">
+                    <svg class="size-4 text-warning" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.814-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                     </svg>
                 </div>
             </div>
             <div class="flex-1 min-w-0">
-                <p x-show="variant === 'error'" class="text-sm font-bold text-error">Error de validación</p>
-                <p x-show="variant !== 'error'" class="text-sm font-bold text-warning">Atención</p>
-                <p class="text-sm text-text-primary mt-1 leading-snug font-normal" x-text="message"></p>
+                <p x-show="variant === 'error'" class="text-xs font-bold text-error">Error de validación</p>
+                <p x-show="variant === 'success'" class="text-xs font-bold text-science-blue">Datos completos</p>
+                <p x-show="variant !== 'error' && variant !== 'success'" class="text-xs font-bold text-warning">Atención</p>
+                <p class="text-xs text-text-primary mt-0.5 leading-snug font-normal" x-text="message"></p>
             </div>
-            <button x-on:click="show = false" class="flex-shrink-0 p-1 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-main transition-colors">
+            <button type="button" aria-label="Cerrar aviso" x-on:click="show = false" class="flex-shrink-0 p-1 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-main transition-colors">
                 <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>

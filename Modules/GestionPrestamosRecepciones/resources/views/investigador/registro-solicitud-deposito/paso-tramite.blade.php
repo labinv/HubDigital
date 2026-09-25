@@ -10,9 +10,9 @@
     }"
 >
 
-    <div class="border-b border-blue-navy/10 pb-5">
+    <div class="border-b border-blue-navy/10 pb-3">
         <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('tramite.titulo') }}</flux:heading>
-        <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{{ \App\Support\WizardCopy::text('tramite.intro') }}</flux:text>
+        <flux:text class="mt-1 text-sm leading-5 text-text-secondary">{{ \App\Support\WizardCopy::text('tramite.intro') }}</flux:text>
     </div>
 
     <flux:error name="tipoTramite" />

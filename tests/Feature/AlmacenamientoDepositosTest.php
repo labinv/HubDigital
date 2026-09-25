@@ -40,7 +40,7 @@ test('rechaza como PDF un archivo cuyo contenido no tiene cabecera PDF', functio
     Storage::disk('local')->assertMissing('depositos/prueba');
 });
 
-test('acepta un PDF con cabecera valida y lo persiste en R2', function (): void {
+test('acepta un PDF estructuralmente valido y lo persiste en R2', function (): void {
     Http::fake(['*' => Http::response('', 200)]);
     config()->set('deposit-storage.driver', 'r2');
     config()->set('deposit-storage.require_remote', true);
@@ -55,7 +55,7 @@ test('acepta un PDF con cabecera valida y lo persiste en R2', function (): void 
         'max_attempts' => 1,
     ]);
 
-    $archivo = UploadedFile::fake()->createWithContent('valido.pdf', "%PDF-1.7\ncontenido de prueba");
+    $archivo = UploadedFile::fake()->createWithContent('valido.pdf', pdfValidoParaDepositos());
     $ruta = (new AlmacenamientoDepositos)->guardarArchivo($archivo, 'depositos/prueba');
 
     expect($ruta)->toStartWith('depositos/prueba/');

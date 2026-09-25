@@ -70,6 +70,8 @@ final class SolicitudDeposito
 
     private ?string $provinciaOrigen = null;
 
+    private ?string $cantonOrigen = null;
+
     private bool $sinDocumentacion = false;
 
     // ── Documentación ────────────────────────────────────────────
@@ -191,6 +193,11 @@ final class SolicitudDeposito
         }
 
         $this->provinciaOrigen = $provincia;
+    }
+
+    public function declararCanton(?string $canton): void
+    {
+        $this->cantonOrigen = $canton;
     }
 
     public function marcarSinDocumentacionDisponible(): void
@@ -724,6 +731,11 @@ final class SolicitudDeposito
         return $this->provinciaOrigen;
     }
 
+    public function cantonOrigen(): ?string
+    {
+        return $this->cantonOrigen;
+    }
+
     public function sinDocumentacionDisponible(): bool
     {
         return $this->sinDocumentacion;
@@ -933,6 +945,7 @@ final class SolicitudDeposito
         PrioridadSolicitud $prioridad = PrioridadSolicitud::Normal,
         ?DocumentoAdjunto $actaTransferenciaDominio = null,
         array $alertas = [],
+        ?string $cantonOrigen = null,
     ): self {
         $solicitud = new self;
 
@@ -944,6 +957,7 @@ final class SolicitudDeposito
         $solicitud->origenRecoleccion = $origenRecoleccion;
         $solicitud->situacionRegulatoria = $situacionRegulatoria;
         $solicitud->provinciaOrigen = $provinciaOrigen;
+        $solicitud->cantonOrigen = $cantonOrigen;
         $solicitud->sinDocumentacion = $sinDocumentacion;
         $solicitud->nroPermisoRecoleccion = $nroPermisoRecoleccion;
         $solicitud->nroPermisoMovilizacion = $nroPermisoMovilizacion;

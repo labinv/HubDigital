@@ -72,6 +72,7 @@ done
 artisan config:clear
 # Las migraciones crean todas las tablas antes de cualquier comando que las consulta.
 artisan migrate --force --no-interaction
+artisan db:seed --class='Database\Seeders\InstitucionesCatalogoSeeder' --force --no-interaction
 if [[ "$(read_env SEED_BOOTSTRAP_DEPOSITANTE)" == true ]]; then
     require_value BOOTSTRAP_DEPOSITANTE_EMAIL
     require_value BOOTSTRAP_DEPOSITANTE_PASSWORD

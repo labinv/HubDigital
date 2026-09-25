@@ -15,7 +15,14 @@ export default defineConfig({
     server: {
         cors: true,
         watch: {
-            ignored: ['**/storage/framework/views/**'],
+            ignored: [
+                '**/storage/framework/views/**',
+                '**/storage/app/signature-crl/**',
+                '**/.local/**',
+                '**/resources/signature-trust/**',
+                '**/tools/pdf-signature/target/**',
+                '**/docs/**',
+            ],
         },
     },
 });

@@ -1,4 +1,4 @@
-@if($paso === 7)
+@if($paso === 9)
 
     {{-- ── Pantalla de confirmación final ──────────────────────────────────────── --}}
     @php
@@ -156,32 +156,30 @@
 @else
 
     {{-- ── Paso 5: Revisar y enviar ────────────────────────────────────────────── --}}
-    <div class="space-y-6">
+    <div class="space-y-3">
 
-        <div class="border-b border-blue-navy/10 pb-5">
+        <div class="border-b border-blue-navy/10 pb-2">
             <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('envio.titulo') }}</flux:heading>
-            <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{{ \App\Support\WizardCopy::text('envio.intro') }}</flux:text>
+            <flux:text class="mt-0.5 text-xs text-text-secondary">Revisa y firma la solicitud antes de enviarla.</flux:text>
         </div>
 
-        <flux:callout variant="info" icon="information-circle">
-            <flux:text class="text-sm">
-                Tu solicitud será evaluada por curaduría en máximo <strong>3 días hábiles</strong>.
-                Recibirás notificación en cada cambio de estado.
-            </flux:text>
-        </flux:callout>
+        <p class="flex items-start gap-2 border-l-2 border-science-blue bg-science-blue/5 px-2.5 py-1.5 text-xs text-text-secondary">
+            <flux:icon name="information-circle" class="mt-0.5 size-3.5 shrink-0 text-science-blue" />
+            <span>Curaduría evaluará tu solicitud en un máximo de <strong>3 días hábiles</strong> y te avisará cuando cambie su estado.</span>
+        </p>
 
         {{-- Resumen de la solicitud --}}
-        <div class="space-y-3">
+        <div class="space-y-2">
             <flux:heading size="sm" level="3">Resumen de la solicitud</flux:heading>
 
-            <div class="grid gap-3 sm:grid-cols-2">
+            <div class="grid grid-cols-2 gap-2 xl:grid-cols-4">
 
-                <div class="rounded-lg border border-border bg-bg-main p-3 space-y-0.5">
+                <div class="rounded-lg border border-border bg-bg-main p-2 space-y-0.5">
                     <p class="text-xs text-text-secondary">Tipo de trámite</p>
                     <p class="text-sm font-semibold text-text-primary">{{ $tipoTramite }}</p>
                 </div>
 
-                <div class="rounded-lg border border-border bg-bg-main p-3 space-y-0.5">
+                <div class="rounded-lg border border-border bg-bg-main p-2 space-y-0.5">
                     <p class="text-xs text-text-secondary">Origen</p>
                     <p class="text-sm font-semibold text-text-primary">{{ $origenRecoleccion }}</p>
                     @if($situacionRegulatoria && $situacionRegulatoria !== 'Proviene de colección foránea')
@@ -190,7 +188,7 @@
                 </div>
 
                 @if($provincia)
-                    <div class="rounded-lg border border-border bg-bg-main p-3 space-y-0.5">
+                    <div class="rounded-lg border border-border bg-bg-main p-2 space-y-0.5">
                         <p class="text-xs text-text-secondary">Provincia</p>
                         <p class="text-sm font-semibold text-text-primary">{{ $provincia }}</p>
                         @if($localidad)
@@ -199,16 +197,13 @@
                     </div>
                 @endif
 
-                <div class="rounded-lg border border-border bg-bg-main p-3 space-y-0.5">
+                <div class="rounded-lg border border-border bg-bg-main p-2 space-y-0.5">
                     <p class="text-xs text-text-secondary">Solicitante</p>
                     <p class="text-sm font-semibold text-text-primary">{{ auth()->user()->name }}</p>
-                    @if($nombreEnDocumento && $nombreEnDocumento !== auth()->user()->name)
-                        <p class="text-xs text-text-secondary">Doc: {{ $nombreEnDocumento }}</p>
-                    @endif
                 </div>
 
                 @if(!empty($documentosCargados))
-                    <div class="sm:col-span-2 rounded-lg border border-border bg-bg-main p-3 space-y-1.5">
+                    <div class="col-span-2 xl:col-span-4 rounded-lg border border-border bg-bg-main p-2 space-y-1">
                         <p class="text-xs text-text-secondary">Documentos adjuntados</p>
                         <ul class="space-y-1">
                             @foreach($documentosCargados as $nombre => $ruta)
@@ -222,7 +217,7 @@
                 @endif
 
                 @if($matrizCargada && $estadoMatriz)
-                    <div class="sm:col-span-2 rounded-lg border border-border bg-bg-main p-3 space-y-1.5">
+                    <div class="col-span-2 xl:col-span-4 rounded-lg border border-border bg-bg-main p-2 space-y-1">
                         <p class="text-xs text-text-secondary">Matriz de especies</p>
                         <div class="flex items-center gap-3 flex-wrap">
                             <p class="text-sm font-semibold text-text-primary">{{ $archivoMatrizNombre ?: 'Cargada' }}</p>
@@ -236,7 +231,7 @@
         </div>
 
         {{-- Declaración jurada --}}
-        <div class="space-y-3 border-l-2 border-blue-navy/20 bg-[#F8FAFC] px-4 py-4">
+        <div class="space-y-2 border-l-2 border-blue-navy/20 bg-[#F8FAFC] px-3 py-2">
             <flux:heading size="sm" level="3">Declaración del solicitante</flux:heading>
             <flux:checkbox
                 wire:model="declaracionAceptada"
@@ -246,7 +241,7 @@
         </div>
 
         {{-- Documento institucional generado y firmado dentro de HubDigital --}}
-        <div class="space-y-4 rounded-xl border border-bio-green/30 bg-bio-green/[0.04] p-5">
+        <div class="space-y-3 rounded-xl border border-bio-green/30 bg-bio-green/[0.04] p-3">
             <div class="flex items-start justify-between gap-4">
                 <div class="flex items-start gap-3">
                     <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-bio-green/10">
@@ -266,15 +261,18 @@
                 @endif
             </div>
 
-            <iframe
-                title="Vista previa de la solicitud oficial"
-                src="{{ route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1]) }}"
-                class="h-96 w-full rounded-lg border border-border bg-white"
-            ></iframe>
+            <details class="rounded-lg border border-border bg-white px-3 py-2">
+                <summary class="cursor-pointer text-sm font-medium text-science-blue">Vista previa del PDF oficial</summary>
+                <iframe
+                    title="Vista previa de la solicitud oficial"
+                    src="{{ route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1]) }}"
+                    class="mt-2 h-64 w-full rounded-lg border border-border bg-white"
+                ></iframe>
+            </details>
 
             @if(!$solicitudFirmada)
                 <div
-                    class="space-y-5 rounded-lg border border-blue-navy/15 bg-surface p-4 sm:p-5"
+                    class="space-y-3 rounded-lg border border-blue-navy/15 bg-surface p-3"
                     x-data="hubDigitalFirmador({
                         documentUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])),
                         uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])),
@@ -283,7 +281,7 @@
                         location: 'Quito, Ecuador'
                     })"
                 >
-                    <div class="grid gap-4 md:grid-cols-2">
+                    <div class="grid gap-2 md:grid-cols-2">
                         <flux:field>
                             <flux:label>Certificado electrónico (.p12 o .pfx)</flux:label>
                             <input x-ref="certificado" type="file" accept=".p12,.pfx,application/x-pkcs12" class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm" />

@@ -51,6 +51,7 @@ artisan config:clear
 # CACHE_STORE=database consulta la tabla cache; en una base nueva solo puede
 # limpiarse despues de que migrate haya creado las tablas requeridas.
 artisan migrate --force --no-interaction
+artisan db:seed --class='Database\Seeders\InstitucionesCatalogoSeeder' --force --no-interaction
 if [[ "$(read_env SEED_BOOTSTRAP_DEPOSITANTE)" == true ]]; then
     for key in BOOTSTRAP_DEPOSITANTE_EMAIL BOOTSTRAP_DEPOSITANTE_PASSWORD; do
         value="$(read_env "${key}")"

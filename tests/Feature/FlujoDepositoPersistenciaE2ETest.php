@@ -162,11 +162,11 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
             'documentos' => [
                 'Permiso de investigación' => UploadedFile::fake()->createWithContent(
                     'permiso-maate.pdf',
-                    "%PDF-1.7\npermiso de prueba",
+                    pdfValidoParaDepositos('Permiso de prueba'),
                 ),
                 'Guía de movilización' => UploadedFile::fake()->createWithContent(
                     'guia-movilizacion.pdf',
-                    "%PDF-1.7\nguía de prueba",
+                    pdfValidoParaDepositos('Guia de prueba'),
                 ),
             ],
         ],
@@ -205,7 +205,7 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         [
             'pdf_firmado' => UploadedFile::fake()->createWithContent(
                 'solicitud-firmada.pdf',
-                "%PDF-1.7\nsolicitud firmada localmente para E2E",
+                pdfValidoParaDepositos('Solicitud de prueba para E2E'),
             ),
         ],
         ['Accept' => 'application/json'],
@@ -326,7 +326,7 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         [
             'pdf_firmado' => UploadedFile::fake()->createWithContent(
                 'acta-final-firmada.pdf',
-                "%PDF-1.7\nacta final firmada localmente para E2E",
+                pdfValidoParaDepositos('Acta final de prueba para E2E'),
             ),
             'original_referencia' => $original['referencia'],
             'original_sha256' => $original['sha256'],

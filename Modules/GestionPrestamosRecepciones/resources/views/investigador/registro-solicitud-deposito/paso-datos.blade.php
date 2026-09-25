@@ -1,19 +1,44 @@
-<div class="space-y-6">
+<div class="space-y-3">
+    @php
+        $faltantesAviso = $datosFaltantes;
+        if (trim($cargoConsultor) === '') $faltantesAviso[] = 'Cargo';
+        if (trim($institucionConsultor) === '') $faltantesAviso[] = 'Institución';
+    @endphp
+    @if($faltantesAviso !== [])
+        @php $avisoDatos = 'Completa los datos pendientes: '.implode(', ', $faltantesAviso).'.'; @endphp
+        <div x-data x-init="$nextTick(() => $dispatch('show-toast', { message: @js($avisoDatos), variant: 'error' }))" class="hidden"></div>
+    @endif
 
-    <div class="border-b border-blue-navy/10 pb-5">
-        <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('datos.titulo') }}</flux:heading>
-        <flux:text class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">{{ \App\Support\WizardCopy::text('datos.intro') }}</flux:text>
-    </div>
+    <h2 class="text-sm font-semibold text-blue-navy">Datos de la solicitud</h2>
 
     <div class="overflow-hidden rounded-xl border border-science-blue/25 bg-surface shadow-sm">
-        <div class="border-b border-science-blue/20 bg-science-blue/5 px-4 py-3">
-            <p class="text-sm font-semibold text-blue-navy">Identificación del consultor · columnas A–C</p>
-            <p class="mt-0.5 text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.perfil') }}</p>
+        <div class="border-b border-science-blue/20 bg-science-blue/5 px-3 py-2">
+            <p class="text-sm font-semibold text-blue-navy">Solicitante</p>
+            <p class="text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.perfil') }}</p>
         </div>
         <dl class="grid gap-px bg-border sm:grid-cols-3">
-            <div class="bg-white p-4"><dt class="text-xs font-semibold text-text-secondary">A. Nombre representante legal empresa</dt><dd class="mt-1 text-sm text-text-primary">{{ $nombreEnDocumento ?: auth()->user()->name }}</dd></div>
-            <div class="bg-white p-4"><dt class="text-xs font-semibold text-text-secondary">B. Cargo o posición</dt><dd class="mt-1 text-sm text-text-primary">{{ auth()->user()->cargo ?: 'Completar en el perfil' }}</dd></div>
-            <div class="bg-white p-4"><dt class="text-xs font-semibold text-text-secondary">C. Empresa o institución</dt><dd class="mt-1 text-sm text-text-primary">{{ auth()->user()->institucion ?: 'Completar en el perfil' }}</dd></div>
+            <div class="bg-white p-2.5">
+                <dt class="flex items-center gap-1 text-xs font-semibold text-text-secondary">Nombre
+                    <flux:tooltip content="Nombre de la persona que presenta la solicitud de depósito."><flux:icon name="information-circle" class="size-3 cursor-help" /></flux:tooltip>
+                </dt>
+                <dd class="text-sm text-text-primary">{{ auth()->user()->name }}</dd>
+            </div>
+            <div @class(['relative bg-white p-2.5', 'border border-error' => trim($cargoConsultor) === ''])>
+                @if(trim($cargoConsultor) === '')<span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-error" aria-label="Cargo faltante"></span>@endif
+                <dt class="flex items-center gap-1 text-xs font-semibold text-text-secondary">Cargo
+                    <flux:tooltip content="Función o puesto que desempeñas en la institución que presenta la solicitud."><flux:icon name="information-circle" class="size-3 cursor-help" /></flux:tooltip>
+                </dt>
+                <dd @class(['text-sm', 'italic text-error' => trim($cargoConsultor) === '', 'text-text-primary' => trim($cargoConsultor) !== ''])>{{ trim($cargoConsultor) === '' ? 'Falta ingresar' : $cargoConsultor }}</dd>
+                <button type="button" wire:click="abrirEditorManual('Cargo')" class="mt-1 flex items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($cargoConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+            </div>
+            <div @class(['relative bg-white p-2.5', 'border border-error' => trim($institucionConsultor) === ''])>
+                @if(trim($institucionConsultor) === '')<span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-error" aria-label="Institución faltante"></span>@endif
+                <dt class="flex items-center gap-1 text-xs font-semibold text-text-secondary">Institución
+                    <flux:tooltip content="Entidad a la que perteneces y en cuyo nombre gestionas el depósito."><flux:icon name="information-circle" class="size-3 cursor-help" /></flux:tooltip>
+                </dt>
+                <dd @class(['text-sm', 'italic text-error' => trim($institucionConsultor) === '', 'text-text-primary' => trim($institucionConsultor) !== ''])>{{ trim($institucionConsultor) === '' ? 'Falta ingresar' : $institucionConsultor }}</dd>
+                <button type="button" wire:click="abrirEditorManual('Institución')" class="mt-1 flex items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($institucionConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+            </div>
         </dl>
     </div>
     <flux:error name="perfilConsultor" />
@@ -51,67 +76,8 @@
         </flux:callout>
     @endif
 
-    {{-- Datos faltantes globales --}}
-    <flux:error name="datosFaltantes" />
-
-    @php
-        // Campos que siempre se ingresan manualmente (la IA no los extrae de documentos).
-        $camposSiempreManuales = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
-
-        // Solo mostramos en el callout los faltantes que (a) pertenecen al flujo actual
-        // y (b) se esperaba extraer automáticamente.
-        $datosFaltantesExtraccion = array_values(
-            array_filter(
-                $datosFaltantes,
-                fn ($campo) => array_key_exists($campo, $datosExtraidos)
-                    && ! in_array($campo, $camposSiempreManuales, true),
-            )
-        );
-    @endphp
-
-    @if(in_array('N.º Permiso Movilización', $datosFaltantes) && !isset($documentosCargados['Copia del permiso de movilización']))
-        <flux:callout variant="warning" icon="exclamation-triangle">
-            <flux:heading>Se requiere el Permiso de Movilización</flux:heading>
-            <flux:text>
-                Los documentos indican que la recolección ocurrió fuera de Pichincha.
-                Debes adjuntar la <strong>Copia del permiso de movilización</strong> para continuar.
-            </flux:text>
-            <flux:button size="sm" wire:click="retroceder" icon="arrow-left" class="mt-2">
-                Volver a adjuntar documentos
-            </flux:button>
-        </flux:callout>
-    @elseif(!empty($datosFaltantesExtraccion))
-        <flux:callout variant="danger" icon="x-circle">
-            <flux:heading>{{ count($datosFaltantesExtraccion) }} dato(s) requeridos no se pudieron extraer</flux:heading>
-            <flux:text>La extracción automática no detectó: <strong>{{ implode(', ', $datosFaltantesExtraccion) }}</strong>. Completa manualmente cada celda marcada abajo.</flux:text>
-        </flux:callout>
-    @elseif(!empty($datosFaltantes))
-        <flux:callout variant="warning" icon="pencil-square">
-            <flux:heading>{{ count($datosFaltantes) }} dato(s) pendientes de completar</flux:heading>
-            <flux:text>{{ \App\Support\WizardCopy::text('datos.manual_explicacion') }}</flux:text>
-        </flux:callout>
-    @endif
-
-    {{-- Datos extraídos --}}
     <div id="datos-manuales" class="space-y-3 scroll-mt-6">
-        @if(($metadatosExtraccion['motor'] ?? null) === 'local')
-            <div class="rounded-lg border border-science-blue/25 bg-science-blue/5 p-3 text-sm">
-                <div class="flex items-start gap-2">
-                    <flux:icon name="lock-closed" class="mt-0.5 size-4 shrink-0 text-science-blue" />
-                    <div>
-                        <p class="font-medium text-text-primary">Autocompletado privado con modelos gratuitos</p>
-                        <p class="mt-0.5 text-xs text-text-secondary">
-                            El texto se procesa dentro de HubDigital con Poppler (pdftotext) y Tesseract 5 en español. Los documentos no se envían a un proveedor de IA y cada propuesta requiere confirmación.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        @endif
-        <div>
-            <flux:heading size="sm" level="3">Columnas D–J · Material entregado</flux:heading>
-            <flux:text class="mt-1 text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.material_explicacion') }}</flux:text>
-        </div>
-
+        <h3 class="text-sm font-semibold text-blue-navy">Material</h3>
         @php
             $fuentesPorCampo = [
                 'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAE)',
@@ -143,83 +109,37 @@
                 'N.º Lotes'                => 'Número de lotes en que se agrupan los especímenes para su organización y registro en la colección.',
             ];
 
-            $camposCuantitativos = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
-
             $camposParaMostrar = array_keys($datosExtraidos);
         @endphp
 
-        <div class="grid gap-3 sm:grid-cols-2">
+        <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
             @foreach($camposParaMostrar as $campo)
                 @php
                     $esFaltante = in_array($campo, $datosFaltantes);
                     $valor = $datosExtraidos[$campo] ?? null;
                     $fuente = $fuentesPorCampo[$campo] ?? null;
-                    $clave = preg_replace('/[^a-zA-Z0-9]/', '_', $campo);
-                    $estaEditando = isset($datosEnEdicion[$clave]);
                     $esManual = in_array($campo, $datosIngresadosManualmente);
-                    $esCuantitativo = in_array($campo, $camposCuantitativos);
                 @endphp
 
                 <x-gestionprestamosrecepciones::sum-cell
                     :campo="$campo"
                     :valor="$valor"
                     :fuente="$fuente"
-                    :faltante="$esFaltante && !$estaEditando"
-                    :manual="$esManual && !$esFaltante && !$estaEditando"
+                    :faltante="$esFaltante"
+                    :manual="$esManual && !$esFaltante"
                     :ayuda="$tooltipsPorCampo[$campo] ?? null"
                 >
-                    @if($estaEditando)
-                        <div class="flex gap-2 mt-1">
-                            @if($campo === 'Grupo Animal')
-                                <select wire:model="datosEnEdicion.{{ $clave }}" class="min-h-9 flex-1 rounded-lg border border-border bg-white px-3 text-sm">
-                                    <option value="">Selecciona un grupo controlado</option>
-                                    @foreach($catalogoGrupos as $grupo)
-                                        <option value="{{ $grupo['nombre'] }}">{{ $grupo['nombre'] }}</option>
-                                    @endforeach
-                                </select>
-                            @elseif($campo === 'Provincia')
-                                <select wire:model="datosEnEdicion.{{ $clave }}" class="min-h-9 flex-1 rounded-lg border border-border bg-white px-3 text-sm">
-                                    <option value="">Selecciona una provincia</option>
-                                    @foreach(['Azuay','Bolívar','Cañar','Carchi','Chimborazo','Cotopaxi','El Oro','Esmeraldas','Galápagos','Guayas','Imbabura','Loja','Los Ríos','Manabí','Morona Santiago','Napo','Orellana','Pastaza','Pichincha','Santa Elena','Santo Domingo de los Tsáchilas','Sucumbíos','Tungurahua','Zamora Chinchipe'] as $provinciaOpcion)
-                                        <option>{{ $provinciaOpcion }}</option>
-                                    @endforeach
-                                </select>
-                            @else
-                                <flux:input
-                                    wire:model="datosEnEdicion.{{ $clave }}"
-                                    size="sm"
-                                    class="flex-1"
-                                    placeholder="Ingresa el valor…"
-                                    :type="$esCuantitativo ? 'number' : 'text'"
-                                    :min="$esCuantitativo ? 0 : null"
-                                />
-                            @endif
-                            <flux:button
-                                size="sm"
-                                variant="primary"
-                                wire:click="guardarDatoFaltante('{{ $campo }}')"
-                                wire:loading.attr="disabled"
-                                wire:target="guardarDatoFaltante('{{ $campo }}')"
-                            >
-                                <flux:icon wire:loading wire:target="guardarDatoFaltante('{{ $campo }}')" name="arrow-path" class="animate-spin size-3" />
-                                Guardar
-                            </flux:button>
-                            <flux:button size="sm" variant="ghost" wire:click="cancelarEdicionDato('{{ $campo }}')">
-                                <flux:icon name="x-mark" class="size-3" />
-                            </flux:button>
-                        </div>
-                        <flux:error name="datosEnEdicion.{{ $clave }}" />
-                    @elseif($esFaltante)
+                    @if($esFaltante)
                         <button
-                            wire:click="iniciarEdicionDato('{{ $campo }}')"
+                            type="button" wire:click="abrirEditorManual('{{ $campo }}')"
                             class="mt-2 flex items-center gap-1 text-xs font-medium text-science-blue hover:text-science-blue/70 transition-colors cursor-pointer"
                         >
                             <flux:icon name="pencil-square" class="size-3" />
-                            Capturar manualmente
+                            Ingresar manualmente
                         </button>
                     @else
                         <button
-                            wire:click="iniciarEdicionDato('{{ $campo }}')"
+                            type="button" wire:click="abrirEditorManual('{{ $campo }}')"
                             class="mt-2 flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                         >
                             <flux:icon name="pencil-square" class="size-3" />
@@ -231,193 +151,67 @@
         </div>
     </div>
 
-    <div class="rounded-lg border border-bio-green/25 bg-bio-green/5 p-4">
+    <flux:modal name="editar-dato-deposito" class="w-full max-w-md">
+        @if($campoEditorManual !== '')
+            <div class="space-y-4">
+                <div>
+                    <flux:heading size="lg">{{ $campoEditorManual }}</flux:heading>
+                    <p class="mt-1 text-xs leading-relaxed text-text-secondary">
+                        {{ match($campoEditorManual) {
+                            'Cargo' => 'Indica el puesto o función que desempeñas en la institución solicitante.',
+                            'Institución' => 'Selecciona la entidad a la que perteneces. El curador administra esta lista.',
+                            'Provincia' => 'Selecciona la provincia donde se recolectó el material. Debe coincidir con la zona de recolección.',
+                            'Localidad' => 'Indica el lugar de recolección dentro de la provincia y cantón seleccionados.',
+                            default => $tooltipsPorCampo[$campoEditorManual] ?? 'Completa este dato de la solicitud de depósito.',
+                        } }}
+                    </p>
+                </div>
+                <div>
+                    @if($campoEditorManual === 'Institución')
+                        <select wire:model="valorEditorManual" aria-label="Institución" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
+                            <option value="">Selecciona una institución</option>
+                            @foreach($institucionesCatalogo as $institucionOpcion)<option value="{{ $institucionOpcion }}">{{ $institucionOpcion }}</option>@endforeach
+                        </select>
+                    @elseif($campoEditorManual === 'Grupo Animal')
+                        <select wire:model="valorEditorManual" aria-label="Grupo Animal" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
+                            <option value="">Selecciona un grupo</option>
+                            @foreach($catalogoGrupos as $grupo)<option value="{{ $grupo['nombre'] }}">{{ $grupo['nombre'] }}</option>@endforeach
+                        </select>
+                    @elseif($campoEditorManual === 'Provincia')
+                        <select wire:model="valorEditorManual" aria-label="Provincia" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
+                            <option value="">Selecciona una provincia</option>
+                            @foreach($provinciasCatalogo as $provinciaOpcion)<option value="{{ $provinciaOpcion['nombre'] }}">{{ $provinciaOpcion['nombre'] }}</option>@endforeach
+                        </select>
+                    @elseif($campoEditorManual === 'Localidad')
+                        <select wire:model.live="valorEditorManual" aria-label="Localidad" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
+                            <option value="">Selecciona una localidad de {{ $canton }}, {{ $provincia }}</option>
+                            @foreach($localidadesCatalogo as $localidadOpcion)<option value="{{ $localidadOpcion }}">{{ $localidadOpcion }}</option>@endforeach
+                            <option value="__OTRA__">Otra localidad de este cantón…</option>
+                        </select>
+                        @if($valorEditorManual === '__OTRA__')
+                            <div class="mt-2"><flux:input wire:model="localidadEspecifica" label="Nombre de la localidad" maxlength="140" placeholder="Área natural, parroquia o sitio de recolección" /><flux:error name="localidadEspecifica" /></div>
+                        @endif
+                    @else
+                        <flux:input wire:model="valorEditorManual" :type="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 'number' : 'text'" :min="in_array($campoEditorManual, ['N.º Individuos', 'N.º Lotes']) ? 1 : 0" :step="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 1 : null" placeholder="Ingresa el dato" autofocus />
+                    @endif
+                    <flux:error name="valorEditorManual" />
+                </div>
+                <div class="flex justify-end gap-2">
+                    <flux:modal.close><flux:button variant="ghost">Cancelar</flux:button></flux:modal.close>
+                    <flux:button variant="primary" wire:click="guardarEditorManual" wire:loading.attr="disabled" wire:target="guardarEditorManual">Guardar</flux:button>
+                </div>
+            </div>
+        @endif
+    </flux:modal>
+
+    <div class="rounded-lg border border-bio-green/25 bg-bio-green/5 p-2">
         <div class="flex items-start gap-3">
             <flux:icon name="building-library" class="mt-0.5 size-5 shrink-0 text-bio-green" />
             <div>
-                <p class="text-sm font-semibold text-text-primary">Columnas K–O · Uso interno de la EPN</p>
-                <p class="mt-1 text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.uso_interno_explicacion') }}</p>
+                <p class="text-sm font-semibold text-text-primary">Datos que completa el museo</p>
+                <p class="text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.uso_interno_explicacion') }}</p>
             </div>
         </div>
-    </div>
-
-    {{-- Validación de firma electrónica --}}
-    @if(!empty($firmasElectronicas))
-        <div class="space-y-3">
-            <flux:heading size="sm" level="3">Firma electrónica</flux:heading>
-
-            @php
-                $sinFirma = array_filter($firmasElectronicas, fn ($estado) => $estado === 'sin_firma');
-                $noVerificados = array_filter($firmasElectronicas, fn ($estado) => $estado === 'no_verificado');
-                $todosFirmados = empty($sinFirma) && empty($noVerificados);
-            @endphp
-
-            @if($todosFirmados)
-                <div class="rounded-lg border border-success/30 bg-success/5 p-4 flex items-center gap-3">
-                    <flux:icon name="shield-check" class="size-5 text-success shrink-0" />
-                    <div>
-                        <p class="text-sm font-semibold text-text-primary">Todos los documentos están firmados electrónicamente</p>
-                        <p class="text-xs text-text-secondary mt-0.5">Se verificó la firma digital de cada archivo cargado.</p>
-                    </div>
-                </div>
-            @elseif(!empty($sinFirma) && empty($noVerificados))
-                {{-- Documentos escaneados con firma manual: advertencia, no bloqueo --}}
-                <div class="rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-3">
-                    <div class="flex items-center gap-3">
-                        <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0" />
-                        <div>
-                            <p class="text-sm font-semibold text-text-primary">{{ count($sinFirma) }} documento(s) sin firma electrónica digital</p>
-                            <p class="text-xs text-text-secondary mt-0.5">{{ \App\Support\WizardCopy::text('datos.sin_firma_explicacion') }}</p>
-                        </div>
-                    </div>
-                    <div class="space-y-1.5">
-                        @foreach($firmasElectronicas as $nombre => $estado)
-                            <div class="flex items-center gap-2 text-sm">
-                                @if($estado === 'firmado')
-                                    <flux:icon name="check-circle" class="size-4 text-success shrink-0" />
-                                    <span class="text-text-primary">{{ $nombre }}</span>
-                                    <span class="text-xs text-success font-medium">Firmado</span>
-                                @else
-                                    <flux:icon name="exclamation-circle" class="size-4 text-warning shrink-0" />
-                                    <span class="text-text-primary">{{ $nombre }}</span>
-                                    <span class="text-xs text-warning font-medium">Sin firma digital</span>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @else
-                {{-- no_verificado: error real de pdfsig, bloquea --}}
-                <div class="rounded-lg border border-error/30 bg-error/5 p-4 space-y-3">
-                    <div class="flex items-center gap-3">
-                        <flux:icon name="shield-exclamation" class="size-5 text-error shrink-0" />
-                        <div>
-                            <p class="text-sm font-semibold text-text-primary">No se pudo verificar la firma de {{ count($noVerificados) }} documento(s)</p>
-                            <p class="text-xs text-text-secondary mt-0.5">{{ \App\Support\WizardCopy::text('datos.firma_no_verificada') }}</p>
-                        </div>
-                    </div>
-                    <div class="space-y-1.5">
-                        @foreach($firmasElectronicas as $nombre => $estado)
-                            <div class="flex items-center gap-2 text-sm">
-                                @if($estado === 'firmado')
-                                    <flux:icon name="check-circle" class="size-4 text-success shrink-0" />
-                                    <span class="text-text-primary">{{ $nombre }}</span>
-                                    <span class="text-xs text-success font-medium">Firmado</span>
-                                @elseif($estado === 'sin_firma')
-                                    <flux:icon name="exclamation-circle" class="size-4 text-warning shrink-0" />
-                                    <span class="text-text-primary">{{ $nombre }}</span>
-                                    <span class="text-xs text-warning font-medium">Sin firma digital</span>
-                                @else
-                                    <flux:icon name="question-mark-circle" class="size-4 text-error shrink-0" />
-                                    <span class="text-text-primary">{{ $nombre }}</span>
-                                    <span class="text-xs text-error font-medium">No verificado</span>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="pt-1">
-                        <flux:button variant="filled" size="sm" icon="arrow-left" wire:click="retroceder">
-                            Volver a cargar documentos
-                        </flux:button>
-                    </div>
-                </div>
-            @endif
-        </div>
-    @endif
-
-    {{-- Validación de identidad --}}
-    <div class="space-y-4">
-        <div class="flex items-center justify-between gap-4">
-            <flux:heading size="sm" level="3">Validación de identidad</flux:heading>
-            @if($resultadoIdentidad)
-                <div class="flex items-center gap-2">
-                    <x-gestionprestamosrecepciones::deposito-status-badge estado="{{ $resultadoIdentidad }}" />
-                    {{-- Permite repetir la comprobación tras corregir el nombre en el perfil
-                         o volver a cargar el formato de solicitud. --}}
-                    <flux:button
-                        size="sm"
-                        variant="ghost"
-                        icon="arrow-path"
-                        wire:click="resetearValidacionIdentidad"
-                        wire:loading.attr="disabled"
-                        wire:target="resetearValidacionIdentidad"
-                    >
-                        Volver a validar
-                    </flux:button>
-                </div>
-            @endif
-        </div>
-
-        <x-gestionprestamosrecepciones::identity-card
-            :nombrePerfil="auth()->user()->name"
-            :nombreEnDocumento="$nombreEnDocumento ?: null"
-            :resultado="$resultadoIdentidad ?: null"
-        />
-
-        @if(!$resultadoIdentidad)
-            <div class="space-y-2">
-                <div class="flex flex-col gap-2 sm:flex-row sm:gap-3 sm:items-end">
-                    <flux:field class="flex-1 !mb-0">
-                        <flux:label>Nombre tal como aparece en el formato de solicitud</flux:label>
-                        <flux:input
-                            wire:model="nombreEnDocumento"
-                            placeholder="Ej. Juan Carlos Pérez Andrade"
-                        />
-                        <flux:error name="nombreEnDocumento" />
-                    </flux:field>
-                    <flux:button
-                        variant="primary"
-                        icon="shield-check"
-                        wire:click="validarIdentidad"
-                        wire:loading.attr="disabled"
-                        wire:target="validarIdentidad"
-                        class="shrink-0 bg-blue-navy hover:bg-blue-navy/90"
-                    >
-                        <flux:icon wire:loading wire:target="validarIdentidad" name="arrow-path" class="animate-spin size-4" />
-                        Validar identidad
-                    </flux:button>
-                </div>
-                <flux:text class="text-xs text-text-secondary">
-                    Escribe el nombre exactamente como figura en el documento oficial cargado.
-                </flux:text>
-            </div>
-        @endif
-
-        {{-- Resultado de identidad --}}
-        @if($resultadoIdentidad === 'Discrepancia (Tipográfica)')
-            <flux:callout variant="warning" icon="exclamation-triangle">
-                <flux:heading>Discrepancia tipográfica detectada</flux:heading>
-                <flux:text>{{ \App\Support\WizardCopy::text('datos.discrepancia_menor') }}</flux:text>
-                <flux:button size="sm" variant="outline" wire:navigate href="{{ route('profile.edit') }}" class="mt-2">
-                    Corregir nombre en perfil
-                </flux:button>
-            </flux:callout>
-        @elseif($resultadoIdentidad === 'Discrepancia (Tercero)')
-            <flux:callout variant="danger" icon="x-circle">
-                <flux:heading>Discrepancia significativa detectada</flux:heading>
-                <flux:text>{{ \App\Support\WizardCopy::text('datos.discrepancia_mayor') }}</flux:text>
-                <div class="mt-3 flex flex-wrap gap-2">
-                    <flux:button size="sm" variant="outline" wire:navigate href="{{ route('profile.edit') }}" icon="user">
-                        Actualizar nombre en perfil
-                    </flux:button>
-                </div>
-                <flux:text class="mt-2 text-xs opacity-70">{{ \App\Support\WizardCopy::text('datos.carta_delegacion') }}</flux:text>
-            </flux:callout>
-
-            <x-gestionprestamosrecepciones::dropzone
-                nombre="Carta de delegación / justificación de tercero"
-                propiedad="archivoCartaDelegacion"
-                :requerido="true"
-                :cargado="isset($documentosCargados['Carta de delegación / justificación de tercero'])"
-            />
-            <flux:error name="cartaDelegacion" />
-        @elseif($resultadoIdentidad === 'Conforme')
-            <flux:callout variant="success" icon="check-circle">
-                <flux:text>{{ \App\Support\WizardCopy::text('datos.nombres_coinciden') }}</flux:text>
-            </flux:callout>
-        @endif
-
-        <flux:error name="identidad" />
     </div>
 
 </div>

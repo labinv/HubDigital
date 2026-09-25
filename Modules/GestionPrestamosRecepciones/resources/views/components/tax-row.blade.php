@@ -81,7 +81,7 @@
                     <flux:icon name="check" class="size-3" />
                     Validado Técnicamente
                 </span>
-                <span class="text-xs text-text-secondary/70">Coincide con el catálogo taxonómico de GBIF</span>
+                <span class="text-xs text-text-secondary/70">Coincide con el catálogo taxonómico EPN o GBIF</span>
                 @foreach($advertencias as $adv)
                     @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
                     <span @class([

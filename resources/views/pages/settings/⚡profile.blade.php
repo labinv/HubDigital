@@ -120,12 +120,10 @@ new #[Title('Configuración de perfil')] class extends Component {
     }
 }; ?>
 
-@if ($modalMode)
-    <section class="w-full">
-        @include('pages.settings.partials.profile-form')
-    </section>
-@else
 <section class="w-full">
+    @if ($modalMode)
+        @include('pages.settings.partials.profile-form')
+    @else
     @include('partials.settings-heading')
 
     <flux:heading class="sr-only">{{ __('Configuración de perfil') }}</flux:heading>
@@ -183,5 +181,5 @@ new #[Title('Configuración de perfil')] class extends Component {
             <livewire:pages::settings.delete-user-form />
         @endif
     </x-pages::settings.layout>
+    @endif
 </section>
-@endif

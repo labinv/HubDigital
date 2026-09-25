@@ -85,6 +85,17 @@ function something()
     // ..
 }
 
+/** PDF de una página con estructura real para rutas que inspeccionan archivos. */
+function pdfValidoParaDepositos(string $texto = 'Documento de prueba'): string
+{
+    $pdf = new \setasign\Fpdi\Fpdi;
+    $pdf->AddPage();
+    $pdf->SetFont('Helvetica', '', 12);
+    $pdf->Cell(0, 10, $texto);
+
+    return $pdf->Output('S');
+}
+
 /** Configura un R2 S3 simulado en memoria, sin red ni fallback local. */
 function configurarR2FalsoParaPruebas(): void
 {

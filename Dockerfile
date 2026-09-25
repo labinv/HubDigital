@@ -49,6 +49,12 @@ COPY tests/js/ tests/js/
 
 RUN npm run build
 
+FROM maven:3.9-eclipse-temurin-17 AS pdf-signature
+WORKDIR /app
+COPY tools/pdf-signature/pom.xml tools/pdf-signature/pom.xml
+COPY tools/pdf-signature/src/ tools/pdf-signature/src/
+RUN mvn -q -f tools/pdf-signature/pom.xml -DskipTests package
+
 
 # ============================================================
 # Stage 3: Production PHP-FPM runtime
@@ -79,9 +85,11 @@ RUN apk add --no-cache \
         postgresql-dev \
         poppler-utils \
         qpdf \
+        clamav-scanner \
         tesseract-ocr \
         tesseract-ocr-data-spa \
         tesseract-ocr-data-eng \
+        openjdk17-jre-headless \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
         libpng-dev \
@@ -105,6 +113,7 @@ RUN apk add --no-cache \
         pcntl \
     && docker-php-ext-enable opcache \
     && apk del .build-deps \
+    && freshclam --quiet \
     && rm -rf /var/cache/apk/*
 
 # PHP runtime configuration
@@ -120,6 +129,7 @@ COPY --chown=www-data:www-data . .
 # Overlay production vendor and compiled frontend assets
 COPY --from=vendor  --chown=www-data:www-data /app/vendor       ./vendor/
 COPY --from=frontend --chown=www-data:www-data /app/public/build ./public/build/
+COPY --from=pdf-signature --chown=www-data:www-data /app/tools/pdf-signature/target/pdf-signature-1.0.0.jar ./resources/bin/hubdigital-pdf-signature.jar
 
 # Ensure full storage directory tree for Docker volume seeding on first run
 RUN mkdir -p \

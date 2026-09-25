@@ -1,4 +1,4 @@
-<div class="hub-workspace mx-auto max-w-5xl space-y-4 p-3 sm:p-5">
+<div class="hub-workspace mx-auto max-w-7xl space-y-4 p-3 sm:p-5">
     <header class="hub-page-header">
         <div>
             <p class="hub-page-kicker">Administración de contenido</p>
@@ -18,7 +18,7 @@
                     <span class="hub-section-title">{{ ucfirst($grupo) }}</span>
                     <span class="text-xs text-text-secondary">{{ count($campos) }} textos · Abrir o cerrar</span>
                 </summary>
-                <div class="mt-4 grid gap-3 lg:grid-cols-2">
+                <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     @foreach($campos as $nombre => $defecto)
                         @php $clave = $grupo.'.'.$nombre; @endphp
                         <flux:textarea wire:model="textos.{{ $grupo }}.{{ $nombre }}" label="{{ str_replace('_', ' ', ucfirst($nombre)) }}" rows="2" maxlength="1000" />

@@ -3,6 +3,9 @@
     'propiedad',
     'requerido' => false,
     'cargado' => false,
+    'estadoFirma' => null,
+    'estadoArchivo' => null,
+    'validandoFirma' => false,
     'archivoNombre' => null,
     'plantilla' => null,
     'ayuda' => null,
@@ -16,6 +19,8 @@
         errorSubida: false,
         arrastrando: false,
         cargado: {{ $cargado ? 'true' : 'false' }},
+        firmaValidada: {{ in_array($estadoFirma, ['firmado', 'firmado_sin_revocacion'], true) ? 'true' : 'false' }},
+        archivoEstado: @js($estadoArchivo),
         nombreArchivo: {{ $archivoNombre ? "'" . addslashes($archivoNombre) . "'" : 'null' }},
         soltar(e) {
             this.arrastrando = false;
@@ -38,7 +43,9 @@
     x-on:livewire-upload-progress="progreso = $event.detail.progress"
     x-on:livewire-upload-finish="subiendo = false; progreso = 100"
     x-on:livewire-upload-error="subiendo = false; progreso = 0; errorSubida = true"
-    x-on:documento-aceptado.window="if ($event.detail.propiedad === '{{ $propiedad }}') { cargado = true; errorSubida = false }"
+    x-on:documento-aceptado.window="if ($event.detail.propiedad === '{{ $propiedad }}') { cargado = true; archivoEstado = 'analizando'; firmaValidada = false; errorSubida = false }"
+    x-on:archivo-validado.window="if ($event.detail.nombre === @js($nombre)) archivoEstado = $event.detail.estado"
+    x-on:firma-actualizada.window="if ($event.detail.nombre === @js($nombre)) firmaValidada = ['firmado', 'firmado_sin_revocacion'].includes($event.detail.estado)"
     x-on:documento-rechazado.window="if ($event.detail.propiedad === '{{ $propiedad }}') { cargado = false; progreso = 0; errorSubida = true }"
     x-on:click="if (!cargado) $refs.fileInput.click()"
     x-on:dragover.prevent="if (!cargado) arrastrando = true"
@@ -46,14 +53,15 @@
     x-on:drop.prevent="soltar($event)"
     class="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left rounded-lg border-2 p-3 transition-all"
     x-bind:class="cargado
-        ? 'border-success/40 bg-success/5 cursor-default'
+        ? (archivoEstado === 'valido' && firmaValidada ? 'border-success/40 bg-success/5 cursor-default' : 'border-error/60 bg-error/5 cursor-default')
         : arrastrando
             ? '!border-science-blue !bg-science-blue/10 border-dashed cursor-pointer group'
-            : 'border-dashed cursor-pointer group {{ $requerido ? 'border-warning/60 bg-warning/5' : 'border-border bg-bg-main' }} hover:border-science-blue hover:bg-science-blue/5'"
+            : 'border-dashed cursor-pointer group {{ $requerido ? 'border-error/60 bg-error/5' : 'border-border bg-bg-main' }} hover:border-science-blue hover:bg-science-blue/5'"
 >
     {{-- Icono --}}
     <div class="shrink-0 size-11 rounded-lg border border-border bg-surface flex items-center justify-center shadow-sm">
-        <flux:icon x-show="cargado" x-cloak name="document-check" class="size-5 text-success" />
+        <flux:icon x-show="cargado && archivoEstado === 'valido' && firmaValidada" x-cloak name="document-check" class="size-5 text-success" />
+        <flux:icon x-show="cargado && !(archivoEstado === 'valido' && firmaValidada)" x-cloak name="document-text" class="size-5 text-error" />
         <flux:icon x-show="!cargado" name="arrow-up-tray" class="size-5 text-text-secondary group-hover:text-science-blue transition-colors" />
     </div>
 
@@ -117,12 +125,54 @@
 
         <div class="flex items-center gap-2 mt-1 flex-wrap">
             <template x-if="cargado">
-                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-success/15 text-success">
-                    <flux:icon name="check" class="size-2.5" />
-                    Cargado
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold" x-bind:class="archivoEstado === 'valido' ? 'bg-success/15 text-success' : 'bg-error/10 text-error'">
+                    <flux:icon x-show="archivoEstado === 'valido'" name="check" class="size-2.5" />
+                    <flux:icon x-show="archivoEstado === 'analizando'" name="arrow-path" class="size-2.5 animate-spin" />
+                    <span x-text="archivoEstado === 'valido' ? 'Cargado' : (archivoEstado === 'analizando' ? 'Revisando archivo' : 'Documento no válido')"></span>
                 </span>
             </template>
-            <span x-show="cargado" x-cloak class="text-xs text-text-secondary">Haz clic en eliminar para subir otro archivo.</span>
+            @if($cargado)
+                @php
+                    $etiquetaFirma = match($estadoFirma) {
+                        'validando' => 'Validando firma',
+                        'firmado' => 'Firma validada',
+                        'firmado_sin_revocacion' => 'Firma validada',
+                        'almacen_incompleto' => 'Almacén pendiente',
+                        'sin_firma' => 'Sin firma',
+                        'firma_invalida' => 'Firma inválida',
+                        'certificado_caducado' => 'Certificado caducado',
+                        'certificado_aun_no_vigente' => 'Certificado aún no vigente',
+                        'certificado_revocado' => 'Certificado revocado',
+                        'certificado_no_confiable' => 'Certificado no confiable',
+                        'revocacion_no_comprobable' => 'Revocación no comprobada',
+                        'verificacion_no_disponible' => 'Error de verificación',
+                        default => $validandoFirma ? 'Validando firma' : 'Firma por validar',
+                    };
+                    $firmaCorrecta = in_array($estadoFirma, ['firmado', 'firmado_sin_revocacion'], true);
+                    $firmaConError = $estadoFirma !== null && !in_array($estadoFirma, ['firmado', 'firmado_sin_revocacion', 'validando'], true);
+                @endphp
+                <span x-show="cargado" class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold {{ $firmaCorrecta ? 'bg-success/15 text-success' : ($firmaConError ? 'bg-error/10 text-error' : 'bg-blue-navy/10 text-blue-navy') }}">
+                    @if($firmaCorrecta)
+                        <flux:icon name="check" class="size-2.5" />
+                    @endif
+                    @if($estadoFirma === 'validando')
+                        <flux:icon name="arrow-path" class="size-2.5 animate-spin" />
+                    @endif
+                    {{ $etiquetaFirma }}
+                </span>
+                @if($estadoFirma === 'firmado_sin_revocacion')
+                    <span x-show="cargado" class="text-[10px] text-text-secondary">Revocación no comprobada</span>
+                @endif
+            @endif
+            <span x-show="cargado" x-cloak class="text-xs text-text-secondary">
+                @if($estadoArchivo === 'tipo_incorrecto')
+                    El contenido no corresponde a este tipo de documento. Elimina el archivo y carga el correcto.
+                @elseif($estadoArchivo === 'revision_fallida')
+                    No se pudo revisar el contenido. Elimina el archivo y vuelve a cargarlo.
+                @else
+                    Haz clic en eliminar para subir otro archivo.
+                @endif
+            </span>
 
             @if(!$cargado)
                 @if($requerido)
@@ -182,7 +232,7 @@
         wire:click.stop="eliminarDocumento('{{ $nombre }}')"
         wire:loading.attr="disabled"
         wire:target="eliminarDocumento('{{ $nombre }}')"
-        class="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-error border border-error/30 bg-error/5 hover:bg-error/15 transition-colors"
+        class="shrink-0 self-end flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-error border border-error/30 bg-error/5 hover:bg-error/15 transition-colors"
         x-on:click.stop="cargado = false; nombreArchivo = null; progreso = 0"
     >
         <flux:icon wire:loading wire:target="eliminarDocumento('{{ $nombre }}')" name="arrow-path" class="size-3.5 animate-spin" />

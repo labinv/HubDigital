@@ -12,6 +12,7 @@ $pgBin = 'C:\Program Files\PostgreSQL\16\bin'
 $raizRepositorio = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $archivoClave = Join-Path $raizRepositorio '.local\secrets\postgres-test-password.clixml'
 $basePruebas = 'hubdigital'
+$postgresYaActivo = (Get-Service -Name $servicio -ErrorAction Stop).Status -eq 'Running'
 
 function Invoke-ServicioElevado {
     param([Parameter(Mandatory)] [ValidateSet('start', 'stop')] [string]$Accion)
@@ -44,7 +45,7 @@ finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($puntero) }
 
 $codigoPruebas = 1
 try {
-    Invoke-ServicioElevado -Accion start
+    if (-not $postgresYaActivo) { Invoke-ServicioElevado -Accion start }
     $listo = $false
     for ($intento = 0; $intento -lt 30; $intento++) {
         & (Join-Path $pgBin 'pg_isready.exe') -h 127.0.0.1 -p 5432 -U postgres *> $null
@@ -95,9 +96,13 @@ try {
 finally {
     foreach ($nombre in @('PGPASSWORD','DB_PASSWORD','TEST_DB_PASSWORD','APP_KEY')) { Remove-Item "Env:$nombre" -ErrorAction SilentlyContinue }
     $clave = $null
-    Invoke-ServicioElevado -Accion stop
-    Start-Sleep -Seconds 2
-    Assert-PuertoCerrado
+    if (-not $postgresYaActivo) {
+        Invoke-ServicioElevado -Accion stop
+        Start-Sleep -Seconds 2
+        Assert-PuertoCerrado
+    } else {
+        Write-Host 'PostgreSQL ya estaba encendido y permanece encendido.' -ForegroundColor Green
+    }
 }
 
 if ($codigoPruebas -ne 0) { throw "Las pruebas PostgreSQL fallaron (codigo $codigoPruebas)." }

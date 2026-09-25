@@ -198,6 +198,15 @@ $composerPrograma = if ($composer.PSObject.Properties['Source'] -and $composer.S
 Invoke-Comando -Programa $composerPrograma -Argumentos @('validate', '--no-check-publish') -Descripcion 'Validando composer.json y composer.lock' -DirectorioTrabajo $Proyecto
 Invoke-Comando -Programa $composerPrograma -Argumentos @('install', '--no-interaction', '--prefer-dist', '--no-progress') -Descripcion 'Sincronizando dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
 
+# Las pruebas de carga PDF usan el inspector Java: debe estar compilado antes de la suite PHP.
+$maven = Get-Command 'mvn.cmd' -ErrorAction SilentlyContinue
+if (-not $maven) { throw 'No se encontro Maven para compilar el validador criptografico Java.' }
+Invoke-Comando -Programa $maven.Source -Argumentos @('-q', '-f', 'tools/pdf-signature/pom.xml', '-DskipTests', 'package') -Descripcion 'Compilando firmador y validador criptografico Java' -DirectorioTrabajo $Proyecto
+$destinoJar = Join-Path $Proyecto 'resources/bin/hubdigital-pdf-signature.jar'
+New-Item -ItemType Directory -Path (Split-Path -Parent $destinoJar) -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $Proyecto 'tools/pdf-signature/target/pdf-signature-1.0.0.jar') -Destination $destinoJar -Force
+Invoke-Comando -Programa 'java.exe' -Argumentos @('-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, firma alterada y PDF sin firma con Java' -DirectorioTrabajo $Proyecto
+
 $php = Get-Command 'php' -ErrorAction SilentlyContinue
 if (-not $php) {
     $phpAlternativo = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages\PHP.PHP.8.4_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe'
@@ -246,7 +255,8 @@ $requeridos = @(
     'vendor/autoload.php', 'vendor/livewire/flux/dist/manifest.json',
     'public/build/manifest.json', 'deploy/oracle/scripts/stage-linux-candidate.sh',
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',
-    'composer.json', 'composer.lock', 'modules_statuses.json'
+    'composer.json', 'composer.lock', 'modules_statuses.json',
+    'resources/bin/hubdigital-pdf-signature.jar'
 )
 foreach ($ruta in $requeridos) {
     if (-not (Test-Path -LiteralPath (Join-Path $Proyecto $ruta) -PathType Leaf)) { throw "Falta un archivo requerido para el paquete: $ruta" }

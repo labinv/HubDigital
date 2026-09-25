@@ -5,7 +5,11 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Livewire\ActivarRol;
 use App\Livewire\Administracion\CentroAdministracion;
 use App\Livewire\Administracion\ConfiguracionSistema;
+use App\Livewire\Administracion\ConfiguracionExpediente;
 use App\Livewire\Administracion\ConfiguracionTextosWizard;
+use App\Livewire\Administracion\InstitucionesCatalogo;
+use App\Livewire\Administracion\GruposAnimalesCatalogo;
+use App\Livewire\Administracion\FuentesRevocacionFirma;
 use App\Livewire\Administracion\GestionUsuarios;
 use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
@@ -33,9 +37,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/administracion/configuracion', ConfiguracionSistema::class)
         ->middleware('role:admin')
         ->name('admin.configuracion');
+    Route::get('/administracion/siglas-expedientes', ConfiguracionExpediente::class)
+        ->middleware('role:admin')
+        ->name('admin.siglas-expedientes');
     Route::get('/administracion/textos-depositos', ConfiguracionTextosWizard::class)
         ->middleware('role:admin')
         ->name('admin.textos-depositos');
+    Route::get('/administracion/instituciones', InstitucionesCatalogo::class)
+        ->name('admin.instituciones');
+    Route::get('/administracion/grupos-animales', GruposAnimalesCatalogo::class)
+        ->name('admin.grupos-animales');
+    Route::get('/administracion/fuentes-revocacion', FuentesRevocacionFirma::class)
+        ->name('admin.fuentes-revocacion');
     Route::prefix('pwa')->name('pwa.')->group(function (): void {
         Route::get('/configuracion', [PushSubscriptionController::class, 'configuration'])
             ->name('configuration');

@@ -14,8 +14,6 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
  */
 final readonly class NumeroSolicitudDeposito
 {
-    private const PREFIJO = 'MEPN-INV-DEP-';
-
     private const LONGITUD_SECUENCIA = 5;
 
     private function __construct(private string $value) {}
@@ -27,7 +25,7 @@ final readonly class NumeroSolicitudDeposito
      */
     public static function from(string $numero): self
     {
-        if (! preg_match('/^MEPN-INV-DEP-\d{5}$/', $numero)) {
+        if (! preg_match('/^[A-Z]{2,10}(?:-[A-Z]{2,10}){0,2}-DEP-\d{5}$/', $numero)) {
             throw new \DomainException(
                 sprintf('"%s" no es un número de solicitud válido. Formato esperado: MEPN-INV-DEP-00001', $numero)
             );
@@ -41,13 +39,17 @@ final readonly class NumeroSolicitudDeposito
      *
      * @throws \DomainException Si la secuencia es menor que 1.
      */
-    public static function fromSecuencia(int $secuencia): self
+    public static function fromSecuencia(int $secuencia, string $prefijo = 'MEPN-INV-DEP'): self
     {
         if ($secuencia < 1) {
             throw new \DomainException('La secuencia del número de solicitud debe ser mayor a 0');
         }
 
-        return new self(self::PREFIJO.str_pad((string) $secuencia, self::LONGITUD_SECUENCIA, '0', STR_PAD_LEFT));
+        if (! preg_match('/^[A-Z]{2,10}(?:-[A-Z]{2,10}){0,2}-DEP$/', $prefijo) || $secuencia > 99999) {
+            throw new \DomainException('Las siglas o la secuencia del expediente no son válidas.');
+        }
+
+        return new self($prefijo.'-'.str_pad((string) $secuencia, self::LONGITUD_SECUENCIA, '0', STR_PAD_LEFT));
     }
 
     public function __toString(): string

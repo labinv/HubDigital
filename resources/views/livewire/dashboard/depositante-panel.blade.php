@@ -2,7 +2,7 @@
     <x-banner-activar-rol />
     <header class="hub-curator-heading">
         <div>
-            <h1>Mi contribución</h1>
+            <h1>{{ \App\Support\WizardCopy::text('portal.titulo_depositante') }}</h1>
             <p>Depósitos de material biológico · Bienvenido, {{ auth()->user()->name }}</p>
         </div>
         <div class="hub-curator-heading__actions">

@@ -249,10 +249,6 @@ final class AnalizadorDocumentoAmbiental
             unset($evidenciasCampos['ruc'], $confianzasCampos['ruc']);
             $ruc['valor'] = null;
         }
-        if (preg_match('/(?:documento\s+)?firmado\s+electr[oó0]nicamente/iu', $texto) !== 1) {
-            $advertencias[] = 'No se encontró una leyenda de firma electrónica; la firma criptográfica se valida por separado.';
-        }
-
         $estado = $errores !== [] ? 'rechazado' : 'revision';
         $autocompletado = $estado !== 'rechazado';
 

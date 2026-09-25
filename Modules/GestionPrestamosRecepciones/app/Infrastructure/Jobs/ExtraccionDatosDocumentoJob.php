@@ -204,12 +204,23 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 
             // Validar firmas electrónicas de cada documento.
             $firmas = [];
+            $firmasPersistidas = SolicitudDepositoEloquentModel::query()->find($this->solicitudId);
             foreach ($this->documentos as $nombre => $ruta) {
-                $copia = $almacenamiento->copiaLocal($ruta);
-                try {
-                    $estadoFirma = $validadorFirma->verificarFirma($copia->ruta())->value;
-                } finally {
-                    $copia->limpiar();
+                $estadoFirma = null;
+                if (($firmasPersistidas?->documentos_cargados[$nombre] ?? null) === $ruta
+                    && ($firmasPersistidas?->validacion_archivos[$nombre] ?? null) === 'valido') {
+                    $guardado = $firmasPersistidas?->firmas_electronicas[$nombre] ?? null;
+                    if (in_array($guardado, ['firmado', 'firmado_sin_revocacion'], true)) {
+                        $estadoFirma = $guardado;
+                    }
+                }
+                if ($estadoFirma === null) {
+                    $copia = $almacenamiento->copiaLocal($ruta);
+                    try {
+                        $estadoFirma = $validadorFirma->verificarFirma($copia->ruta())->value;
+                    } finally {
+                        $copia->limpiar();
+                    }
                 }
                 $firmas[$nombre] = $estadoFirma;
                 $metadatosExtraccion['documentos'][$nombre]['firma_electronica'] = $estadoFirma;

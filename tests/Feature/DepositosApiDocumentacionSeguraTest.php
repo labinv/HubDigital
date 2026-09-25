@@ -97,7 +97,7 @@ test('la API guarda archivos con claves privadas server-side y nunca autoavanza 
         'documentos' => [
             'Guía de movilización' => UploadedFile::fake()->createWithContent(
                 'nombre-controlado-por-cliente.pdf',
-                "%PDF-1.7\ncontenido regulatorio sintético",
+                pdfValidoParaDepositos('Guia de movilizacion de prueba'),
             ),
         ],
     ], ['Accept' => 'application/json']);

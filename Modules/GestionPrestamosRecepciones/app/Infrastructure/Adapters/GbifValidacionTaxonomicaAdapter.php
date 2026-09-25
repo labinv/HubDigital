@@ -7,9 +7,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\TaxonEloquentModel;
 
 /**
  * Adaptador que consulta la API Species Match de GBIF para validar
@@ -63,8 +65,34 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
 
         $resultadosCache = [];
         $nombresPendientes = [];
+        $nombresNormalizados = array_values(array_unique(array_map(
+            static fn (string $nombre): string => mb_strtolower(trim($nombre)),
+            $nombresUnicos,
+        )));
+        $catalogoLocal = $nombresNormalizados === [] ? [] : TaxonEloquentModel::query()
+            ->where('estado', 'activo')
+            ->whereIn(DB::raw('LOWER(nombre_cientifico)'), $nombresNormalizados)
+            ->pluck('nombre_cientifico')
+            ->mapWithKeys(static fn (string $nombre): array => [mb_strtolower($nombre) => true])
+            ->all();
 
         foreach ($nombresUnicos as $nombre) {
+            if (isset($catalogoLocal[mb_strtolower(trim($nombre))])) {
+                $resultadosCache[$nombre] = [
+                    'nombreCientifico' => $nombre,
+                    'estado' => 'catalogado',
+                    'sugerencia' => null,
+                    'sugerencias' => [],
+                    'fuenteReferencia' => 'Catálogo EPN',
+                    'matchType' => 'EXACT',
+                    'confianza' => 100,
+                    'gbifKey' => null,
+                    'acceptedUsageKey' => null,
+                    'taxonomicStatus' => 'ACCEPTED',
+                ];
+
+                continue;
+            }
             $cached = Cache::get($this->claveCache($nombre));
             if ($cached !== null) {
                 $resultadosCache[$nombre] = $cached;

@@ -16,6 +16,9 @@
         <flux:sidebar sticky :collapsible="true" class="hub-app-sidebar border-e border-border bg-blue-navy">
 
             <div class="hub-sidebar-collapse-row">
+                <a href="{{ route('dashboard') }}" wire:navigate class="hub-sidebar-logo" aria-label="Hub Digital, ir al dashboard" title="Hub Digital">
+                    <x-app-logo-icon class="size-6 fill-current text-white" />
+                </a>
                 <span class="hub-sidebar-collapse-label">Menú</span>
                 <flux:sidebar.collapse tooltip="Contraer o ampliar menú" class="hub-sidebar-collapse-control" />
             </div>
@@ -136,6 +139,30 @@
                                 wire:navigate
                             >
                                 Recepciones
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="building-library"
+                                :href="route('admin.instituciones')"
+                                :current="request()->routeIs('admin.instituciones')"
+                                wire:navigate
+                            >
+                                Instituciones
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="beaker"
+                                :href="route('admin.grupos-animales')"
+                                :current="request()->routeIs('admin.grupos-animales')"
+                                wire:navigate
+                            >
+                                Grupos animales
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="shield-check"
+                                :href="route('admin.fuentes-revocacion')"
+                                :current="request()->routeIs('admin.fuentes-revocacion')"
+                                wire:navigate
+                            >
+                                Revocación de firmas
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
@@ -407,6 +434,9 @@
                                 >
                                     Configuración del sistema
                                 </flux:sidebar.item>
+                                <flux:sidebar.item icon="hashtag" :href="route('admin.siglas-expedientes')" :current="request()->routeIs('admin.siglas-expedientes')" wire:navigate>
+                                    Siglas de expedientes
+                                </flux:sidebar.item>
                                 <flux:sidebar.item
                                     icon="pencil-square"
                                     :href="route('admin.textos-depositos')"
@@ -462,20 +492,7 @@
                 <span><strong>Hub Digital</strong><small>Museo de Historia Natural</small></span>
             </a>
 
-            @php
-                $busquedaColeccionInterna = auth()->user()->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN);
-            @endphp
-            <form action="{{ $busquedaColeccionInterna ? route('inventario.taxonomia.especimenes') : route('portal.catalogo') }}" method="GET" role="search" class="hub-topbar-search">
-                <flux:icon name="magnifying-glass" class="size-5" />
-                <input name="{{ $busquedaColeccionInterna ? 'q' : 'ft' }}" type="search" maxlength="120" aria-label="Buscar en la colección" placeholder="Buscar en la colección..." value="{{ request()->query($busquedaColeccionInterna ? 'q' : 'ft', '') }}">
-                <button type="submit" aria-label="Buscar"><flux:icon name="arrow-right" class="size-4" /></button>
-            </form>
-
             <div class="hub-mobile-actions flex items-center justify-end gap-1 text-white">
-                <div class="flex items-center">
-                    <livewire:campana-notificaciones />
-                </div>
-
                 <span class="hub-topbar-identity"><strong>{{ auth()->user()->name }}</strong><small>{{ auth()->user()->rolActivo()->etiqueta() }}</small></span>
                 <flux:dropdown position="top" align="end">
                     <flux:profile
@@ -487,7 +504,7 @@
                 <flux:menu class="hub-account-menu min-w-[20rem] p-0!">
                     <flux:menu.radio.group>
                         <div class="p-0 text-sm font-normal">
-                            <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
+                            <div class="hub-account-menu__identity flex items-center gap-2 px-3 py-3 text-start text-sm">
                                 <flux:avatar
                                     :name="auth()->user()->name"
                                     :initials="auth()->user()->initials()"
@@ -552,6 +569,9 @@
                     </form>
                     </flux:menu>
                 </flux:dropdown>
+                <div class="flex items-center">
+                    <livewire:campana-notificaciones />
+                </div>
             </div>
         </flux:header>
 

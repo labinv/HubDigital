@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 use Illuminate\Support\Facades\Log;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\PrepararFuentesRevocacionFirma;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DetalleValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
 use Symfony\Component\Process\ExecutableFinder;
@@ -21,6 +22,58 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
             return ResultadoValidacionFirma::NoVerificado;
         }
 
+        // El desarrollo en Windows puede carecer de Poppler. Un PDF sin ningún
+        // diccionario de firma se informa como sin firma; uno que parece firmado
+        // permanece sin verificar hasta disponer de pdfsig.
+        $jar = config('firma-electronica.java_signature_jar');
+        if (is_string($jar) && is_file($jar)) {
+            $inicio = microtime(true);
+            $fuentes = app(PrepararFuentesRevocacionFirma::class)->preparar();
+            $fuentesMs = (int) round((microtime(true) - $inicio) * 1000);
+            $espera = max(1, min(10, $fuentes['timeout']));
+            $process = new Process([
+                'java', '-Dcom.sun.security.ocsp.timeout='.$espera,
+                '-Dcom.sun.security.crl.timeout='.$espera,
+                '-Dhubdigital.revocation.timeout='.$espera,
+                '-Dsun.net.client.defaultConnectTimeout='.($espera * 1000),
+                '-Dsun.net.client.defaultReadTimeout='.($espera * 1000),
+                '-jar', $jar, 'verify', $rutaAbsoluta,
+            ]);
+            $process->setEnv([
+                'HUBDIGITAL_SIGNATURE_TRUST_DIR' => (string) config('firma-electronica.java_signature_trust_dir'),
+                'HUBDIGITAL_SIGNATURE_OCSP_RESPONDERS' => implode('|', $fuentes['ocsp']),
+                'HUBDIGITAL_SIGNATURE_CRL_OVERRIDES' => implode('|', $fuentes['crl']),
+            ]);
+            $process->setTimeout(35);
+            $process->run();
+            $resultado = json_decode(trim($process->getOutput()), true);
+            Log::info('Duración de comprobación de firma PDF', [
+                'fuentes_ms' => $fuentesMs,
+                'java_ms' => (int) round((microtime(true) - $inicio) * 1000) - $fuentesMs,
+                'estado' => $resultado['status'] ?? 'sin_respuesta',
+            ]);
+            if (is_array($resultado) && is_string($resultado['status'] ?? null)) {
+                if ($resultado['status'] !== 'firmado') {
+                    Log::info('Diagnóstico Java de firma PDF', [
+                        'estado' => $resultado['status'],
+                        'motivo' => $resultado['reason'] ?? '',
+                        'integridad' => $resultado['cryptographically_valid'] ?? false,
+                    ]);
+                }
+                return ResultadoValidacionFirma::tryFrom($resultado['status'])
+                    ?? ResultadoValidacionFirma::VerificacionNoDisponible;
+            }
+
+            Log::warning('Validador Java de firmas no disponible', [
+                'exit_code' => $process->getExitCode(),
+                'salida' => $process->getErrorOutput(),
+                'stdout' => $process->getOutput(),
+                'java' => (new ExecutableFinder)->find('java'),
+            ]);
+
+            return ResultadoValidacionFirma::VerificacionNoDisponible;
+        }
+
         $resultado = $this->ejecutarPdfsig($rutaAbsoluta);
         if (str_contains($resultado['salida'], 'does not contain any signatures')) {
             return ResultadoValidacionFirma::SinFirma;
@@ -28,12 +81,23 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
 
         $firmas = $this->separarFirmas($resultado['salida']);
         if ($firmas === []) {
-            return ResultadoValidacionFirma::NoVerificado;
+            return $resultado['exitosa']
+                ? ResultadoValidacionFirma::NoVerificado
+                : ResultadoValidacionFirma::VerificacionNoDisponible;
         }
 
         foreach ($firmas as $firma) {
+            if (preg_match('/Certificate Validation:.*Revoked/i', $firma)) {
+                return ResultadoValidacionFirma::CertificadoRevocado;
+            }
+            if (preg_match('/Certificate Validation:.*(Expired|Not Yet Valid)/i', $firma)) {
+                return ResultadoValidacionFirma::CertificadoCaducado;
+            }
             if (! str_contains($firma, 'Signature Validation: Signature is Valid.')) {
-                return ResultadoValidacionFirma::NoVerificado;
+                return ResultadoValidacionFirma::FirmaInvalida;
+            }
+            if (! str_contains($firma, 'Certificate Validation: Certificate is Trusted.')) {
+                return ResultadoValidacionFirma::CertificadoNoConfiable;
             }
         }
 
@@ -43,7 +107,7 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
 
         return str_contains($ultimaFirma, 'Total document signed')
             ? ResultadoValidacionFirma::Firmado
-            : ResultadoValidacionFirma::NoVerificado;
+            : ResultadoValidacionFirma::FirmaInvalida;
     }
 
     public function verificarFirmaDetallada(

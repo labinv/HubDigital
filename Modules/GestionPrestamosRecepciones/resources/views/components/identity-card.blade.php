@@ -13,7 +13,7 @@ $colorClasses = match($resultado) {
 };
 @endphp
 
-<div class="rounded-lg border-2 p-4 {{ $colorClasses }} flex flex-col items-center gap-3 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
+<div class="rounded-lg border-2 p-3 {{ $colorClasses }} flex flex-col items-center gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-3">
     {{-- Left: Perfil del sistema --}}
     <div class="space-y-0.5 text-center sm:text-left">
         <p class="text-[10px] font-semibold tracking-wider text-text-secondary">Perfil del sistema</p>
@@ -22,7 +22,7 @@ $colorClasses = match($resultado) {
     </div>
 
     {{-- Center: vs --}}
-    <div class="size-9 rounded-full bg-surface border border-border flex items-center justify-center text-xs font-bold text-text-secondary shadow-sm">
+    <div class="size-7 rounded-full bg-surface border border-border flex items-center justify-center text-[11px] font-bold text-text-secondary shadow-sm">
         vs
     </div>
 

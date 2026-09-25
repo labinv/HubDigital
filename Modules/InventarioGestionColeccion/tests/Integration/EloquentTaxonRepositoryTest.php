@@ -64,12 +64,13 @@ test('buscarPorNombreContiene devuelve taxones que contienen la cadena', functio
 
 test('buscarTodos devuelve todos los taxones', function (): void {
     $repo = app(TaxonRepositoryInterface::class);
+    $cantidadInicial = \Illuminate\Support\Facades\DB::table('taxonomia.taxones')->count();
     $repo->guardar(crearTaxon('Morpho peleides', 'especie'));
     $repo->guardar(Taxon::crear(TaxonId::generar(), 'Lepidoptera', 'orden', 'Linnaeus', 1758));
 
     $resultado = $repo->buscarTodos();
 
-    expect($resultado)->toHaveCount(2);
+    expect($resultado)->toHaveCount($cantidadInicial + 2);
 });
 
 test('buscarPorIds devuelve solo los taxones con los ids indicados', function (): void {

@@ -6,6 +6,8 @@ return [
         env('APP_ENV') === 'production',
     ),
     'pdfsig_binary' => env('PDFSIG_BINARY'),
+    'java_signature_jar' => env('JAVA_SIGNATURE_JAR', base_path('resources/bin/hubdigital-pdf-signature.jar')),
+    'java_signature_trust_dir' => env('JAVA_SIGNATURE_TRUST_DIR', base_path('resources/signature-trust')),
     'nss_dir' => env('FIRMA_NSS_DIR'),
     'pdfinfo_binary' => env('PDFINFO_BINARY'),
     'pdftotext_binary' => env('PDFTOTEXT_BINARY'),

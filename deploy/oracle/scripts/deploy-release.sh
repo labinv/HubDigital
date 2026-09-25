@@ -103,6 +103,7 @@ if ! candidate_artisan migrate:status --pending=1 --no-interaction; then
     echo 'Quedan migraciones pendientes. No se prepara una release activable hasta aplicarlas.' >&2
     exit 65
 fi
+candidate_artisan db:seed --class='Database\Seeders\InstitucionesCatalogoSeeder' --force --no-interaction
 if [[ "$(read_env SEED_BOOTSTRAP_DEPOSITANTE)" == true ]]; then
     require_value BOOTSTRAP_DEPOSITANTE_EMAIL
     require_value BOOTSTRAP_DEPOSITANTE_PASSWORD
